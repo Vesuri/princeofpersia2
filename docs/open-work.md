@@ -5,12 +5,6 @@ committed, except where an item says it runs in parallel.
 
 1. **Owner decision D9** on "Compress Data" (`docs/design.md`).
    Acceptance: the decision table records the owner's answer.
-2. **Inspect and extract.** `make inspect` reproduces the archive hash and the
-   application facts in `docs/source-inventory.md` from AmigaXDev's Mac helpers.
-   `make extract-original-data` unpacks the archive into ignored `tmp/runtime-data/`
-   in Alone in the Dark's layout (data fork, `name.rsrc`, `name.finfo`).
-   Acceptance: repeated extraction gives identical hashes; application and data
-   hashes are pinned in `manifest/`; nothing extracted is tracked.
 3. **Mac reference loop (D2).** Local ROM sets and the Steve Taylor System 6.0.8
    drive image under ignored `ref/mame/`, pinned by SHA-256. MAME `maciix` with an
    8-bit `mdc48`, 8 MB, 256 colours in PRAM, Virtual Memory off. Reuse Alone in the

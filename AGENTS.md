@@ -2,7 +2,8 @@
 
 Macintosh-to-Amiga port following Vette! and Alone in the Dark. The owner has set the
 target and approach in `docs/design.md`; work proceeds through `docs/open-work.md` in
-order. No extraction target, reference run or runtime implementation exists yet.
+order. Inspection and extraction targets exist; no reference run or runtime implementation
+exists yet.
 
 ## Rules
 
@@ -44,7 +45,7 @@ order. No extraction target, reference run or runtime implementation exists yet.
 |---|---|
 | `README.md` | scope and setup checks |
 | `docs/design.md` | intended approach, faithfulness boundary and owner decisions |
-| `docs/source-inventory.md` | supplied archive identity; unexamined internals |
+| `docs/source-inventory.md` | supplied archive identity, application facts and extraction layout |
 | `docs/open-work.md` | deferred work and acceptance gates |
 
 Use AmigaXDev's `docs/environment.md`, `docs/playbooks/new-port-playbook.md`,

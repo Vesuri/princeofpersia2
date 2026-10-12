@@ -5,8 +5,8 @@ instructions run natively on an AGA Amiga with a 68020 or better, and the port
 implements the Macintosh services they call. The display is PAL hires interlaced,
 showing the original 512×384 window.
 
-The release has been surveyed (see the source inventory). No extraction target,
-reference run or runnable port exists yet.
+The release can be inspected and extracted reproducibly (see the source inventory).
+No reference run or runnable port exists yet.
 
 ## Setup checks
 
@@ -19,6 +19,12 @@ the shared environment file.
 The supplied archive is stored read-only at `tmp/originals/Prince_Of_Persia2.SIT`,
 which Git ignores. On a fresh checkout, place your own matching archive there and
 run `make verify-input`. Do not add original or extracted game material to Git.
+
+Run `make inspect` to reproduce the application survey, `make extract-original-data`
+to create the verified fork/metadata layout under `tmp/runtime-data/`, and
+`make check-extraction` for the repeatability and preservation gate. These commands
+require `unar`, `lsar`, macOS `xattr`, and the shared Python environment with Capstone.
+Differing existing output is retained under `.replaced/`; scratch stays in `tmp/`.
 
 - File: `Prince_Of_Persia2.SIT`
 - Size: 7,716,607 bytes
