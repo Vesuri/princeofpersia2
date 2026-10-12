@@ -5,15 +5,6 @@ committed, except where an item says it runs in parallel.
 
 1. **Owner decision D9** on "Compress Data" (`docs/design.md`).
    Acceptance: the decision table records the owner's answer.
-3. **Mac reference loop (D2).** Local ROM sets and the Steve Taylor System 6.0.8
-   drive image under ignored `ref/mame/`, pinned by SHA-256. MAME `maciix` with an
-   8-bit `mdc48`, 8 MB, 256 colours in PRAM, Virtual Memory off. Reuse Alone in the
-   Dark's volume installer, Lua launch/input/trap/framebuffer scripts and literal
-   checker. Fix the random seed. Record `Gestalt`, `SysEnvirons`, MIDI Manager and
-   packing-prompt behaviour, and the copy-protection path.
-   Acceptance: one headless command reaches a named milestone (title, first room,
-   first level transition, one cutscene) with a reproducible capture and trap log.
-   If 6.0.8 fails, the failure is documented and 7.5.5 is used under D2.
 4. **Static and live map.** Headless Ghidra with shared scripts; MacsBug names seeded
    into `disasm/symbols.csv` with evidence classes. A flow-following trap census
    (Alone in the Dark's `trap_census.py` without CREL), low-memory scan, A5-world

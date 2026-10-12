@@ -5,7 +5,7 @@
 | ID | Decision | Status |
 |---|---|---|
 | D1 | Port Macintosh Prince of Persia 2 to Amiga following Vette! and Alone in the Dark: original 68k instructions run natively, Macintosh services are implemented by the port | Decided |
-| D2 | Reference system: System 6.0.8 with 32-Bit QuickDraw at 256 colours under MAME. If the game does not run correctly there, fall back to System 7.5.5 (the Alone in the Dark reference) | Decided |
+| D2 | Reference system: System 7.5.5 under MAME on a compatible Macintosh IIci, 8 MB, main `mdc48` display at 256 colours, Virtual Memory off. Owner-authorized fallback from the failing System 6.0.8 / Macintosh IIx configuration | Decided |
 | D3 | Display: PAL hires interlaced, 8 bitplanes, FMODE 3, showing the original 512×384 window 1:1. No DblPAL or other 31 kHz mode | Decided |
 | D4 | Drop lores if the 512×384 rooms cannot reasonably fit a lores screen; expected, since only cropping, panning or resampling would fit them. Analysis checks the original for a reduced-size renderer first | Decided, pending confirmation |
 | D5 | Target: AGA, 68020 minimum, 68030 or better recommended; Fast RAM size set after measurement | Decided |

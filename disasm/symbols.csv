@@ -1,0 +1,12 @@
+segment,offset,name,evidence,notes
+2,0x1A36,CopyProtectionDialog,DERIVED,Entry traced back from original MacsBug name at 0x1BCC
+2,0x2F8,PlayNIS_CopyProtectionChoice,MEASURED,Reference route logs cutscene selector before original comparison with 100
+2,0x3CE8,StartupPackingChoice,MEASURED,Reference records original option words before packing decision
+11,0x051C,SetupMIDIPort,DERIVED,Entry traced back from original MacsBug name at 0x06D2
+15,0x0170,NISTextDraw,MEASURED,Original MacsBug name at 0x041A and live opening text calls
+15,0x0416,NISTextDraw_Completed,MEASURED,Original drawing and cleanup completed before frame unlink
+17,0x4560,PackDataAtStartUp,DERIVED,Entry traced back from original MacsBug name at 0x458C
+17,0x6E42,SetRndSeed,MEASURED,Original MacsBug name at 0x6E6C and live fixed-argument seed check
+20,0x005A,SysEnvirons_Trap,MEASURED,Reference service call and returned environment record
+20,0x01C2,Gestalt_Trap,MEASURED,Reference identity selectors and returned values
+11,0x0574,SetupMIDIPort_Flags,MEASURED,Original branch records input and output flags before deciding whether to register MIDI ports

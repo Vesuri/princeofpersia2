@@ -114,3 +114,8 @@ extents, checks preservation of identical and differing destinations, and verifi
 that all extracted paths are ignored and no scratch/replacement paths are tracked.
 The gate completes with `EXTRACTION GATE PASS`. `git status --ignored` supplies the
 repository-level tracking check. No game-derived output has been committed.
+
+The measured System 7.5.5 / Macintosh IIci execution, identity answers, startup
+branches and reproducible opening checkpoint are documented in
+[the Macintosh reference loop](mac-reference-loop.md). Static facts above remain
+distinct from that bounded execution evidence.

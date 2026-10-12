@@ -1,13 +1,15 @@
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
 
-.PHONY: help verify-input check inspect extract-original-data check-extraction
+.PHONY: help verify-input check inspect extract-original-data check-extraction reference check-reference
 help:
 	@echo 'Original archive inspection and extraction; no game build yet.'
 	@echo 'make verify-input  verify the locally staged original archive'
 	@echo 'make inspect       reproduce the source inventory from the archive'
 	@echo 'make extract-original-data  verify and extract to tmp/runtime-data/'
 	@echo 'make check-extraction  repeat extraction and run rejection/preservation controls'
+	@echo 'make reference     run the pinned headless Macintosh opening checkpoint'
+	@echo 'make check-reference  repeat the reference and run rejection controls'
 	@echo 'make check         verify the archive and shared compiler access'
 
 verify-input:
@@ -24,3 +26,9 @@ extract-original-data: verify-input
 
 check-extraction: verify-input
 	@. amiga/env.sh && python3 tools/check_extraction.py
+
+reference:
+	@. amiga/env.sh && python3 tools/run_reference.py
+
+check-reference:
+	@. amiga/env.sh && python3 tools/check_reference.py

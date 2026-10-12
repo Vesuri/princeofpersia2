@@ -2,8 +2,8 @@
 
 Macintosh-to-Amiga port following Vette! and Alone in the Dark. The owner has set the
 target and approach in `docs/design.md`; work proceeds through `docs/open-work.md` in
-order. Inspection and extraction targets exist; no reference run or runtime implementation
-exists yet.
+order. Inspection, extraction and a verified Macintosh opening-cutscene reference exist.
+No Amiga runtime implementation exists yet.
 
 ## Rules
 

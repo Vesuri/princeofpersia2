@@ -1,4 +1,4 @@
 project	commit	role
 AmigaXDev	b725a04135a9b79646ec9c12d256daa302082676	setup conventions and shared port playbook
 Vette	b3074ba6784a834864c222db9b4f0ccabd38de03	Macintosh native-instruction port reference; no code copied
-Alone in the Dark	935aed56a0ec6f7cf5965969c2ea2d85d74637e6	Macintosh runtime reuse reference; extraction and AFI1 metadata helpers adapted
+Alone in the Dark	935aed56a0ec6f7cf5965969c2ea2d85d74637e6	Macintosh runtime reuse reference; extraction, AFI1 metadata, HFS installer, reference input/framebuffer/trap harness and literal checker adapted

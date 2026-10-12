@@ -6,7 +6,8 @@ implements the Macintosh services they call. The display is PAL hires interlaced
 showing the original 512×384 window.
 
 The release can be inspected and extracted reproducibly (see the source inventory).
-No reference run or runnable port exists yet.
+A pinned headless Macintosh reference reaches the opening cutscene. No runnable
+Amiga port exists yet.
 
 ## Setup checks
 
@@ -29,6 +30,11 @@ Differing existing output is retained under `.replaced/`; scratch stays in `tmp/
 - File: `Prince_Of_Persia2.SIT`
 - Size: 7,716,607 bytes
 - SHA-256: `02437dc253dffec4eee516f8e5e0f2ecaccc4bd31f3d6957d42ea4f87b80b080`
+
+Run `make reference` for the original System 7.5.5 / Macintosh IIci opening
+checkpoint, or `make check-reference` for the two-run repeatability and rejection
+gate. Local ROMs/system images and MAME must match the reference manifests. See
+[Macintosh reference](docs/mac-reference-loop.md) for inputs, results, and limits.
 
 See [source inventory](docs/source-inventory.md), [design](docs/design.md),
 [open work](docs/open-work.md) and [agent rules](AGENTS.md).
