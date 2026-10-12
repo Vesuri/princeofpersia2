@@ -8,6 +8,7 @@ local frame=dofile('tools/mame_mac_frame.lua')
 local cpu=manager.machine.devices[':maincpu'];local mem=cpu.spaces.program
 local dbg=assert(manager.machine.debugger,'REFERENCE / DEBUGGER REQUIRED')
 local control=os.getenv('POP2_REFERENCE_CONTROL')
+local mapper=os.getenv('POP2_MAP') and dofile('tools/mac_map.lua') or nil
 local finished,armed,checkpoint=false,false,nil
 local mapped={}
 local function u(a)return mem:readv_u32(a)end
@@ -40,6 +41,7 @@ local function observe()
  if not armed and u(0x28)==meta.dispatcher.address then
   assert(u(meta.dispatcher.address)==tonumber(meta.dispatcher.hex:sub(1,8),16)
    and u(meta.dispatcher.address+4)==tonumber(meta.dispatcher.hex:sub(9,16),16),'DISPATCHER BYTES')
+  if mapper then mapper.arm(meta,cond)end
   -- Dynamic return probes capture even the first call immediately after LoadSeg.
   -- SP matches each return to its entry, including Gestalt nested by SysEnvirons.
   cpu.debug:bpset(meta.dispatcher.address,cond..' && (w@(d@(sp+2))==0xa1ad || w@(d@(sp+2))==0xa090 || w@(d@(sp+2))==0xa05c)',
@@ -58,6 +60,7 @@ local function observe()
    if not mapped[key]then
     assert(u(base)==tonumber(info.hex:sub(1,8),16),'SEGMENT HEADER')
     mapped[key]=true
+    if mapper then mapper.map(seg,base)end
     print(string.format('MAP seg=%d base=%08X size=%d',seg,base,#info.hex/2))
     if seg==17 then
      at(seg,base,0x6e42,'logerror "SEED old=%04X fixed=1234\\n",w@(sp+4);w@(sp+4)=0x1234',42)
@@ -86,6 +89,11 @@ emu.register_frame_done(function()
 end)
 emu.register_periodic(function()
  if finished then return end
+ if mapper then
+  local ok,handled=pcall(mapper.poll)
+  if not ok then fail(handled);return end
+  if handled then return end
+ end
  if checkpoint and dbg.execution_state=='stop' and cpu.state.PC.value==checkpoint then
   local ok,err=pcall(function()
    assert(mac.frontmost()==app,'CAPTURE APPLICATION')
@@ -93,6 +101,7 @@ emu.register_periodic(function()
    assert(manager.machine.options.entries.ramsize:value()=='8M','RAM CONFIGURATION')
    print('MEMORY configured=8M addressing=24-bit')
    assert(mem:readv_u8(0xcb2)==0,'ADDRESSING MODE')
+   if mapper then mapper.finish()end
    frame.rgb(run..'/opening.ppm')
    manager.machine.video:snapshot()
    print('REFERENCE_CAPTURED opening-text-1')

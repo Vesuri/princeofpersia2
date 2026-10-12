@@ -7,8 +7,9 @@ The local file was used; the download reference was not independently verified.
 
 Evidence below comes from listing the archive with `lsar`, a scratch `unar` extraction
 in ignored `tmp/`, resource-map parsing, linear disassembly with `m68k-amiga-elf-objdump`
-and AmigaXDev's flow-following `amigaxdev.mac.m68k_sweep`. Linear trap counts are an
-upper bound until a flow-following census replaces them.
+and AmigaXDev's flow-following `amigaxdev.mac.m68k_sweep`. The survey counts below remain reproducible. The current
+[flow-following static/live map](static-map.md) supplies classified coverage and
+checked live service sites.
 
 ## Archive
 

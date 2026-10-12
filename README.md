@@ -6,7 +6,8 @@ implements the Macintosh services they call. The display is PAL hires interlaced
 showing the original 512×384 window.
 
 The release can be inspected and extracted reproducibly (see the source inventory).
-A pinned headless Macintosh reference reaches the opening cutscene. No runnable
+A pinned headless Macintosh reference reaches the opening cutscene, with a verified
+static/live map of that route. No runnable
 Amiga port exists yet.
 
 ## Setup checks
@@ -38,3 +39,7 @@ gate. Local ROMs/system images and MAME must match the reference manifests. See
 
 See [source inventory](docs/source-inventory.md), [design](docs/design.md),
 [open work](docs/open-work.md) and [agent rules](AGENTS.md).
+
+Run `make map` for the static census, `make ghidra` for headless exports, and
+`make static-map-check` for two fresh original runs plus rejection controls. See
+[static and live map](docs/static-map.md) for coverage, service seams and limits.

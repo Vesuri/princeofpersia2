@@ -10,6 +10,9 @@ help:
 	@echo 'make check-extraction  repeat extraction and run rejection/preservation controls'
 	@echo 'make reference     run the pinned headless Macintosh opening checkpoint'
 	@echo 'make check-reference  repeat the reference and run rejection controls'
+	@echo 'make map           generate the flow-following static map'
+	@echo 'make ghidra        export the pinned headless Ghidra analysis'
+	@echo 'make static-map-check  verify two live maps and rejection controls'
 	@echo 'make check         verify the archive and shared compiler access'
 
 verify-input:
@@ -32,3 +35,14 @@ reference:
 
 check-reference:
 	@. amiga/env.sh && python3 tools/check_reference.py
+
+.PHONY: map ghidra static-map-check
+map:
+	@. amiga/env.sh && python3 tools/static_map.py
+
+ghidra:
+	@. amiga/env.sh && python3 tools/run_ghidra.py
+
+static-map-check: ghidra
+	@. amiga/env.sh && python3 tools/test_static_map.py
+	@. amiga/env.sh && python3 tools/check_map_gate.py

@@ -5,15 +5,6 @@ committed, except where an item says it runs in parallel.
 
 1. **Owner decision D9** on "Compress Data" (`docs/design.md`).
    Acceptance: the decision table records the owner's answer.
-4. **Static and live map.** Headless Ghidra with shared scripts; MacsBug names seeded
-   into `disasm/symbols.csv` with evidence classes. A flow-following trap census
-   (Alone in the Dark's `trap_census.py` without CREL), low-memory scan, A5-world
-   model for `DATA`/`ZERO`/`DREL`, and a classification of every code write (CODE 1
-   runtime, `MDRV` decryption). Locate the frame-publication, timer, `GetKeys`,
-   `Jnth`/`MDRV`, file, copy-protection and packing seams. Check for a reduced-size
-   renderer (`DrawHalf`, `ComputeHalfRect`) to close D4.
-   Acceptance: the live trap log is a subset of the static map; byte classification
-   coverage is reported; D4 is confirmed or reopened with the owner.
 5. **Scaffold.** Copy Alone in the Dark's runtime (`src/mac/`), Amiga platform layer,
    framework with `UPSTREAM.md`, Kalms C2P, `amiga/` scripts, checker discipline,
    WHDLoad slave and release tools, without its game-specific hooks; pin the source

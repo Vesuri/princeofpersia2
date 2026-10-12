@@ -7,7 +7,7 @@
 | D1 | Port Macintosh Prince of Persia 2 to Amiga following Vette! and Alone in the Dark: original 68k instructions run natively, Macintosh services are implemented by the port | Decided |
 | D2 | Reference system: System 7.5.5 under MAME on a compatible Macintosh IIci, 8 MB, main `mdc48` display at 256 colours, Virtual Memory off. Owner-authorized fallback from the failing System 6.0.8 / Macintosh IIx configuration | Decided |
 | D3 | Display: PAL hires interlaced, 8 bitplanes, FMODE 3, showing the original 512×384 window 1:1. No DblPAL or other 31 kHz mode | Decided |
-| D4 | Drop lores if the 512×384 rooms cannot reasonably fit a lores screen; expected, since only cropping, panning or resampling would fit them. Analysis checks the original for a reduced-size renderer first | Decided, pending confirmation |
+| D4 | Drop lores; retain D3’s 512×384 display at 1:1. `DrawHalf` and `ComputeHalfRect` select scene rectangles at the original scale, not a reduced-resolution renderer. Confirmed by the owner after analysis | Decided |
 | D5 | Target: AGA, 68020 minimum, 68030 or better recommended; Fast RAM size set after measurement | Decided |
 | D6 | Bypass the copy protection at a measured, byte-verified seam | Decided |
 | D7 | Music: reuse Alone in the Dark's native Halestorm driver in place of the original `MDRV`, improving it as needed. All audio through Paula DMA voices; no software mixing | Decided |
@@ -33,4 +33,4 @@ The game draws into WIND 400, a 512×384 content rectangle at 8 bits per pixel. 
 interlaced hires frame shows it without scaling. With eight hires planes every Chip-bus
 slot is taken at FMODE 0–2; FMODE 3 leaves roughly half (DERIVED, unmeasured). Presentation converts only
 dirty rectangles, as in both reference ports. A 320 or 368 pixel lores width shows at
-most 72% of a room, so lores depends on finding a faithful reduced-size renderer (D4).
+most 72% of a room, so the owner confirmed dropping lores after the original drawing-routine analysis (D4).
