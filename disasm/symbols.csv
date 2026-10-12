@@ -103,6 +103,7 @@ segment,offset,name,evidence,notes
 2,0x59E8,PrinceCopy_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x5AE0,Start_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x5CD2,RestartGame_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
+2,0x6056,FirstRoomDisplayCheckpoint,MEASURED,Post-FirstFrame checkpoint with D4 low word FFFE
 2,0x6060,FirstFrame_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x60EE,DoCleanCut_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x68B4,FrameAdv_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
@@ -775,6 +776,8 @@ segment,offset,name,evidence,notes
 15,0x6D36,DrawDeadKid_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 15,0x6EEC,QueenAddNIS_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 15,0x6FE0,NISTitle_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
+15,0x6FEC,TitleFuncDisplayCheckpoint,MEASURED,Title phase 32 and command 114 produce the complete logo
+15,0x7060,TitleCloudsCheckpoint,MEASURED,Title route begins before the logo appears
 15,0x716C,TitleFunc_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 15,0x754E,NISTower_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 15,0x7590,TransFunc9_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point

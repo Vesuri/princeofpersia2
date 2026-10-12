@@ -377,3 +377,139 @@ pop2_replay_fixture:
 	dbra d7,.Lreplay_next
 	rts
 pop2_replay_fixture_end:
+
+    .globl pop2_display_fixture,pop2_display_fixture_end
+pop2_display_fixture:
+    move.l a2,-(sp)
+    move.l g_displayServiceProbe,a2
+    pea 202(a2)
+    .word 0xa86e
+    clr.l -(sp)
+    .word 0xaa2a
+    move.l (sp)+,212(a2)
+    clr.w -(sp)
+    pea 216(a2)
+    move.w #8,-(sp)
+    pea 224(a2)
+    clr.l -(sp)
+    move.l 212(a2),-(sp)
+    move.l #2,-(sp)
+    moveq #0,d0
+    .word 0xab1d
+    move.w (sp)+,232(a2)
+    move.l 216(a2),a0
+    move.l 2(a0),220(a2)
+    clr.w -(sp)
+    move.l 220(a2),-(sp)
+    moveq #1,d0
+    .word 0xab1d
+    move.w (sp)+,234(a2)
+    clr.l -(sp)
+    move.l 220(a2),-(sp)
+    moveq #15,d0
+    .word 0xab1d
+    move.l (sp)+,236(a2)
+    move.l 220(a2),-(sp)
+    moveq #2,d0
+    .word 0xab1d
+    clr.l -(sp)
+    move.l 220(a2),-(sp)
+    moveq #15,d0
+    .word 0xab1d
+    move.l (sp)+,240(a2)
+    move.l (sp)+,a2
+    rts
+    .globl pop2_display_rejection_fixture
+pop2_display_rejection_fixture:
+    clr.l -(sp)
+    move.l #0x7fff,d0
+    .word 0xab1d
+    rts
+pop2_display_fixture_end:
+
+    .globl pop2_display_scene_init,pop2_display_scene_frame,pop2_display_scene_end
+pop2_display_scene_init:
+    movem.l d3/a2,-(sp)
+    clr.l -(sp)
+    move.w #400,-(sp)
+    clr.l -(sp)
+    move.l #-1,-(sp)
+    .word 0xaa46
+    move.l (sp)+,g_displayWindow
+    move.l g_displayWindow,-(sp)
+    .word 0xa873
+    move.w #65,-(sp)
+    move.w #48,-(sp)
+    .word 0xa877
+    clr.l -(sp)
+    move.w #256,-(sp)
+    clr.l -(sp)
+    move.w #12,-(sp)
+    clr.w -(sp)
+    .word 0xaa91
+    move.l (sp)+,g_displayPalette
+    moveq #0,d3
+.Lscene_entry:
+    move.l g_displaySceneColors,a2
+    move.l (a2),a2
+    move.l d3,d0
+    lsl.l #3,d0
+    lea 10(a2,d0.l),a2
+    move.l g_displayPalette,-(sp)
+    move.w d3,-(sp)
+    move.l a2,-(sp)
+    .word 0xaa9c
+    addq.w #1,d3
+    cmp.w #256,d3
+    bne .Lscene_entry
+    move.l g_displayPalette,-(sp)
+    clr.w -(sp)
+    move.w #2,-(sp)
+    clr.w -(sp)
+    .word 0xaa9e
+    move.l g_displayPalette,-(sp)
+    move.w #255,-(sp)
+    move.w #2,-(sp)
+    clr.w -(sp)
+    .word 0xaa9e
+    move.l g_displayWindow,-(sp)
+    move.l g_displayPalette,-(sp)
+    move.w #0x0100,-(sp)
+    .word 0xaa95
+    move.l g_displayWindow,-(sp)
+    .word 0xa915
+    move.l g_displayServiceProbe,a2
+    clr.w -(sp)
+    move.l 220(a2),-(sp)
+    moveq #1,d0
+    .word 0xab1d
+    addq.l #2,sp
+    clr.l -(sp)
+    move.l 220(a2),-(sp)
+    moveq #15,d0
+    .word 0xab1d
+    move.l (sp)+,236(a2)
+    movem.l (sp)+,d3/a2
+    rts
+pop2_display_scene_frame:
+    move.l a2,-(sp)
+    move.l g_displayWindow,-(sp)
+    move.l g_displaySceneColors,-(sp)
+    move.w #1,-(sp)
+    move.w #1,-(sp)
+    move.w #254,-(sp)
+    .word 0xaa9a
+    move.l g_displayServiceProbe,a2
+    move.l 220(a2),a0
+    move.l (a0),-(sp)
+    move.l g_displayWindow,a0
+    addq.l #2,a0
+    move.l a0,-(sp)
+    pea 224(a2)
+    pea 224(a2)
+    clr.w -(sp)
+    clr.l -(sp)
+    .word 0xa8ec
+    move.l (sp)+,a2
+    rts
+pop2_display_scene_end:

@@ -120,3 +120,7 @@ The measured System 7.5.5 / Macintosh IIci execution, identity answers, startup
 branches and reproducible opening checkpoint are documented in
 [the Macintosh reference loop](mac-reference-loop.md). Static facts above remain
 distinct from that bounded execution evidence.
+
+The [display survey](display.md) measures the reached GWorld, CopyBits and palette
+contracts and pins repeatable title/first-room captures. These are service and
+presentation references, distinct from end-to-end native gameplay.

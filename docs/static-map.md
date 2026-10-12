@@ -167,8 +167,8 @@ width, row count and source/destination strides.
 
 The two named routines therefore provide no faithful lores display alternative.
 The owner confirmed dropping lores after this finding. D3 remains the 512×384
-window at 1:1 on PAL hires interlaced; no new display implementation is part of
-this item.
+window at 1:1 on PAL hires interlaced. The [display gate](display.md) validates
+its separate native presentation implementation.
 
 The completed gate reports `STATIC MAP GATE PASS`: two original runs, identical
 captured image hashes, twelve rejecting corruption controls, and no tracked derived

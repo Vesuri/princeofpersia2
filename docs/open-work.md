@@ -3,12 +3,6 @@
 In playbook order. Each item's acceptance gate passes before the next item's work is
 committed, except where an item says it runs in parallel.
 
-8. **Display (D3).** 640×480×8 logical screen and GDevice, GWorlds, CopyBits and
-   palettes from Alone in the Dark; a new PAL hires interlaced 8-plane FMODE 3 screen
-   showing WIND 400 1:1, with Vette's interlace parity handling; dirty-rectangle C2P;
-   palette fades applied at publication.
-   Acceptance: title and first room match MAME captures at colour-index level, and
-   the AGA planes and copper decode to the same picture.
 9. **Input and UI (D6, D8).** KeyMap and event queue from the VBI, Mac UI removed,
    port-owned replacements for reached menu functions, copy-protection bypass.
    Acceptance: every reached UI path is listed with its replacement and covered by

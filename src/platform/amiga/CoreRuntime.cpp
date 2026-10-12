@@ -4,6 +4,7 @@
 #include <exec/memory.h>
 #include "CoreRuntime.h"
 #include "NativeFiles.h"
+#include "NativeDisplay.h"
 #include "NativeResources.h"
 #include "framework/AmigaHardware.h"
 #include "mac/MacHeap.h"
@@ -11,6 +12,12 @@
 #include "mac/SHA256.h"
 #include "mac/Identity.h"
 #include "../../../build/core/Inputs.h"
+#ifdef POP2_DISPLAY
+#include "../../../build/display/VideoTransfer.h"
+#ifdef POP2_DISPLAY_FRAMES_PROBE
+#include "../../../build/display/DisplayFrames.h"
+#endif
+#endif
 #ifdef POP2_FILE_REPLAY
 #include "../../../build/core/FileReplay.h"
 #endif
@@ -22,6 +29,16 @@ void pop2_identity_fixture();void pop2_identity_fixture_end();
 void pop2_file_fixture();void pop2_file_fixture_end();
 void pop2_replay_fixture();void pop2_replay_fixture_end();
 uint32_t g_replayBegin=0,g_replaySize=0,g_replayCount=0,g_replayCompleted=0;uint16_t g_replayRefs[256]={};uint32_t g_replayInfoDates[2]={};
+void pop2_display_fixture();void pop2_display_fixture_end();
+uint32_t g_displayServiceProbe=0;
+uint32_t g_displayWindow=0,g_displayPalette=0,g_displaySceneColors=0,g_displayScene=0,g_displayLogicalScreen=0;
+void pop2_display_rejection_fixture();
+void pop2_display_scene_init();void pop2_display_scene_frame();void pop2_display_scene_end();
+extern volatile uint16_t g_displayParity;
+__attribute__((noinline)) void pop2DisplayOddFieldComplete() { __asm__ volatile("nop" ::: "memory"); }
+__attribute__((noinline)) void pop2DisplaySceneComplete() { __asm__ volatile("nop" ::: "memory"); }
+extern volatile uint32_t g_scaffoldFields;
+__attribute__((noinline)) void pop2DisplayServicesComplete() { __asm__ volatile("nop" ::: "memory"); }
 void pop2_resource_fixture();void pop2_resource_fixture_end();
 uint32_t g_specProbeCount=0,g_specProbePaths[11]={},g_specProbeOutputs[11]={};int16_t g_specProbeResults[11]={};
 uint32_t g_resourceProbeNames[4]={},g_resourceProbeHandle=0,g_resourceProbeOption=0,g_resourceProbeInfo=0;
@@ -75,6 +92,8 @@ void flushCode() {
 }
 uint8_t *file=0,*plan=0,*arena=0,*world=0,*stack=0,*initial=0,*a5=0,*low=0;
 uint32_t fileSize=0,planSize=0,worldSize=0;
+uint8_t* displayFrames=nullptr;uint32_t displayFramesSize=0;
+uint8_t* videoTransfer=nullptr;uint32_t videoTransferSize=0;
 bool didStop=false;
 uint8_t auditBuffer[65536];
 uint8_t* patchedLoad=0;uint8_t* patchedExit=0;
@@ -191,6 +210,7 @@ uint32_t stop(uint8_t* frame,uint8_t* usp,const char* why,uint16_t trap,uint32_t
 }
 namespace CoreRuntime {
 const char* error() { return g_coreReason; }
+const uint8_t* displayTransfer() {return videoTransfer;}
 bool prepare() {
     if(!readFile("Prince of Persia 2.rsrc",file,fileSize,1024*1024,applicationSHA256))return false;
     if(!app.open(file,fileSize,applicationSHA256))return fail(app.error());
@@ -212,6 +232,24 @@ bool prepare() {
     sw(low+0x28e,0x3fff);low[0x12f]=3;sw(low+0x15a,0x0755);
     OriginalApplication::Resource code0;app.resource(0x434f4445,0,code0);
     copy(a5+spec.jumpOffset,code0.bytes+16,spec.jumpBytes);
+#ifdef POP2_DISPLAY
+    if(!readFile("video-transfer.bin",videoTransfer,videoTransferSize,256,videoTransferSHA256))return false;
+    if(videoTransferSize!=256)return fail("DISPLAY / VIDEO TRANSFER INPUT");
+    if(!NativeDisplay::prepare(heap,low,validMemory,[](uint32_t type,int16_t id,const uint8_t*& bytes,uint32_t& size) {OriginalApplication::Resource r;if(!app.resource(type,id,r))return false;bytes=r.bytes;size=r.size;return true;}))return fail(NativeDisplay::error());
+#endif
+#if defined(POP2_DISPLAY_SERVICES_PROBE) || defined(POP2_DISPLAY_FRAMES_PROBE)
+    uint8_t* displayProbe=heap.newPtr(512,true);
+    if(!displayProbe)return fail("DISPLAY / PROBE MEMORY");
+    g_displayServiceProbe=(uint32_t)displayProbe;
+#ifdef POP2_DISPLAY_FRAMES_PROBE
+    if(!readFile("display-frames.bin",displayFrames,displayFramesSize,1024*1024,displayFramesSHA256))return false;
+    if(displayFramesSize!=8+2*(307200+2056+768) || l(displayFrames)!=0x44465231 || l(displayFrames+4)!=2)return fail("DISPLAY / FRAME INPUT");
+    auto sceneColors=heap.newHandle(2056,true);if(!sceneColors)return fail("DISPLAY / SCENE COLOURS");
+    g_displaySceneColors=(uint32_t)sceneColors;g_displayLogicalScreen=(uint32_t)NativeDisplay::screen();
+    copy(*sceneColors,displayFrames+8+307200,2056);
+#endif
+    sw(displayProbe+228,384);sw(displayProbe+230,512);
+#endif
     if(!segment(1))return false;
 #ifdef POP2_FILE_REPLAY
     uint8_t* replay=0;uint32_t replaySize=0;
@@ -312,10 +350,38 @@ void execute() {
 #ifdef POP2_FILE_PROBE
     if(!didStop)pop2_call_mac((void*)pop2_file_fixture,a5,stack+65536);
 #endif
+#if defined(POP2_DISPLAY_SERVICES_PROBE) || defined(POP2_DISPLAY_FRAMES_PROBE)
+    if(!didStop)pop2_call_mac((void*)pop2_display_fixture,a5,stack+65536);
+    if(!didStop)pop2DisplayServicesComplete();
+#ifdef POP2_DISPLAY_BAD_SELECTOR
+    if(!didStop)pop2_call_mac((void*)pop2_display_rejection_fixture,a5,stack+65536);
+#endif
+#ifdef POP2_DISPLAY_FRAMES_PROBE
+    if(!didStop)pop2_call_mac((void*)pop2_display_scene_init,a5,stack+65536);
+    for(unsigned scene=0;scene<2 && !didStop;++scene) {
+        const uint8_t* record=displayFrames+8+scene*(307200+2056+768);
+        uint8_t* destination=(uint8_t*)l((uint8_t*)g_displayServiceProbe+236);
+        for(unsigned y=0;y<384;++y)copy(destination+y*528,record+(y+48)*640+65,512);
+        uint8_t* clut=*(MacHeap::Handle)g_displaySceneColors;copy(clut,record+307200,2056);
+        sw(clut+4,0);for(unsigned i=0;i<256;++i)sw(clut+8+i*8,i);
+        pop2_call_mac((void*)pop2_display_scene_frame,a5,stack+65536);
+        NativeDisplay::wait();
+        uint32_t field=g_scaffoldFields;while(g_scaffoldFields-field<4) {__asm__ volatile("nop" ::: "memory");}
+        if(!didStop) {
+            while(g_displayParity!=0) {__asm__ volatile("nop" ::: "memory");}
+            g_displayScene=scene+1;pop2DisplaySceneComplete();
+            while(g_displayParity!=1) {__asm__ volatile("nop" ::: "memory");}
+            pop2DisplayOddFieldComplete();
+        }
+    }
+#endif
+    if(!didStop)fail("DISPLAY / FIXTURE COMPLETE");
+#else
     if(!didStop) {
         pop2_call_mac((void*)(g_coreSegments[1][0]+16),a5,stack+65536);
         if(!didStop)fail("CORE / ORIGINAL RETURN WITHOUT STOP");
     }
+    #endif
     suspendVectors();g_coreVectorRestored=1;
     for(unsigned i=0;i<11;++i)if(vectorTable[vectorIndices[i]]!=savedVectors[i])g_coreVectorRestored=0;
     g_coreHeapOK=heap.check();
@@ -327,8 +393,10 @@ void execute() {
     }
 }
 void release() {
-    NativeResources::release();app.close();heap.reset();
+    NativeDisplay::reset();NativeResources::release();app.close();heap.reset();
     if(initial)FreeMem(initial,g_coreBelow);if(stack)FreeMem(stack,65536);if(world)FreeMem(world,worldSize);
+    if(displayFrames)FreeMem(displayFrames,displayFramesSize);displayFrames=nullptr;
+    if(videoTransfer)FreeMem(videoTransfer,videoTransferSize);videoTransfer=nullptr;
     if(arena)FreeMem(arena,g_coreZoneBytes);if(plan)FreeMem(plan,planSize);if(file)FreeMem(file,fileSize);
     initial=stack=world=arena=plan=file=0;
 }
@@ -338,7 +406,7 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
     if(usp<stack || usp>stack+65536-4)return stop(frame,usp,"STACK / TRAP ARGUMENT EXTENT",0,seg,off);
     bool codeCaller=location(pc,seg,off);
     bool tableCaller=pc>=(uint32_t)a5+app.world().jumpOffset && pc<(uint32_t)a5+app.world().jumpOffset+app.world().jumpBytes;
-    bool fixtureCaller=(pc>=(uint32_t)pop2_identity_fixture && pc<(uint32_t)pop2_identity_fixture_end) ||
+    bool fixtureCaller=(pc>=(uint32_t)pop2_display_scene_init && pc<(uint32_t)pop2_display_scene_end) || (pc>=(uint32_t)pop2_display_fixture && pc<(uint32_t)pop2_display_fixture_end) || (pc>=(uint32_t)pop2_identity_fixture && pc<(uint32_t)pop2_identity_fixture_end) ||
         (pc>=(uint32_t)pop2_file_fixture && pc<(uint32_t)pop2_file_fixture_end) ||
         (pc>=(uint32_t)pop2_replay_fixture && pc<(uint32_t)pop2_replay_fixture_end) ||
         (pc>=(uint32_t)pop2_resource_fixture && pc<(uint32_t)pop2_resource_fixture_end);
@@ -360,6 +428,13 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
         if(patch) { flushCode();usp-=4;sl(usp,pc+2);sl(frame+2,(uint32_t)patch);return (uint32_t)usp; }
     }
     uint32_t consumed=0;int16_t error=0;bool os=(trap&0x0800)==0;
+#ifdef POP2_DISPLAY
+    if(NativeDisplay::handles(trap)) {
+        if(!NativeDisplay::dispatch(trap,regs,usp,consumed))return stop(frame,usp,NativeDisplay::error(),trap,seg,off);
+        if(!NativeDisplay::publish())return stop(frame,usp,NativeDisplay::error(),trap,seg,off);
+        return (uint32_t)(usp+consumed);
+    }
+#endif
     if(NativeFiles::handles(trap,(uint16_t)regs[0])) {
         auto valid=[](uint32_t at,uint32_t n) {
             return (at>=(uint32_t)stack && at-(uint32_t)stack<=65536 && n<=65536-(at-(uint32_t)stack)) ||
@@ -502,6 +577,7 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
             fail("SYSENV / UNSUPPORTED RECORD");goto failed;
         }
         regs[0]=0;break;
+    case 0xa8fe:return stop(frame,usp,"UNIMPLEMENTED / InitFonts",trap,seg,off);
     case 0xa86e:return stop(frame,usp,"UNIMPLEMENTED / InitGraf",trap,seg,off);
     default:return stop(frame,usp,"UNIMPLEMENTED / TRAP",trap,seg,off);
     }

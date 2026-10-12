@@ -157,6 +157,8 @@ function mac.shot() manager.machine.video:snapshot() end
 function mac.run(fn)
 	co = coroutine.create(fn)
 	emu.register_frame_done(function()
+		-- Debugger observers must not consume emulated input waits while paused.
+		if manager.machine.debugger and manager.machine.debugger.execution_state=="stop" then return end
 		frames = frames + 1
 		if co and coroutine.status(co) ~= "dead" then
 			local ok, err = coroutine.resume(co)

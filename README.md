@@ -56,3 +56,8 @@ for paired Macintosh/Amiga execution and rejection controls. See
 Run `make files-check` for paired original/native file operations, resource
 validation and save persistence across a fresh boot. See [file services](docs/file-services.md)
 for the tested scope and the distinction between service probes and continued gameplay.
+
+Run `make display` to enable the display services or `make display-check` for
+paired Macintosh contracts, repeatable title/first-room presentation and rejection
+controls. Original native startup then stops at `InitFonts`; scene validation uses
+display-service replay. See [display services](docs/display.md) for scope and limits.

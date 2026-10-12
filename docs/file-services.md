@@ -1,6 +1,7 @@
 # File services
 
-The native startup still stops at `InitGraf`. File-service replays and resource
+The bounded core configuration used here stops at `InitGraf`; the separate
+[display build](display.md) reaches `InitFonts`. File-service replays and resource
 probes execute separately from startup; they establish the file/resource service
 coverage below, not continued gameplay or complete File Manager / Resource Manager
 coverage.
@@ -157,7 +158,7 @@ references, and follows the observed GetFInfo-to-SetFInfo date dependency. It do
 not copy unused stack bytes or volatile original timestamps into the fixture.
 The interpreter invokes Macintosh traps; the original implements Mohawk archive
 interpretation. These service tests do not execute the full native opening scene,
-which still requires item 8's display services.
+which still requires the UI, audio and timing integration in the open-work queue.
 
 `tools/check_resource_census.py` compares the runtime C++ reader with the independent
 extraction helper for every installed resource. MEASURED: all 32 nonempty resource

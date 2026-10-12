@@ -12,9 +12,23 @@ for source,name in sources:
     target.parent.mkdir(parents=True,exist_ok=True)
     shutil.copyfile(source,target)
 
+from build_receipt import verify as verify_receipt
+if '-DPOP2_DISPLAY' in verify_receipt()['flags'].split():
+    import hashlib
+    from extract_original_data import pins
+    video=ROOT/'build/display/video-transfer.bin'
+    if hashlib.sha256(video.read_bytes()).hexdigest()!=pins(ROOT/'manifest/display-inputs.sha256')['video-transfer.bin']:
+        raise RuntimeError('DISPLAY / VIDEO TRANSFER PIN')
+    shutil.copyfile(video,Path(sys.argv[1])/video.name)
+    if '-DPOP2_DISPLAY_FRAMES_PROBE' in verify_receipt()['flags'].split():
+        frames=ROOT/'build/display/display-frames.bin'
+        if hashlib.sha256(frames.read_bytes()).hexdigest()!=pins(ROOT/'manifest/display-inputs.sha256')['display-frames.bin']:
+            raise RuntimeError('DISPLAY / FRAME FIXTURE PIN')
+        shutil.copyfile(frames,Path(sys.argv[1])/frames.name)
+
 control=os.environ.get('CORE_CONTROL')
 if control:
-    names={'bad-application':'Prince of Persia 2.rsrc','bad-plan':'relocations.bin'}
+    names={'bad-application':'Prince of Persia 2.rsrc','bad-plan':'relocations.bin','bad-transfer':'video-transfer.bin','bad-frames':'display-frames.bin'}
     if control not in names:raise RuntimeError('CORE / UNKNOWN INPUT CONTROL')
     target=Path(sys.argv[1])/names[control]
     data=bytearray(target.read_bytes());data[0]^=1;target.write_bytes(data)

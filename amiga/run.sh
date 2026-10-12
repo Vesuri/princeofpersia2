@@ -34,6 +34,10 @@ if [ "${CORE:-0}" = 1 ]; then
   sed "s|@RUN@|$RUN|g" core.gdb > "$RUN/core.gdb"
   if [ -z "$SCRIPT" ]; then SCRIPT="$RUN/core.gdb"; fi
 fi
+if [ -n "$SCRIPT" ]; then
+  sed "s|@RUN@|$RUN|g" "$SCRIPT" > "$RUN/observer.gdb"
+  SCRIPT="$RUN/observer.gdb"
+fi
 cat > "$DH0/s/startup-sequence" <<'STARTUP'
 C:SetPatch QUIET
 FailAt 21
@@ -67,7 +71,15 @@ cat "$RUN/gdb-out.log"
 [ "$status" = 0 ] || exit "$status"
 for ((i=0;i<20;i++)); do [ -f "$DH1/Shell.done" ] && break; sleep 1; done
 if [ "${CORE:-0}" = 1 ]; then
-  python3 ../tools/check_core_result.py "$RUN"
+  if [ "${DISPLAY_STARTUP:-0}" = 1 ]; then
+    python3 ../tools/check_display_startup.py "$RUN" "$DISPLAY_REFERENCE"
+  elif [ "${DISPLAY_SCENES:-0}" = 1 ]; then
+    python3 ../tools/check_display_scenes.py "$RUN" "$DISPLAY_REFERENCE"
+  elif [ "${DISPLAY_SERVICES:-0}" = 1 ]; then
+    python3 ../tools/check_display_services.py "$RUN" "$DISPLAY_REFERENCE"
+  else
+    python3 ../tools/check_core_result.py "$RUN"
+  fi
 else
   python3 ../tools/scaffold_result.py "$RUN"
 fi

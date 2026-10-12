@@ -70,8 +70,18 @@ def run(name=None, control=None):
             "FILE_ROUTINE_COMPLETE HallOfFame write-readback", "FILE_ROUTINE_COMPLETE SaveGame write", "FILE_ROUTINE_COMPLETE ResumeGame readback")
         if any(log.count(marker)!=1 for marker in markers+("FILE_ROUTINE_COMPLETE volume-flushed",)):
             raise ValueError("REFERENCE / FILE ROUTINE COMPLETION MISSING")
+    if env.get('POP2_DISPLAY_ROUTE'):
+        log=(destination/'session.log').read_text()
+        for label in ('title','first-room'):
+            if log.count('DISPLAY_ROUTE_CAPTURED '+label+'\n')!=1:
+                raise ValueError('REFERENCE / DISPLAY ROUTE INCOMPLETE '+label)
+            if (destination/(label+'.indices')).stat().st_size!=640*480 or (destination/(label+'.rgb')).stat().st_size!=768:
+                raise ValueError('REFERENCE / DISPLAY ROUTE EXTENT '+label)
+    if env.get('POP2_VIDEO_TRANSFER'):
+        from video_transfer import measure
+        measure(destination)
     from report_reference import report
-    report(destination,"file-restart" if env.get("POP2_RESTART_FROM") else "opening")
+    report(destination,"file-restart" if env.get("POP2_RESTART_FROM") else "display" if env.get("POP2_DISPLAY") else "opening")
     return destination
 
 if __name__=='__main__':

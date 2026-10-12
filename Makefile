@@ -6,6 +6,7 @@ help:
 	@echo 'make / make host-tests  build the empty host program and test portable helpers'
 	@echo 'make amiga / make scaffold-check  build / verify the empty Amiga boot and quit'
 	@echo 'make core / make core-check  build / verify bounded original startup'
+	@echo 'make display / make display-check  build / verify display services and AGA presentation'
 	@echo 'make files-check   verify paired file/resource calls and save persistence'
 	@echo 'Original archive tools, Amiga scaffold and startup runtime.'
 	@echo 'make verify-input  verify the locally staged original archive'
@@ -76,3 +77,11 @@ core-check: host-tests
 .PHONY: files-check
 files-check: host-tests
 	@. amiga/env.sh && python3 tools/check_files.py
+
+.PHONY: display-inputs display display-check
+display-inputs: core-inputs
+	@. amiga/env.sh && python3 tools/display_inputs.py
+display: display-inputs
+	@. amiga/env.sh && $(MAKE) -C amiga 'EXTRA_DEFINES=-DPOP2_CORE -DPOP2_DISPLAY'
+display-check: host-tests
+	@. amiga/env.sh && python3 tools/check_display.py

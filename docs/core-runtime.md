@@ -6,6 +6,8 @@ comparisons and rejection controls. The existing `make amiga` and
 `make scaffold-check` retain the empty boot/quit configuration. The core build is
 an unfinished game executable: it returns DOS FAIL at the named unsupported
 `InitGraf` service, after restoring the Amiga. It is not a release build.
+The separate [display build](display.md) implements InitGraf and reaches the next
+named stop, InitFonts; these bounded core checks remain unchanged.
 
 ## Input and execution boundary
 

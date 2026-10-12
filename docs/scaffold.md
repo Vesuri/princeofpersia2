@@ -33,7 +33,7 @@ Workbench startup-message discipline and GCC runtime shims. Its empty VBI does
 only acknowledgement and counting. The empty configuration installs no keyboard, audio or Mac
 trap handlers. The dA JoRMaS framework is unchanged from the pinned canonical tree;
 see `src/platform/amiga/framework/UPSTREAM.md`. The unchanged public-domain Kalms
-converter is retained as source; its 512×384 adapter belongs to item 8.
+converter and its separate 512×384 adapter are used by the [display build](display.md).
 
 The shared CRT's `_start` discards main's return code. The local entry preserves
 that code across constructor/destructor dispatch; the unused shared entry is
@@ -94,6 +94,6 @@ must equal the explicit source payload. Generated output must remain ignored.
 Reports stay under `tmp/scaffold-gate-*` and emulator logs under `amiga/.run-*`.
 
 This gate establishes the empty Shell lifecycle only. Workbench-message handling
-is inherited but not exercised here. Original game/service correctness, the game
-display, audio, WHDLoad execution/MMU behaviour, installer, final release and real
-hardware acceptance remain at their existing gates in `docs/open-work.md`.
+is inherited but not exercised here. File and display services have [separate paired gates](display.md). Continued game
+execution, audio, WHDLoad execution/MMU behaviour, installer, final release and real
+hardware acceptance remain in `docs/open-work.md`.

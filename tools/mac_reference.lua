@@ -12,8 +12,12 @@ local mapper=os.getenv('POP2_MAP') and dofile('tools/mac_map.lua') or nil
 local resourceCalls=os.getenv('POP2_RESOURCES') and dofile('tools/mac_resource_calls.lua') or nil
 local files=os.getenv('POP2_FILES') and dofile('tools/mac_files.lua') or nil
 local fileRoutines=os.getenv('POP2_FILE_ROUTINES') and dofile('tools/mac_file_routines.lua') or nil
+local display=os.getenv('POP2_DISPLAY') and dofile('tools/mac_display.lua') or nil
 local finished,armed,checkpoint=false,false,nil
 local checkpointProbe
+local videoTransfer=os.getenv('POP2_VIDEO_TRANSFER') and dofile('tools/mac_video_transfer.lua') or nil
+local displayRoute=os.getenv("POP2_DISPLAY_ROUTE")
+local routeStage,routeProbes,routePoints=nil,{},{}
 local mapped={}
 local function u(a)return mem:readv_u32(a)end
 local function ptr(a)return u(a)&0xffffff end
@@ -48,6 +52,7 @@ local function observe()
   if resourceCalls then resourceCalls.arm(meta,cond)end
   if files then files.arm(meta,cond)end
   if mapper then mapper.arm(meta,cond)end
+  if display then display.arm(meta,cond)end
   -- Dynamic return probes capture even the first call immediately after LoadSeg.
   -- SP matches each return to its entry, including Gestalt nested by SysEnvirons.
   cpu.debug:bpset(meta.dispatcher.address,cond..' && (w@(d@(sp+2))==0xa1ad || w@(d@(sp+2))==0xa090 || w@(d@(sp+2))==0xa05c)',
@@ -68,6 +73,17 @@ local function observe()
     mapped[key]=true
     if mapper then mapper.map(seg,base)end
     print(string.format('MAP seg=%d base=%08X size=%d',seg,base,#info.hex/2))
+    if displayRoute and (seg==15 or seg==2) then
+     local off=seg==15 and 0x6fec or 0x6056
+     if seg==15 then
+      guard(seg,base,0x7060,4)
+      routePoints[base+0x7060]='title-start'
+      routeProbes[base+0x7060]=cpu.debug:bpset(base+0x7060,cond,'logerror "DISPLAY_ROUTE_STOP\\n"')
+     end
+     guard(seg,base,off,4)
+     routePoints[base+off]=seg==15 and 'title' or 'first-room'
+     routeProbes[base+off]=cpu.debug:bpset(base+off,seg==2 and cond..' && (d4&0xffff)==0xfffe' or cond..' && w@(sp+4)==0x20 && w@(a5-0x1f6e)==0x72','logerror "DISPLAY_ROUTE_STOP\\n"')
+    end
     if seg==17 then
      at(seg,base,0x6e42,'logerror "SEED old=%04X fixed=1234\\n",w@(sp+4);w@(sp+4)=0x1234',42)
      at(seg,base,0x6e68,'logerror "SEED_RESULT value=%08X\\n",d@(a5-0x18fc)')
@@ -95,6 +111,16 @@ emu.register_frame_done(function()
 end)
 emu.register_periodic(function()
  if finished then return end
+ if videoTransfer then
+  local ok,handled=pcall(videoTransfer.poll)
+  if not ok then fail(handled);return end
+  if handled then return end
+ end
+ if display then
+  local ok,handled=pcall(display.poll)
+  if not ok then fail(handled);return end
+  if handled then return end
+ end
  if fileRoutines then
   local ok,handled=pcall(fileRoutines.poll)
   if not ok then fail(handled);return end
@@ -115,6 +141,21 @@ emu.register_periodic(function()
   if not ok then fail(handled);return end
   if handled then return end
  end
+ if displayRoute and dbg.execution_state=='stop' and routePoints[cpu.state.PC.value] then
+  local pc=cpu.state.PC.value;local label=routePoints[pc]
+  local ok,err=pcall(function()
+   frame.rgb(run..'/'..label..'.ppm');frame.indexed(run..'/'..label..'.indices');frame.palette(run..'/'..label..'.rgb');frame.logical(run..'/'..label..'.clut')
+   print('DISPLAY_ROUTE_CAPTURED '..label)
+   cpu.debug:bpclear(routeProbes[pc]);routePoints[pc]=nil;routeStage=label
+   if label=='first-room' then
+    if display then display.finish()end
+    finished=true;manager.machine:exit()
+   end
+   dbg.execution_state='run'
+  end)
+  if not ok then fail(err)end
+  return
+ end
  if checkpoint and dbg.execution_state=='stop' and cpu.state.PC.value==checkpoint then
   local ok,err=pcall(function()
    assert(mac.frontmost()==app,'CAPTURE APPLICATION')
@@ -123,6 +164,7 @@ emu.register_periodic(function()
    print('MEMORY configured=8M addressing=24-bit')
    assert(mem:readv_u8(0xcb2)==0,'ADDRESSING MODE')
    if mapper then mapper.finish()end
+   if display and not displayRoute then display.finish()end
    if files then files.finish()end
    if resourceCalls then resourceCalls.finish()end
    frame.rgb(run..'/opening.ppm')
@@ -130,6 +172,16 @@ emu.register_periodic(function()
    print('REFERENCE_CAPTURED opening-text-1')
   end)
   if not ok then fail(err);return end
+  if videoTransfer then
+   cpu.debug:bpclear(checkpointProbe);checkpoint=nil
+   local ok,err=pcall(videoTransfer.start)
+   if not ok then fail(err)end
+   return
+  end
+  if displayRoute then
+   cpu.debug:bpclear(checkpointProbe);checkpoint=nil;routeStage='opening'
+   dbg.execution_state='run';return
+  end
   if fileRoutines then
    cpu.debug:bpclear(checkpointProbe)
    local ok,err=pcall(fileRoutines.start,meta,checkpoint)
@@ -162,7 +214,18 @@ mac.run(function()
   assert(mac.mouse_to(103,113));mac.wait(60)
   for i=1,2 do mac.mouse_down();mac.wait(12);mac.mouse_up();mac.wait(12)end
   assert(mac.wait_for('game',function()return mac.frontmost()==app end,1800),'APPLICATION')
-  mac.wait(6000);error('MILESTONE NOT REACHED')
+  -- The paired CopyBits survey keeps the hardware cursor outside WIND 400.
+  -- Use ordinary ADB input so no QuickDraw state or pixels are patched.
+  if display then assert(mac.mouse_to(620,460),'DISPLAY CURSOR OUTSIDE CLIENT')end
+  if displayRoute then
+   assert(mac.wait_for('opening',function()return routeStage=='opening'end,18000),'DISPLAY OPENING')
+   mac.press('Esc')
+   assert(mac.wait_for('title-start',function()return routeStage=='title-start'end,18000),'DISPLAY TITLE START')
+   assert(mac.wait_for('title',function()return routeStage=='title'end,18000),'DISPLAY TITLE');mac.press('Space')
+   mac.wait(18000);error('DISPLAY FIRST ROOM NOT REACHED')
+  else
+   mac.wait(display and 18000 or 6000);error('MILESTONE NOT REACHED')
+  end
  end)
  if not ok then fail(err)end
 end)
