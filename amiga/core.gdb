@@ -10,6 +10,7 @@ end
 printf "CORE STOP trap=%04lx segment=%lu offset=%04lx count=%lu\n",g_coreStopTrap,g_coreStopSegment,g_coreStopOffset,g_coreCount
 printf "CORE REASON %s\n",g_coreReason
 printf "CORE RESTORE stage=%lu error=%lu vector=%lu heap=%lu zone=%lu dma=%u/%u irq=%u/%u view=%u vbi=%u\n",g_scaffoldStage,g_scaffoldError,g_coreVectorRestored,g_coreHeapOK,g_coreZoneBytes,g_savedDMA,g_actualDMA,g_savedIRQ,g_actualIRQ,g_viewRestored,g_vectorRestored
+printf "INPUT RESTORE vector=%lu\n",g_inputVectorRestored
 printf "CORE EXCEPTION vector=%lu pc=%08lx\n",g_coreException,g_coreFaultPC
 printf "CORE STRS %08lx\n",g_coreStrs
 set $r=0
@@ -30,7 +31,7 @@ while $b<16
 end
 printf "\n"
 set $i=0
-while $i<g_coreCount && $i<128
+while $i<g_coreCount && $i<4096
  printf "CODE %02lu+%04lX trap=%04lX\n",g_coreTrace[$i][0],g_coreTrace[$i][1],g_coreTrace[$i][2]
  set $i=$i+1
 end

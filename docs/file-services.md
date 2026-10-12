@@ -158,7 +158,8 @@ references, and follows the observed GetFInfo-to-SetFInfo date dependency. It do
 not copy unused stack bytes or volatile original timestamps into the fixture.
 The interpreter invokes Macintosh traps; the original implements Mohawk archive
 interpretation. These service tests do not execute the full native opening scene,
-which still requires the UI, audio and timing integration in the open-work queue.
+which still requires further display services, audio and timing integration.
+The [input/UI gate](input-ui.md) supplies bounded service and original-routine probes.
 
 `tools/check_resource_census.py` compares the runtime C++ reader with the independent
 extraction helper for every installed resource. MEASURED: all 32 nonempty resource

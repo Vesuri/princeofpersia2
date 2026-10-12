@@ -77,11 +77,20 @@ def run(name=None, control=None):
                 raise ValueError('REFERENCE / DISPLAY ROUTE INCOMPLETE '+label)
             if (destination/(label+'.indices')).stat().st_size!=640*480 or (destination/(label+'.rgb')).stat().st_size!=768:
                 raise ValueError('REFERENCE / DISPLAY ROUTE EXTENT '+label)
+    if env.get('POP2_UI_ROUTINES'):
+        log=(destination/'session.log').read_text()
+        for marker in ('UI_ROUTINE_COMPLETE copy-accepted flags=', 'UI_ROUTINE_COMPLETE packing-declined result=0','UI_ROUTINE_COMPLETE packing-game-declined result=0','UI_ROUTINE_COMPLETE about','UI_ROUTINE_COMPLETE alert-401-yes result=1','UI_ROUTINE_COMPLETE alert-404-yes result=1','UI_ROUTINE_COMPLETE alert-405-yes result=1','UI_ROUTINE_COMPLETE alert-405-no result=2','UI_ROUTINE_COMPLETE alert-406-yes result=1','UI_ROUTINE_COMPLETE alert-406-no result=2'):
+            if log.count(marker)!=1:raise ValueError('REFERENCE / UI ROUTINE INCOMPLETE')
+    if env.get('POP2_INPUT_PROBE'):
+        import re
+        log=(destination/'session.log').read_text()
+        if len(re.findall(r'^INPUT_FIXTURE_COMPLETE samples=\d+ events=\d+$',log,re.M))!=1 or 'REF ERROR' in log:
+            raise ValueError('REFERENCE / INPUT FIXTURE INCOMPLETE')
     if env.get('POP2_VIDEO_TRANSFER'):
         from video_transfer import measure
         measure(destination)
     from report_reference import report
-    report(destination,"file-restart" if env.get("POP2_RESTART_FROM") else "display" if env.get("POP2_DISPLAY") else "opening")
+    report(destination,"file-restart" if env.get("POP2_RESTART_FROM") else "ui" if env.get("POP2_UI") else "display" if env.get("POP2_DISPLAY") else "opening")
     return destination
 
 if __name__=='__main__':

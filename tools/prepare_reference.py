@@ -10,6 +10,16 @@ from extract_original_data import ROOT, pins, verify_output, DESTINATION
 from install_reference_volume import install
 
 
+def sparse_copy(source, destination):
+    """Preserve every disk byte while leaving all-zero blocks unallocated."""
+    while block := source.read(1024*1024):
+        if block == bytes(len(block)):
+            destination.seek(len(block), 1)
+        else:
+            destination.write(block)
+    destination.truncate()  # A trailing hole must still have its logical size.
+
+
 def prepare(destination, system):
     destination = destination.absolute()
     if destination.resolve() != destination or not destination.is_relative_to(ROOT/'ref/mame/runs'):
@@ -31,7 +41,7 @@ def prepare(destination, system):
         if archive.namelist() != [expected]:
             raise ValueError('REFERENCE / SYSTEM ARCHIVE MEMBERS')
         with archive.open(expected) as source, volume.open('wb') as output:
-            shutil.copyfileobj(source, output)
+            sparse_copy(source, output)
     install(volume)
     (destination/'cfg/maciici.cfg').write_text(
         '<?xml version="1.0"?><mameconfig version="10"><system name="maciici">'

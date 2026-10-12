@@ -124,3 +124,7 @@ distinct from that bounded execution evidence.
 The [display survey](display.md) measures the reached GWorld, CopyBits and palette
 contracts and pins repeatable title/first-room captures. These are service and
 presentation references, distinct from end-to-end native gameplay.
+
+The [input/UI contract](input-ui.md) measures original keyboard events, command
+selection and prompt outcomes. D6/D8/D9 replacements use seven hash-pinned,
+byte-verified seams; original code and captured records remain ignored.

@@ -7,6 +7,7 @@ help:
 	@echo 'make amiga / make scaffold-check  build / verify the empty Amiga boot and quit'
 	@echo 'make core / make core-check  build / verify bounded original startup'
 	@echo 'make display / make display-check  build / verify display services and AGA presentation'
+	@echo 'make ui / make ui-check  build / verify VBI input and port-owned UI'
 	@echo 'make files-check   verify paired file/resource calls and save persistence'
 	@echo 'Original archive tools, Amiga scaffold and startup runtime.'
 	@echo 'make verify-input  verify the locally staged original archive'
@@ -85,3 +86,13 @@ display: display-inputs
 	@. amiga/env.sh && $(MAKE) -C amiga 'EXTRA_DEFINES=-DPOP2_CORE -DPOP2_DISPLAY'
 display-check: host-tests
 	@. amiga/env.sh && python3 tools/check_display.py
+
+.PHONY: ui-inputs ui
+ui-inputs: display-inputs
+	@. amiga/env.sh && python3 tools/ui_inputs.py
+ui: ui-inputs
+	@. amiga/env.sh && $(MAKE) -C amiga 'EXTRA_DEFINES=-DPOP2_CORE -DPOP2_DISPLAY -DPOP2_INPUT -DPOP2_UI'
+
+.PHONY: ui-check
+ui-check: host-tests ui-inputs
+	@. amiga/env.sh && python3 tools/check_ui.py

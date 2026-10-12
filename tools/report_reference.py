@@ -82,12 +82,12 @@ def png(rgb):
 
 
 def report(directory,profile="opening"):
-    require(profile in ("opening","file-restart","display"),"RESULT PROFILE")
+    require(profile in ("opening","file-restart","display","ui"),"RESULT PROFILE")
     trace,facts=analyze((directory/'session.log').read_text())
     frame=(directory/'opening.ppm').read_bytes()
     require(frame.startswith(b'P6\n640 480\n255\n') and len(frame)==921615,'CAPTURE FORMAT')
     outputs={'opening.ppm':frame,'traps.txt':trace}
-    expected=pins(ROOT/('manifest/reference-results.sha256' if profile in ('opening','display') else 'manifest/reference-file-restart.sha256'))
+    expected=pins(ROOT/('manifest/reference-results.sha256' if profile in ('opening','display','ui') else 'manifest/reference-file-restart.sha256'))
     # Preserve useful diagnostic output even when the pinned comparison fails.
     (directory/'traps.txt').write_bytes(trace)
     (directory/'opening.png').write_bytes(png(frame[15:]))
@@ -99,8 +99,18 @@ def report(directory,profile="opening"):
         returns=re.findall(r'^DISPLAY_RETURN id=(\d+) ',log,re.M)
         require(calls==returns and calls==[str(i) for i in range(1,len(calls)+1)],'DISPLAY PAIRED CALLS')
         require(log.count(f'DISPLAY_TRACE_COMPLETE calls={len(calls)}')==1,'DISPLAY COMPLETION')
+    if profile=='ui':
+        log=(directory/'session.log').read_text()
+        calls=re.findall(r'^UI_CALL id=(\d+) ',log,re.M)
+        returns=re.findall(r'^UI_RETURN id=(\d+) ',log,re.M)
+        require(bool(calls) and calls==returns and calls==[str(i) for i in range(1,len(calls)+1)],'UI PAIRED CALLS')
+        require(log.count(f'UI_TRACE_COMPLETE calls={len(calls)}')==1,'UI COMPLETION')
+        for call in calls:
+            for phase in ('before','after'):
+                for kind,size in (('stack',64),('low',4096)):
+                    require((directory/f'ui-{call}-{phase}-{kind}.bin').stat().st_size==size,'UI CAPTURE EXTENT')
     for name,data in outputs.items():
-        if profile=='display' and name=='traps.txt':continue # observed waits depend on observer pauses
+        if profile in ('display','ui') and name=='traps.txt':continue # observed waits depend on observer pauses
         require(name in expected and hashlib.sha256(data).hexdigest()==expected[name],'RESULT HASH '+name)
     print('REFERENCE PASS:',directory.relative_to(ROOT),facts['milestone'])
     return facts

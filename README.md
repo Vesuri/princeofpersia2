@@ -7,8 +7,9 @@ showing the original 512×384 window.
 
 The release can be inspected and extracted reproducibly (see the source inventory).
 A pinned headless Macintosh reference reaches the opening cutscene, with a verified
-static/live map of that route. The Amiga core executes original startup through its first unsupported service,
-`InitGraf`, with matching reference trap order and initialized globals.
+static/live map of that route. The Amiga UI build executes 144 matching original
+startup calls before its unsupported `Palette2CTab` boundary. Paired service and
+presentation probes exist; end-to-end native gameplay remains unverified.
 
 ## Setup checks
 
@@ -61,3 +62,9 @@ Run `make display` to enable the display services or `make display-check` for
 paired Macintosh contracts, repeatable title/first-room presentation and rejection
 controls. Original native startup then stops at `InitFonts`; scene validation uses
 display-service replay. See [display services](docs/display.md) for scope and limits.
+
+Run `make ui` for VBI input and port-owned menus/prompts, or `make ui-check` for
+paired original contracts, byte-verified protection/compression seams and native
+output/rejection checks. Startup reaches the named `Palette2CTab` boundary after
+144 matching original calls. See [input and UI](docs/input-ui.md) for controls,
+coverage and the distinction between service fixtures and native gameplay.

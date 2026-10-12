@@ -6,7 +6,9 @@ order. Inspection, extraction, a verified Macintosh opening-cutscene reference a
 The Amiga core executes verified original startup through the named InitGraf stop.
 File/resource services have separate paired probes and save/restart checks.
 The display build passes InitGraf and stops at InitFonts; paired display services and
-title/first-room presentation replay exist. UI, audio and later game services remain open.
+title/first-room presentation replay exist. The UI build reaches Palette2CTab after
+144 original calls; paired VBI input and owned UI/seam probes exist. Audio, timing
+and later game services remain open.
 
 ## Rules
 

@@ -10,6 +10,15 @@
 #include <hardware/intbits.h>
 #include "PlatformAmiga.h"
 #include "PrinceScreen.h"
+#ifdef POP2_INPUT
+#include "NativeInput.h"
+static uint32_t inputTicks=0;
+static uint16_t inputPhase=0;
+static void inputField() {
+    inputPhase+=6;inputTicks+=inputPhase/5;inputPhase%=5;
+    NativeInput::field(inputTicks);
+}
+#endif
 #if defined(POP2_DISPLAY_PROBE) || defined(POP2_DISPLAY)
 static PrinceScreen display;
 #endif
@@ -32,10 +41,34 @@ extern "C" void pop2CoreStopped();
 #endif
 extern DosLibrary* DOSBase;
 extern "C" {
+volatile uint32_t g_inputVectorRestored=0;
 volatile uint32_t g_scaffoldStage=0, g_scaffoldFields=0, g_scaffoldError=0;
 volatile uint16_t g_savedDMA=0,g_actualDMA=0,g_savedIRQ=0,g_actualIRQ=0,g_viewRestored=0,g_vectorRestored=0;
 __attribute__((noinline)) void pop2ScaffoldRestored() { __asm__ volatile("nop" ::: "memory"); }
 }
+#ifdef POP2_INPUT_PROBE
+extern "C" {
+uint32_t g_inputProbeStage=0,g_inputProbeEvents[9][3]={};
+uint8_t g_inputProbeKeys[9][16]={};
+__attribute__((noinline)) void pop2InputProbeComplete(){__asm__ volatile("nop" ::: "memory");}
+}
+static void awaitInputField(){uint32_t f=g_scaffoldFields;while(g_scaffoldFields==f){__asm__ volatile("nop" ::: "memory");}}
+static void inputProbe(){
+    const uint8_t raw[]={0x20,0x4f,0x4e,0x4c,0x4d,0x40,0x44,0x45,0x21};
+    for(unsigned i=0;i<9;++i){
+        if(i==8){NativeInput::inject(0x67,true);awaitInputField();}
+        NativeInput::inject(raw[i],true);awaitInputField();
+        NativeInput::keyMap(g_inputProbeKeys[i]);InputState::Event e;
+        if(!NativeInput::event(0x18,true,inputTicks,e)||e.what!=3){g_inputProbeStage=0x100+i;break;}
+        g_inputProbeEvents[i][0]=e.message;g_inputProbeEvents[i][1]=e.modifiers;g_inputProbeEvents[i][2]=e.when;
+        NativeInput::inject(raw[i],false);if(i==8)NativeInput::inject(0x67,false);awaitInputField();
+        if(NativeInput::event(0x18,true,inputTicks,e)){g_inputProbeStage=0x200+i;break;}
+        g_inputProbeStage=i+1;
+    }
+    if(NativeInput::error())g_inputProbeStage=0xffff;
+    pop2InputProbeComplete();
+}
+#endif
 static Interrupt server;
 #ifdef POP2_CORE
 static Interrupt windowServer;
@@ -44,6 +77,9 @@ static bool vertbTaken=false;
 extern "C" uint16_t g_coreServiceActive;
 extern "C" { volatile uint32_t g_systemWindows=0,g_systemWindowFields=0;volatile uint16_t g_systemWindowActive=0; }
 static uint32_t windowVbi() {
+#ifdef POP2_INPUT
+    inputField();
+#endif
 #ifdef POP2_DISPLAY
     display.field();
 #endif
@@ -76,6 +112,9 @@ int32_t pop2SystemWindow(int32_t (*operation)(void*),void* context) {
 }
 #endif
 static uint32_t vbi() { *intreqPointer=INTF_VERTB;
+#ifdef POP2_INPUT
+    inputField();
+#endif
 #if defined(POP2_DISPLAY_PROBE) || defined(POP2_DISPLAY)
     display.field();
 #endif
@@ -115,6 +154,19 @@ bool PlatformAmiga::run() {
     const uint16_t dmaMask=DMAF_ALL|DMAF_MASTER|DMAF_BLITHOG;
     g_savedDMA=AmigaHardware::enabledDMAChannels()&dmaMask;
     g_savedIRQ=AmigaHardware::enabledInterrupts();
+#ifdef POP2_INPUT
+    inputTicks=0;inputPhase=0;
+    if(!NativeInput::initialize()) {
+        PutStr((CONST_STRPTR)NativeInput::error());PutStr((CONST_STRPTR)"\n");
+#if defined(POP2_DISPLAY_PROBE) || defined(POP2_DISPLAY)
+        display.release();
+#endif
+#ifdef POP2_CORE
+        CoreRuntime::release();
+#endif
+        CloseLibrary((Library*)DOSBase);DOSBase=0;CloseLibrary((Library*)GfxBase);GfxBase=0;return false;
+    }
+#endif
     LoadView(0);WaitTOF();WaitTOF();
     AmigaHardware::setDMAChannels(DMAF_RASTER|DMAF_SPRITE|DMAF_COPPER,false);
     *bplcon0Pointer=0;
@@ -156,7 +208,17 @@ bool PlatformAmiga::run() {
     }
 #endif
 #ifdef POP2_CORE
+#ifdef POP2_INPUT_PROBE
+    inputProbe();
+#endif
+#ifdef POP2_INPUT_OVERFLOW
+    for(unsigned i=0;i<128;++i)NativeInput::inject(0x20,(i&1)==0);
+    {uint32_t field=g_scaffoldFields;while(g_scaffoldFields==field){__asm__ volatile("nop" ::: "memory");}}
+#endif
     CoreRuntime::execute();
+#endif
+#ifdef POP2_INPUT
+    NativeInput::shutdown();
 #endif
     AmigaHardware::setInterrupts(INTF_VERTB,false);
     AmigaHardware::clearInterruptRequests(INTF_VERTB);
@@ -181,6 +243,9 @@ bool PlatformAmiga::run() {
     IntVector& restored=SysBase->IntVects[INTB_VERTB];
     g_vectorRestored=restored.iv_Code==saved.iv_Code && restored.iv_Data==saved.iv_Data && restored.iv_Node==saved.iv_Node;
     bool ok=g_actualDMA==g_savedDMA && g_actualIRQ==g_savedIRQ && g_viewRestored && g_vectorRestored;
+#ifdef POP2_INPUT
+    ok=ok && g_inputVectorRestored==1;
+#endif
     if(!ok)g_scaffoldError=4;
     PutStr((CONST_STRPTR)(ok ? "SCAFFOLD RESTORED\n" : "SCAFFOLD / RESTORE FAILED\n"));
 #ifdef POP2_CORE

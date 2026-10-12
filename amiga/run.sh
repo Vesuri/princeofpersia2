@@ -71,7 +71,13 @@ cat "$RUN/gdb-out.log"
 [ "$status" = 0 ] || exit "$status"
 for ((i=0;i<20;i++)); do [ -f "$DH1/Shell.done" ] && break; sleep 1; done
 if [ "${CORE:-0}" = 1 ]; then
-  if [ "${DISPLAY_STARTUP:-0}" = 1 ]; then
+  if [ "${UI_PROBE:-0}" = 1 ]; then
+    python3 ../tools/check_ui_result.py "$RUN" "$UI_REFERENCE"
+  elif [ "${UI_STARTUP:-0}" = 1 ]; then
+    python3 ../tools/check_ui_result.py "$RUN" "$UI_REFERENCE" --startup
+  elif [ "${INPUT_PROBE:-0}" = 1 ]; then
+    python3 ../tools/check_ui_result.py "$RUN" "$INPUT_REFERENCE" --input
+  elif [ "${DISPLAY_STARTUP:-0}" = 1 ]; then
     python3 ../tools/check_display_startup.py "$RUN" "$DISPLAY_REFERENCE"
   elif [ "${DISPLAY_SCENES:-0}" = 1 ]; then
     python3 ../tools/check_display_scenes.py "$RUN" "$DISPLAY_REFERENCE"

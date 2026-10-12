@@ -99,6 +99,27 @@ bool prepare(MacHeap& owner,uint8_t* shadow,Valid validator,Resource reader) {
     currentDevice=(uint32_t)device;sl(low+0x8a4,currentDevice);sl(low+0x8a8,currentDevice);
     reason="DISPLAY / READY";return true;
 }
+bool initWindowManager() {
+    if(!thePort || l(thePort))return fail("UI / WINDOW MANAGER INITIALIZATION");
+    uint8_t bounds[8];GWorld8::rect(bounds,{0,0,384,512});
+    World* v=create(bounds,true);if(!v)return fail("UI / WINDOW MANAGER MEMORY");
+    GWorld8::rect(v->port+16,{0,0,480,640});
+    sl(thePort,(uint32_t)v->port);return true;
+}
+bool showOverlay(const uint8_t* image) {
+    if(!output || !image)return fail("UI / PRESENTATION UNAVAILABLE");
+    uint32_t rgb[256]={};rgb[0]=0xffffff;
+    Planar8::Rect viewport={0,0,384,512};
+    if(!output->publish(image,viewport,&viewport,1,rgb))return fail("UI / PRESENTATION");
+    output->wait();return true;
+}
+bool hideOverlay() {
+    World* window=nullptr;for(auto& v:worlds)if(v.port && v.isScreen && v.port[110])window=&v;
+    if(window){uint8_t bounds[8];GWorld8::rect(bounds,{0,0,384,512});changed(*window,bounds);paletteDirty=true;return publish();}
+    uint32_t rgb[256]={};Planar8::Rect viewport={0,0,384,512};
+    if(!output || !output->publish(pixels,viewport,&viewport,1,rgb))return fail("UI / RESTORE PRESENTATION");
+    output->wait();return true;
+}
 void attach(PrinceScreen* screen,const uint8_t* lookup) {output=screen;transfer=lookup;}
 void wait() {if(output)output->wait();}
 bool publish() {
@@ -118,10 +139,23 @@ bool publish() {
     dirtyCount=0;paletteDirty=false;return true;
 }
 bool handles(uint16_t trap) {
-    return trap==0xaa46 || trap==0xaa91 || trap==0xaa9c || trap==0xaa9e || trap==0xaa95 || trap==0xaa94 || trap==0xaa9a || trap==0xaa14 || trap==0xaa15 || trap==0xa915 || trap==0xa916 || trap==0xa91b || trap==0xa877 || trap==0xa878 || trap==0xa8ec || trap==0xa86e || trap==0xaa2a || trap==0xab1d || trap==0xa873 || trap==0xa874;
+    return trap==0xa91f || trap==0xa924 || trap==0xaa46 || trap==0xaa91 || trap==0xaa9c || trap==0xaa9e || trap==0xaa95 || trap==0xaa94 || trap==0xaa9a || trap==0xaa14 || trap==0xaa15 || trap==0xa915 || trap==0xa916 || trap==0xa91b || trap==0xa877 || trap==0xa878 || trap==0xa8ec || trap==0xa86e || trap==0xaa2a || trap==0xab1d || trap==0xa873 || trap==0xa874;
 }
 bool dispatch(uint16_t trap,uint32_t* regs,uint8_t* args,uint32_t& consumed) {
     if(!heap || !valid || !pointer((uint32_t)args,trap==0xab1d && uint16_t(regs[0])==0 ? 24 : (trap==0xab1d ? 8 : 4)))return fail("DISPLAY / ARGUMENT EXTENT");
+    if(trap==0xa91f){
+        if(!pointer((uint32_t)args,4))return fail("UI / SELECT WINDOW ARGUMENTS");
+        World* v=byPort(l(args));if(!v||!v->isScreen)return fail("UI / SELECT WINDOW OWNER");
+        // D8: one owned game client, with no Macintosh ordering/chrome to draw.
+        consumed=4;return true;
+    }
+    if(trap==0xa924){
+        if(!pointer((uint32_t)args,4))return fail("UI / FRONT WINDOW OUTPUT");
+        World* front=nullptr;for(auto& v:worlds)if(v.port&&v.isScreen&&v.port[110]){
+            if(front)return fail("UI / MULTIPLE FRONT WINDOWS");front=&v;
+        }
+        sl(args,front?(uint32_t)front->port:0);return true;
+    }
     if(trap==0xaa46) {
         if(!pointer((uint32_t)args,14) || l(args)!=0xffffffffUL || l(args+4) || !resource)return fail("DISPLAY / NEW WINDOW FORM");
         const uint8_t* bytes=nullptr;uint32_t size=0;

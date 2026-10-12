@@ -3,10 +3,6 @@
 In playbook order. Each item's acceptance gate passes before the next item's work is
 committed, except where an item says it runs in parallel.
 
-9. **Input and UI (D6, D8).** KeyMap and event queue from the VBI, Mac UI removed,
-   port-owned replacements for reached menu functions, copy-protection bypass.
-   Acceptance: every reached UI path is listed with its replacement and covered by
-   a probe; no Mac window chrome, menu or pointer is drawn.
 10. **Audio (D7)**, parallel with 8–9. Alone in the Dark's native driver behind a
     port `Jnth` 11, re-measured for MIDI Synth 3.45; songs from `MIDISnd.dat` and
     `NISMIDI.dat`; samples from `DigiSnd.dat` and `NISDIGI.dat`; Paula DMA voices

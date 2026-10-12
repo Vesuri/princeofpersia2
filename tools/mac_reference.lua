@@ -1,5 +1,6 @@
 -- Pinned System 7.5.5 / Macintosh IIci reference. Original instructions execute;
--- the sole game-state intervention supplies an explicit SetRndSeed argument.
+-- the baseline supplies an explicit SetRndSeed argument. Optional profiles
+-- add labeled service/routine fixtures after the verified opening checkpoint.
 io.stdout:setvbuf('no')
 local run=assert(os.getenv('POP2_REFERENCE_RUN'),'REFERENCE / RUN REQUIRED')
 local meta=dofile(run..'/metadata.lua')
@@ -12,6 +13,10 @@ local mapper=os.getenv('POP2_MAP') and dofile('tools/mac_map.lua') or nil
 local resourceCalls=os.getenv('POP2_RESOURCES') and dofile('tools/mac_resource_calls.lua') or nil
 local files=os.getenv('POP2_FILES') and dofile('tools/mac_files.lua') or nil
 local fileRoutines=os.getenv('POP2_FILE_ROUTINES') and dofile('tools/mac_file_routines.lua') or nil
+local uiRoutines=os.getenv('POP2_UI_ROUTINES') and dofile('tools/mac_ui_routines.lua') or nil
+local inputProbe=os.getenv('POP2_INPUT_PROBE') and dofile('tools/mac_input_probe.lua') or nil
+local inputStage=false
+local ui=os.getenv('POP2_UI') and dofile('tools/mac_ui.lua') or nil
 local display=os.getenv('POP2_DISPLAY') and dofile('tools/mac_display.lua') or nil
 local finished,armed,checkpoint=false,false,nil
 local checkpointProbe
@@ -53,6 +58,7 @@ local function observe()
   if files then files.arm(meta,cond)end
   if mapper then mapper.arm(meta,cond)end
   if display then display.arm(meta,cond)end
+  if ui then ui.arm(meta,cond)end
   -- Dynamic return probes capture even the first call immediately after LoadSeg.
   -- SP matches each return to its entry, including Gestalt nested by SysEnvirons.
   cpu.debug:bpset(meta.dispatcher.address,cond..' && (w@(d@(sp+2))==0xa1ad || w@(d@(sp+2))==0xa090 || w@(d@(sp+2))==0xa05c)',
@@ -116,6 +122,21 @@ emu.register_periodic(function()
   if not ok then fail(handled);return end
   if handled then return end
  end
+ if uiRoutines then
+  local ok,handled=pcall(uiRoutines.poll)
+  if not ok then fail(handled);return end
+  if handled then return end
+ end
+ if inputProbe then
+  local ok,handled=pcall(inputProbe.poll)
+  if not ok then fail(handled);return end
+  if handled then return end
+ end
+ if ui then
+  local ok,handled=pcall(ui.poll)
+  if not ok then fail(handled);return end
+  if handled then return end
+ end
  if display then
   local ok,handled=pcall(display.poll)
   if not ok then fail(handled);return end
@@ -165,6 +186,7 @@ emu.register_periodic(function()
    assert(mem:readv_u8(0xcb2)==0,'ADDRESSING MODE')
    if mapper then mapper.finish()end
    if display and not displayRoute then display.finish()end
+   if ui then ui.finish()end
    if files then files.finish()end
    if resourceCalls then resourceCalls.finish()end
    frame.rgb(run..'/opening.ppm')
@@ -172,6 +194,18 @@ emu.register_periodic(function()
    print('REFERENCE_CAPTURED opening-text-1')
   end)
   if not ok then fail(err);return end
+  if uiRoutines then
+   cpu.debug:bpclear(checkpointProbe)
+   local ok,err=pcall(uiRoutines.start,meta,checkpoint);checkpoint=nil
+   if not ok then fail(err)end
+   return
+  end
+  if inputProbe then
+   cpu.debug:bpclear(checkpointProbe);checkpoint=nil;inputStage=true
+   local ok,err=pcall(inputProbe.start)
+   if not ok then fail(err)end
+   return
+  end
   if videoTransfer then
    cpu.debug:bpclear(checkpointProbe);checkpoint=nil
    local ok,err=pcall(videoTransfer.start)
@@ -217,6 +251,23 @@ mac.run(function()
   -- The paired CopyBits survey keeps the hardware cursor outside WIND 400.
   -- Use ordinary ADB input so no QuickDraw state or pixels are patched.
   if display then assert(mac.mouse_to(620,460),'DISPLAY CURSOR OUTSIDE CLIENT')end
+  if uiRoutines then
+   local steps={{'packing',352,223},{'packing-game',352,223},{'about'},
+    {'alert-401-yes'},{'alert-404-yes'},{'alert-405-yes'},
+    {'alert-405-no',355,225},{'alert-406-yes'},{'alert-406-no',352,223}}
+   for _,step in ipairs(steps)do
+    assert(mac.wait_for(step[1],function()return uiRoutines.phase()==step[1]end,18000),'UI ROUTINE START '..step[1])
+    mac.wait(60)
+    if step[2]then assert(mac.mouse_to(step[2],step[3]),'UI BUTTON');mac.click(1)else mac.press('Return')end
+   end
+   mac.wait(3000);error('UI ROUTINE NOT COMPLETE')
+  end
+  if inputProbe then
+   assert(mac.wait_for('input-fixture',function()return inputStage end,18000),'INPUT START')
+   mac.wait(20)
+   for _,key in ipairs({'a','Left Arrow','Right Arrow','Up Arrow','Down Arrow','Space','Return','Esc'})do mac.press(key)end
+   mac.press('s',{mac.CMD});mac.wait(20);inputProbe.finish();return
+  end
   if displayRoute then
    assert(mac.wait_for('opening',function()return routeStage=='opening'end,18000),'DISPLAY OPENING')
    mac.press('Esc')

@@ -6,6 +6,11 @@
 #include "NativeFiles.h"
 #include "NativeDisplay.h"
 #include "NativeResources.h"
+#ifdef POP2_UI
+#include "NativeUI.h"
+#include "NativeInput.h"
+#include "../../../build/ui/UIInputs.h"
+#endif
 #include "framework/AmigaHardware.h"
 #include "mac/MacHeap.h"
 #include "mac/OriginalApplication.h"
@@ -48,6 +53,16 @@ uint32_t g_fileProbeWriteMode=0;int32_t g_fileProbeWriteResult=-1;
 uint32_t g_fileProbeFCB=0;int32_t g_fileProbeFCBResults[3]={-1,-1,-1};
 uint32_t g_coreIdentity[7][3]={},g_coreSysEnvError=0;
 uint8_t g_coreSysEnv[16]={};
+void pop2_ui_fixture();void pop2_ui_fixture_end();
+uint32_t g_uiReport[31]={},g_uiText=0,g_uiWindow=0;
+#ifdef POP2_UI_BAD_ABOUT
+uint16_t g_uiProbeAboutID=601;
+#else
+uint16_t g_uiProbeAboutID=600;
+#endif
+volatile uint8_t g_uiProbeReplyRaw=0x44;
+__attribute__((noinline)) void pop2UIFixtureComplete(){__asm__ volatile("nop" ::: "memory");}
+void pop2_cached_services();void pop2_cached_services_end();
 void pop2_line_a();void pop2_mac_exit();void pop2_old_loadseg();void pop2_old_exit();
 uint32_t g_coreException=0,g_coreActiveFrame=0,g_coreFaultPC=0;
 uint32_t g_coreServicePC=0;uint16_t g_coreServiceSR=0,g_coreServiceActive=0;
@@ -62,7 +77,12 @@ void pop2_exception_9();
 void pop2_exception_11();
 void pop2_exception_14();
 uint32_t g_coreResources[32][3]={},g_coreResourceCount=0,g_coreStrs=0;
-uint32_t g_coreHostSP=0,g_coreTrace[128][3]={},g_coreCount=0,g_coreA5=0,g_coreBelow=0;
+#ifdef POP2_UI
+constexpr uint32_t traceCapacity=4096;
+#else
+constexpr uint32_t traceCapacity=128;
+#endif
+uint32_t g_coreHostSP=0,g_coreTrace[traceCapacity][3]={},g_coreCount=0,g_coreA5=0,g_coreBelow=0;
 uint32_t g_coreSegments[24][2]={},g_coreInitial=0,g_coreStopTrap=0,g_coreStopSegment=0,g_coreStopOffset=0;
 uint32_t g_coreZoneBytes=3*1024*1024,g_coreHeapOK=0,g_coreVectorRestored=0;
 const char* g_coreReason="CORE / NOT STARTED";
@@ -92,6 +112,7 @@ void flushCode() {
 }
 uint8_t *file=0,*plan=0,*arena=0,*world=0,*stack=0,*initial=0,*a5=0,*low=0;
 uint32_t fileSize=0,planSize=0,worldSize=0;
+uint8_t* uiPlan=nullptr;uint32_t uiPlanSize=0;
 uint8_t* displayFrames=nullptr;uint32_t displayFramesSize=0;
 uint8_t* videoTransfer=nullptr;uint32_t videoTransferSize=0;
 bool didStop=false;
@@ -129,6 +150,15 @@ bool relocate(int16_t segment,uint8_t* code,uint32_t size) {
         for(uint32_t j=0;j<n;++j)if(code[at+j]!=p[8+j])return fail("LOW MEMORY / ORIGINAL BYTE MISMATCH");
         copy(code+at,p+20,n);
     }
+#ifdef POP2_UI
+    for(uint32_t i=0;i<l(uiPlan);++i){
+        const uint8_t* p=uiPlan+4+32*i;if(w(p)!=segment)continue;
+        uint32_t n=w(p+2),at=l(p+4);
+        if(!n||n>12||at>size||n>size-at)return fail("UI / PATCH EXTENT");
+        for(uint32_t j=0;j<n;++j)if(code[at+j]!=p[8+j])return fail("UI / ORIGINAL BYTE MISMATCH");
+        copy(code+at,p+20,n);
+    }
+#endif
     flushCode();return true;
 }
 Resource* byHandle(MacHeap::Handle h) {
@@ -143,6 +173,9 @@ bool load(Resource& r) {
     if(r.type==0x53545253)g_coreStrs=(uint32_t)*r.handle;
 #ifdef POP2_BAD_RELOCATION
     if(r.type==0x434f4445 && r.id==1)(*r.handle)[16]^=1;
+#endif
+#ifdef POP2_BAD_UI_GUARD
+    if(r.type==0x434f4445 && r.id==2)(*r.handle)[0x1a40]^=1;
 #endif
     if(r.type==0x434f4445 && !relocate(r.id,*r.handle,r.source.size))return false;
     heap.setState(r.handle,0x20|((r.source.attributes&0x10)?0x80:0)|((r.source.attributes&0x20)?0x40:0));
@@ -217,6 +250,10 @@ bool prepare() {
     if(!NativeFiles::prepare())return fail("FILES / INSTALLED CATALOG OR HASH");
     if(!NativeResources::prepare(file,fileSize))return fail("RESOURCE / APPLICATION DIRECTORY");
     if(!readFile("relocations.bin",plan,planSize,65536,relocationsSHA256))return false;
+#ifdef POP2_UI
+    if(!readFile("ui-seams.bin",uiPlan,uiPlanSize,65536,uiSeamsSHA256))return false;
+    if(uiPlanSize<4||l(uiPlan)>(uiPlanSize-4)/32||4+l(uiPlan)*32!=uiPlanSize)return fail("UI / PLAN EXTENT");
+#endif
     if(planSize<4 || l(plan)>(65536-4)/32 || planSize!=4+32*l(plan))return fail("LOW MEMORY / PLAN SIZE");
     auto spec=app.world();if(spec.above>8192)return fail("A5 / SHADOW OVERLAP");
     worldSize=spec.below+8192+8192;
@@ -236,6 +273,14 @@ bool prepare() {
     if(!readFile("video-transfer.bin",videoTransfer,videoTransferSize,256,videoTransferSHA256))return false;
     if(videoTransferSize!=256)return fail("DISPLAY / VIDEO TRANSFER INPUT");
     if(!NativeDisplay::prepare(heap,low,validMemory,[](uint32_t type,int16_t id,const uint8_t*& bytes,uint32_t& size) {OriginalApplication::Resource r;if(!app.resource(type,id,r))return false;bytes=r.bytes;size=r.size;return true;}))return fail(NativeDisplay::error());
+#endif
+#ifdef POP2_UI
+    if(!NativeUI::prepare(heap,low,validMemory,[](uint32_t type,int16_t id,const uint8_t*& bytes,uint32_t& size){Resource* r=get(type,id);if(!r || !load(*r))return false;bytes=*r->handle;size=heap.handleSize(r->handle);return true;}))return fail(NativeUI::error());
+#endif
+#ifdef POP2_UI_PROBE
+    g_uiText=(uint32_t)heap.newPtr(64,true);if(!g_uiText)return fail("UI / PROBE TEXT MEMORY");
+    const char* uiText="Port UI probe";for(unsigned i=0;i<14;++i)((char*)g_uiText)[i]=uiText[i];
+    for(unsigned i=32;i<64;++i)((uint8_t*)g_uiText)[i]=0x55;
 #endif
 #if defined(POP2_DISPLAY_SERVICES_PROBE) || defined(POP2_DISPLAY_FRAMES_PROBE)
     uint8_t* displayProbe=heap.newPtr(512,true);
@@ -382,10 +427,20 @@ void execute() {
         if(!didStop)fail("CORE / ORIGINAL RETURN WITHOUT STOP");
     }
     #endif
+#ifdef POP2_UI_PROBE
+    if(didStop && g_coreStopTrap==0xaaa0 && g_coreStopSegment==17 && g_coreStopOffset==0x820 && g_coreCount==144){
+        didStop=false;pop2_call_mac((void*)pop2_ui_fixture,a5,stack+65536);
+        if(!didStop){NativeDisplay::wait();pop2UIFixtureComplete();fail("UI / FIXTURE COMPLETE");}
+    }
+#endif
     suspendVectors();g_coreVectorRestored=1;
     for(unsigned i=0;i<11;++i)if(vectorTable[vectorIndices[i]]!=savedVectors[i])g_coreVectorRestored=0;
     g_coreHeapOK=heap.check();
-    if(g_coreStopTrap==0xa86e && g_coreStopSegment==2 && g_coreStopOffset==0x3e90) {
+    if((g_coreStopTrap==0xa86e && g_coreStopSegment==2 && g_coreStopOffset==0x3e90)
+#ifdef POP2_UI
+       || (g_coreStopTrap==0xaaa0 && g_coreStopSegment==17 && g_coreStopOffset==0x820)
+#endif
+       ) {
 #ifdef POP2_BAD_CODE_WRITE
         ((uint8_t*)g_coreSegments[2][0])[4]^=1;
 #endif
@@ -394,6 +449,7 @@ void execute() {
 }
 void release() {
     NativeDisplay::reset();NativeResources::release();app.close();heap.reset();
+    if(uiPlan)FreeMem(uiPlan,uiPlanSize);uiPlan=nullptr;
     if(initial)FreeMem(initial,g_coreBelow);if(stack)FreeMem(stack,65536);if(world)FreeMem(world,worldSize);
     if(displayFrames)FreeMem(displayFrames,displayFramesSize);displayFrames=nullptr;
     if(videoTransfer)FreeMem(videoTransfer,videoTransferSize);videoTransfer=nullptr;
@@ -405,30 +461,56 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
     uint32_t pc=l(frame+2),seg=0,off=0;
     if(usp<stack || usp>stack+65536-4)return stop(frame,usp,"STACK / TRAP ARGUMENT EXTENT",0,seg,off);
     bool codeCaller=location(pc,seg,off);
+#ifdef POP2_UI
+    bool cachedCaller=pc>=(uint32_t)pop2_cached_services && pc<(uint32_t)pop2_cached_services_end && !((pc-(uint32_t)pop2_cached_services)&3);
+#else
+    bool cachedCaller=false;
+#endif
     bool tableCaller=pc>=(uint32_t)a5+app.world().jumpOffset && pc<(uint32_t)a5+app.world().jumpOffset+app.world().jumpBytes;
-    bool fixtureCaller=(pc>=(uint32_t)pop2_display_scene_init && pc<(uint32_t)pop2_display_scene_end) || (pc>=(uint32_t)pop2_display_fixture && pc<(uint32_t)pop2_display_fixture_end) || (pc>=(uint32_t)pop2_identity_fixture && pc<(uint32_t)pop2_identity_fixture_end) ||
+    bool fixtureCaller=(pc>=(uint32_t)pop2_ui_fixture && pc<(uint32_t)pop2_ui_fixture_end) || (pc>=(uint32_t)pop2_display_scene_init && pc<(uint32_t)pop2_display_scene_end) || (pc>=(uint32_t)pop2_display_fixture && pc<(uint32_t)pop2_display_fixture_end) || (pc>=(uint32_t)pop2_identity_fixture && pc<(uint32_t)pop2_identity_fixture_end) ||
         (pc>=(uint32_t)pop2_file_fixture && pc<(uint32_t)pop2_file_fixture_end) ||
         (pc>=(uint32_t)pop2_replay_fixture && pc<(uint32_t)pop2_replay_fixture_end) ||
         (pc>=(uint32_t)pop2_resource_fixture && pc<(uint32_t)pop2_resource_fixture_end);
-    if(!codeCaller && !tableCaller && !fixtureCaller && pc!=(uint32_t)pop2_old_loadseg && pc!=(uint32_t)pop2_old_exit)
+    if(!codeCaller && !tableCaller && !fixtureCaller && !cachedCaller && pc!=(uint32_t)pop2_old_loadseg && pc!=(uint32_t)pop2_old_exit)
         return stop(frame,usp,"TRAP / UNKNOWN CALLER",0,seg,off);
     uint16_t trap=w((uint8_t*)pc);
     if((trap&0x0800) && !fixtureCaller && usp>stack+65536-10)
         return stop(frame,usp,"STACK / TOOLBOX ARGUMENT EXTENT",trap,seg,off);
-    bool builtin=pc==(uint32_t)pop2_old_loadseg || pc==(uint32_t)pop2_old_exit;
+    bool builtin=cachedCaller || pc==(uint32_t)pop2_old_loadseg || pc==(uint32_t)pop2_old_exit;
     if(builtin)trap=w((uint8_t*)pc+2);
     if(codeCaller) {
-        if(g_coreCount==128)return stop(frame,usp,"TRACE / CAPACITY",trap,seg,off);
+        if(g_coreCount==traceCapacity)return stop(frame,usp,"TRACE / CAPACITY",trap,seg,off);
         uint32_t* row=g_coreTrace[g_coreCount++];row[0]=seg;row[1]=off;row[2]=trap;
     } else if(!builtin && !fixtureCaller && !(pc>=(uint32_t)a5+app.world().jumpOffset && pc<(uint32_t)a5+app.world().jumpOffset+app.world().jumpBytes && trap==0xa9f0))
         return stop(frame,usp,"TRAP / UNKNOWN CALLER",trap,seg,off);
-    sl(frame+2,pc+(builtin?4:2));
+    if(cachedCaller){
+        uint32_t caller=l(usp),callerSegment=0,callerOffset=0;
+        if(!location(caller,callerSegment,callerOffset) && !(caller>=(uint32_t)pop2_ui_fixture && caller<(uint32_t)pop2_ui_fixture_end))return stop(frame,usp,"TRAP / CACHED RETURN OWNER",trap,seg,off);
+        sl(frame+2,caller);usp+=4;
+    }else sl(frame+2,pc+(builtin?4:2));
     if(!builtin && (trap==0xa9f0 || trap==0xa9f4)) {
         uint8_t* patch=trap==0xa9f0?patchedLoad:patchedExit;
         if(patch) { flushCode();usp-=4;sl(usp,pc+2);sl(frame+2,(uint32_t)patch);return (uint32_t)usp; }
     }
+#ifdef POP2_UI
+    if(trap==0xaffd){
+        if(!codeCaller || seg!=17 || (off!=0x245e && off!=0x6d42))return stop(frame,usp,"UI / REPLACEMENT CALLER",trap,seg,off);
+        uint16_t selector=w((uint8_t*)pc+2);
+        if(selector!=(off==0x245e?1:2))return stop(frame,usp,"UI / REPLACEMENT SELECTOR",trap,seg,off);
+        if(!NativeUI::replacement(selector,regs,usp+4))return stop(frame,usp,NativeUI::error(),trap,seg,off);
+        sl(frame+2,pc+4);return (uint32_t)usp;
+    }
+#endif
     uint32_t consumed=0;int16_t error=0;bool os=(trap&0x0800)==0;
 #ifdef POP2_DISPLAY
+#ifdef POP2_UI
+    if(NativeInput::error())return stop(frame,usp,NativeInput::error(),trap,seg,off);
+    if(NativeUI::handles(trap)) {
+        if(!NativeUI::dispatch(trap,regs,usp,consumed))return stop(frame,usp,NativeUI::error(),trap,seg,off);
+        if(os){uint16_t sr=w(frame)&~15;uint16_t result=regs[0];if(!result)sr|=4;if(result&0x8000)sr|=8;sw(frame,sr);}
+        return (uint32_t)(usp+consumed);
+    }
+#endif
     if(NativeDisplay::handles(trap)) {
         if(!NativeDisplay::dispatch(trap,regs,usp,consumed))return stop(frame,usp,NativeDisplay::error(),trap,seg,off);
         if(!NativeDisplay::publish())return stop(frame,usp,NativeDisplay::error(),trap,seg,off);
@@ -544,7 +626,18 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
         auto h=(MacHeap::Handle)regs[8];if(!heap.isHandle(h)) { fail("HEAP / UNKNOWN HANDLE");goto failed; }
         error=trap==0xa029?heap.setState(h,heap.state(h)|0x80):heap.moveHigh(h);regs[0]=(int32_t)error;break;
     }
+    case 0xa122:regs[8]=(uint32_t)heap.newHandle(regs[0],true);error=heap.error();regs[0]=(int32_t)error;break;
     case 0xa11e: regs[8]=(uint32_t)heap.newPtr(regs[0],false);error=heap.error();regs[0]=(int32_t)error;break;
+#ifdef POP2_UI
+    case 0xa746:case 0xa346:{
+        uint16_t target=trap==0xa746 ? 0xa800|(regs[0]&0x3ff) : 0xa000|(regs[0]&255);
+        if(target==0xa0ad)target=0xa1ad;
+        uint8_t* found=nullptr;
+        for(uint8_t* p=(uint8_t*)pop2_cached_services;p<(uint8_t*)pop2_cached_services_end;p+=4)if(w(p+2)==target)found=p;
+        if(!found)return stop(frame,usp,"TRAP TABLE / UNMEASURED QUERY",trap,seg,off);
+        regs[8]=(uint32_t)found;break;
+    }
+#endif
     case 0xa146: case 0xa047: {
         uint16_t target=regs[0];uint8_t** patch=target==0xa9f0?&patchedLoad:target==0xa9f4?&patchedExit:0;
         if(!patch) { fail("TRAP TABLE / UNKNOWN ENTRY");goto failed; }

@@ -131,3 +131,10 @@ The owner authorized System 7 and a compatible Macintosh model. Apple's
 [Virtual Memory Manager documentation](https://dev.os9.ca/techpubs/mac/Memory/Memory-153.html)
 explains availability checks and why services can be needed with VM disabled.
 The failed configurations were not repaired by skipping original game calls.
+
+Reference volume creation preserves the complete image bytes while leaving
+all-zero blocks sparse, to avoid allocating the empty portion of each 2 GB
+scratch disk. Completed local disks may be losslessly archived as `volume.hd.gz`;
+a decompressed SHA-256 check precedes removal of the uncompressed copy. Logs and
+captures remain usable without the disk. Restore its original `volume.hd` name
+before resuming that emulator state or exporting saves from it.

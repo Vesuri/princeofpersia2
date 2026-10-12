@@ -26,9 +26,14 @@ if '-DPOP2_DISPLAY' in verify_receipt()['flags'].split():
             raise RuntimeError('DISPLAY / FRAME FIXTURE PIN')
         shutil.copyfile(frames,Path(sys.argv[1])/frames.name)
 
+if '-DPOP2_UI' in verify_receipt()['flags'].split():
+    from ui_inputs import generate
+    generate(True)
+    shutil.copyfile(ROOT/'build/ui/ui-seams.bin',Path(sys.argv[1])/'ui-seams.bin')
+
 control=os.environ.get('CORE_CONTROL')
 if control:
-    names={'bad-application':'Prince of Persia 2.rsrc','bad-plan':'relocations.bin','bad-transfer':'video-transfer.bin','bad-frames':'display-frames.bin'}
+    names={'bad-application':'Prince of Persia 2.rsrc','bad-plan':'relocations.bin','bad-transfer':'video-transfer.bin','bad-frames':'display-frames.bin','bad-ui-plan':'ui-seams.bin'}
     if control not in names:raise RuntimeError('CORE / UNKNOWN INPUT CONTROL')
     target=Path(sys.argv[1])/names[control]
     data=bytearray(target.read_bytes());data[0]^=1;target.write_bytes(data)
