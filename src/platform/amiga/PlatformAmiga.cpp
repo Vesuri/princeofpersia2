@@ -10,6 +10,10 @@
 #include "PlatformAmiga.h"
 #include "framework/CopperList.h"
 #include "framework/AmigaHardware.h"
+#ifdef POP2_CORE
+#include "CoreRuntime.h"
+extern "C" void pop2CoreStopped();
+#endif
 extern DosLibrary* DOSBase;
 extern "C" {
 volatile uint32_t g_scaffoldStage=0, g_scaffoldFields=0, g_scaffoldError=0;
@@ -30,6 +34,14 @@ bool PlatformAmiga::run() {
         PutStr((CONST_STRPTR)"SCAFFOLD / REQUIRES PAL AGA 68020\n");
         CloseLibrary((Library*)DOSBase);DOSBase=0;CloseLibrary((Library*)GfxBase);GfxBase=0;g_scaffoldError=3;return false;
     }
+#ifdef POP2_CORE
+    if(!CoreRuntime::prepare()) {
+        PutStr((CONST_STRPTR)CoreRuntime::error());PutStr((CONST_STRPTR)"\n");
+        pop2CoreStopped();CoreRuntime::release();
+        CloseLibrary((Library*)DOSBase);DOSBase=0;CloseLibrary((Library*)GfxBase);GfxBase=0;
+        return false;
+    }
+#endif
     View* view=GfxBase->ActiView;
     CopperList osCopper((uint32_t*)GfxBase->copinit);
     const uint16_t dmaMask=DMAF_ALL|DMAF_MASTER|DMAF_BLITHOG;
@@ -49,6 +61,9 @@ bool PlatformAmiga::run() {
     g_scaffoldStage=2;
     AmigaHardware::setInterrupts(INTF_INTEN|INTF_VERTB,true);
     while(g_scaffoldFields<4) { __asm__ volatile("nop"); }
+#ifdef POP2_CORE
+    CoreRuntime::execute();
+#endif
     AmigaHardware::setInterrupts(INTF_VERTB,false);
     AmigaHardware::clearInterruptRequests(INTF_VERTB);
     AmigaHardware::setCopperList(osCopper,true);
@@ -67,11 +82,15 @@ bool PlatformAmiga::run() {
     bool ok=g_actualDMA==g_savedDMA && g_actualIRQ==g_savedIRQ && g_viewRestored && g_vectorRestored;
     if(!ok)g_scaffoldError=4;
     PutStr((CONST_STRPTR)(ok ? "SCAFFOLD RESTORED\n" : "SCAFFOLD / RESTORE FAILED\n"));
+#ifdef POP2_CORE
+    PutStr((CONST_STRPTR)CoreRuntime::error());PutStr((CONST_STRPTR)"\n");
+    g_scaffoldStage=3;pop2CoreStopped();CoreRuntime::release();
+#endif
     CloseLibrary((Library*)DOSBase);DOSBase=0;
     CloseLibrary((Library*)GfxBase);GfxBase=0;
     g_scaffoldStage=3;
     pop2ScaffoldRestored();
-#ifdef POP2_FAIL_EXIT
+#if defined(POP2_FAIL_EXIT) || defined(POP2_CORE)
     return false; // Negative control: the Shell must receive FAIL, not zero.
 #else
     return ok;

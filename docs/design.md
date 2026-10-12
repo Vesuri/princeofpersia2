@@ -17,7 +17,8 @@
 ## Faithfulness boundary
 
 The original Macintosh execution under the D2 reference is the correctness reference.
-Preserve game logic, data interpretation and decisions. Port-owned services handle
+Preserve game logic, data interpretation and decisions. The owner authorizes byte-verified low-memory address relocations while preserving
+original instruction lengths and startup logic. Port-owned services handle
 Amiga display, audio, input and platform integration. Any behavior-changing departure
 requires an explicit owner decision and validation against the original.
 

@@ -3,7 +3,7 @@
 The empty host and Amiga programs build. The Amiga executable boots from the
 Shell, requires PAL AGA and a 68020, takes over VERTB for four fields, restores
 hardware/OS state and returns. It does not read original game files or execute
-Macintosh instructions. Original startup and identity implementation remain item 6.
+Macintosh instructions. The separate [core configuration](core-runtime.md) runs original startup and identity fixtures.
 
 ## Reuse boundary
 
@@ -17,11 +17,11 @@ resource/file models, byte-pixel and region operations, palettes, windows and
 UI record parsing. Prefixes are changed to POP2. Heap profiling hooks are removed;
 the virtual volume has a neutral name and no Alone Movies exception. The bounded
 helper capacities are inherited limits, not measured Prince of Persia requirements.
-They are not wired into trap dispatch. Unsupported operations remain errors.
+The core configuration wires the heap and application resource-map subset into trap dispatch;
+other helpers remain unwired. Unsupported operations remain errors.
 
 The 11,482-line donor MacLoader mixes reusable services with original offsets,
-identity answers, gameplay patches and probes. It is replaced by a named
-`MAC LOADER / NOT IMPLEMENTED` boundary. The donor's low-memory patch tables,
+identity answers, gameplay patches and probes. Its bounded replacement is `CoreRuntime`, documented separately. The donor's low-memory patch tables,
 resource-service integration, captured Times glyphs/metrics, embedded resource
 fork, game routes and scene hooks are omitted. The audio driver has game-specific
 voice counts and driver semantics and is reserved for remeasurement in item 10.
@@ -29,7 +29,7 @@ The 320×200 screen/lores adapter is omitted in accordance with D3/D4.
 
 The Amiga platform retains the donor's library lifecycle, takeover/restore order,
 Workbench startup-message discipline and GCC runtime shims. Its empty VBI does
-only acknowledgement and counting. It does not install keyboard, audio or Mac
+only acknowledgement and counting. The empty configuration installs no keyboard, audio or Mac
 trap handlers. The dA JoRMaS framework is unchanged from the pinned canonical tree;
 see `src/platform/amiga/framework/UPSTREAM.md`. The unchanged public-domain Kalms
 converter is retained as source; its 512×384 adapter belongs to item 8.
@@ -42,7 +42,7 @@ linked or tracked.
 
 ## Build and checks
 
-- `make` / `make host-tests`: empty host program plus 18 inherited helper fixtures.
+- `make` / `make host-tests`: empty host program plus 18 inherited helper fixtures and a SHA/identity fixture.
   Tests use synthetic data only: heap compaction, resource mutation/serialization,
   failure atomicity, bounded reads/writes, metadata, clipping and record handling.
 - `make amiga`: empty HUNK executable, `amiga/out/PrinceOfPersia2.exe`.
@@ -69,8 +69,7 @@ builds cannot be packaged.
 Each run owns a fresh ignored `amiga/.run-*` directory with private disks/state,
 frozen executable/ELF, their hashes, logs and GDB output. The shared helper records
 and stops only the project-owned emulator PID. A checkout lock prevents overlapping
-runs; a busy debugger port fails without killing its owner. No original data is
-staged. A fresh directory prevents stale Shell markers or saved state passing.
+runs; a busy debugger port fails without killing its owner. The empty configuration stages no original data. A fresh directory prevents stale Shell markers or saved state passing.
 
 ## Measured acceptance and limits
 

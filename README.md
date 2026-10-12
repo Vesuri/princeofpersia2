@@ -7,8 +7,8 @@ showing the original 512×384 window.
 
 The release can be inspected and extracted reproducibly (see the source inventory).
 A pinned headless Macintosh reference reaches the opening cutscene, with a verified
-static/live map of that route. An empty Amiga scaffold boots and returns cleanly;
-original game execution is not implemented yet.
+static/live map of that route. The Amiga core executes original startup through its first unsupported service,
+`InitGraf`, with matching reference trap order and initialized globals.
 
 ## Setup checks
 
@@ -48,3 +48,7 @@ Run `make` for the empty host build and synthetic helper tests, `make amiga` for
 the empty Amiga executable, or `make scaffold-check` for the full boot/quit and
 rejection gate. See [runtime scaffold](docs/scaffold.md) for reuse boundaries,
 launchers, build audits and development-only packaging.
+
+Run `make core` for the bounded original startup executable or `make core-check`
+for paired Macintosh/Amiga execution and rejection controls. See
+[core runtime](docs/core-runtime.md) for relocations, services and current limits.

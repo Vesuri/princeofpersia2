@@ -1,5 +1,5 @@
 #!/bin/bash
-# Bounded empty-scaffold boot/quit. Fresh private disks, frozen executable and ELF.
+# Bounded scaffold/core run. Fresh private disks, frozen executable and ELF.
 set -euo pipefail
 CALLER="$PWD"
 SCRIPT="${GDBSCRIPT:-}"
@@ -29,6 +29,11 @@ mkdir -p "$DH0/s" "$DH0/c" "$DH1" "$RUN/state" "$RUN/logs" "$RUN/gdbhome"
 cp out/PrinceOfPersia2.exe "$DH1/PrinceOfPersia2"
 cp out/PrinceOfPersia2.elf "$RUN/PrinceOfPersia2.elf"
 cp "$SETPATCH" "$DH0/c/SetPatch"
+if [ "${CORE:-0}" = 1 ]; then
+  python3 ../tools/stage_core.py "$DH1"
+  sed "s|@RUN@|$RUN|g" core.gdb > "$RUN/core.gdb"
+  if [ -z "$SCRIPT" ]; then SCRIPT="$RUN/core.gdb"; fi
+fi
 cat > "$DH0/s/startup-sequence" <<'STARTUP'
 C:SetPatch QUIET
 FailAt 21
@@ -61,4 +66,8 @@ status=0;wait "$GDB_PID" || status=$?;GDB_PID=
 cat "$RUN/gdb-out.log"
 [ "$status" = 0 ] || exit "$status"
 for ((i=0;i<20;i++)); do [ -f "$DH1/Shell.done" ] && break; sleep 1; done
-python3 ../tools/scaffold_result.py "$RUN"
+if [ "${CORE:-0}" = 1 ]; then
+  python3 ../tools/check_core_result.py "$RUN"
+else
+  python3 ../tools/scaffold_result.py "$RUN"
+fi

@@ -31,9 +31,19 @@ function M.map(seg,base,handle)
  watch('CODE_'..seg,base,size)
  print(string.format('LIVE_MAP seg=%d base=%08X size=%d',seg,base,size))
  if seg==2 then
+  stop(base+0x3e90,function()
+   local a5=cpu.state.A5.value
+   dump("a5-core.bin",a5-22266,22266)
+   dump("a5-above.bin",a5,8176)
+   print(string.format("CORE_INITIALIZED a5=%08X pc=%08X",a5,cpu.state.PC.value))
+  end)
   for _,off in ipairs({0x2efe,0x449e,0x5620})do
    cpu.debug:bpset(base+off,cond,'logerror "CACHED_GETKEYS pc=%08X target=%08X slot=%08X\\n",pc,a0,d@(a5-0x1f68);g')
   end
+ end
+ if seg==19 then
+  stop(base+0x4ce2,function()print(string.format("CORE_RESOURCE type=5F535444 handle=%08X",u(cpu.state.SP.value)))end)
+  stop(base+0x4cfe,function()print(string.format("CORE_RESOURCE type=5F535449 handle=%08X",u(cpu.state.SP.value)))end)
  end
  if seg==16 then
   cpu.debug:bpset(base+0x2840,cond,'logerror "GETKEYS_INSTALLED target=%08X\\n",d@(a5-0x1f68);g')
@@ -97,6 +107,7 @@ function M.poll()
    end
   end)
   M.map(1,base1)
+  dump("lowmem-start.bin",0,0x2000)
   stop(base1+0x2a,function()
    assert(M.delta,'WRITE CONTROL NOT REACHED');M.tap:remove()
    watch('CODE_1',base1,#meta.segments[1].hex/2)

@@ -5,10 +5,6 @@ committed, except where an item says it runs in parallel.
 
 1. **Owner decision D9** on "Compress Data" (`docs/design.md`).
    Acceptance: the decision table records the owner's answer.
-6. **Core runtime.** Loader and A5 world with byte checks, original CODE 1 unchanged,
-   low-memory shadows, 3 MB application zone, reference identity answers, loud stops.
-   Acceptance: a headless run reaches the first unimplemented service as a named stop
-   after original initialisation, matched against the reference trap order.
 7. **Files and resources.** Mohawk resource files, `MHWK` data-fork archives, the
    file calls the reference path uses, saves, `Prince2.opt` and Hall of Fame.
    Acceptance: paired read/write traces against the reference; saves survive restart.

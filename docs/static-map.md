@@ -3,7 +3,7 @@
 The map uses original CODE resource offsets, including the four-byte segment
 header. `MEASURED` means original bytes or original execution; `DERIVED` means
 control-flow or host-model analysis. All images, listings, traces and generated
-maps remain in ignored `tmp/` and `ref/`. No Amiga runtime is implemented.
+maps remain in ignored `tmp/` and `ref/`. The [core runtime](core-runtime.md) now validates the bounded original startup on Amiga.
 
 ## Reproduction and scope
 

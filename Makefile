@@ -5,7 +5,8 @@ SHELL := /bin/bash
 help:
 	@echo 'make / make host-tests  build the empty host program and test portable helpers'
 	@echo 'make amiga / make scaffold-check  build / verify the empty Amiga boot and quit'
-	@echo 'Original archive tools and empty Amiga scaffold.'
+	@echo 'make core / make core-check  build / verify bounded original startup'
+	@echo 'Original archive tools, Amiga scaffold and startup runtime.'
 	@echo 'make verify-input  verify the locally staged original archive'
 	@echo 'make inspect       reproduce the source inventory from the archive'
 	@echo 'make extract-original-data  verify and extract to tmp/runtime-data/'
@@ -61,3 +62,12 @@ slave:
 	@. amiga/env.sh && $(MAKE) -C whdload
 dist-scaffold: amiga slave
 	@. amiga/env.sh && python3 tools/package_release.py
+
+.PHONY: core-inputs core
+core-inputs:
+	@. amiga/env.sh && python3 tools/core_inputs.py
+core: core-inputs
+	@. amiga/env.sh && $(MAKE) -C amiga EXTRA_DEFINES=-DPOP2_CORE
+.PHONY: core-check
+core-check: host-tests
+	@. amiga/env.sh && python3 tools/check_core.py
