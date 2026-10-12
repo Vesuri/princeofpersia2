@@ -1,8 +1,8 @@
 # Prince of Persia 2
 
-Macintosh-to-Amiga port following Vette! and Alone in the Dark. Initial setup only;
-no extraction, analysis, reference run or runtime implementation has been performed.
-Do not advance beyond setup until the owner requests it.
+Macintosh-to-Amiga port following Vette! and Alone in the Dark. The owner has set the
+target and approach in `docs/design.md`; work proceeds through `docs/open-work.md` in
+order. No extraction target, reference run or runtime implementation exists yet.
 
 ## Rules
 

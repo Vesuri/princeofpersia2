@@ -1,11 +1,12 @@
 # Prince of Persia 2
 
-Initial setup for a Macintosh-to-Amiga port following Vette! and Alone in the Dark.
-The intended approach preserves the original game instructions and implements the
-Macintosh services they call, subject to checking the supplied release later.
+Macintosh-to-Amiga port following Vette! and Alone in the Dark. The original 68k game
+instructions run natively on an AGA Amiga with a 68020 or better, and the port
+implements the Macintosh services they call. The display is PAL hires interlaced,
+showing the original 512×384 window.
 
-Only the repository, shared environment entry point and original archive staging
-are ready. The archive has not been extracted or analyzed. No runnable port exists.
+The release has been surveyed (see the source inventory). No extraction target,
+reference run or runnable port exists yet.
 
 ## Setup checks
 

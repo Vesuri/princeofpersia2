@@ -5,14 +5,72 @@ The owner-provided download reference is
 [Macintosh Repository](https://www.macintoshrepository.org/download.php?id=4673).
 The local file was used; the download reference was not independently verified.
 
+Evidence below comes from listing the archive with `lsar`, a scratch `unar` extraction
+in ignored `tmp/`, resource-map parsing, linear disassembly with `m68k-amiga-elf-objdump`
+and AmigaXDev's flow-following `amigaxdev.mac.m68k_sweep`. Linear trap counts are an
+upper bound until a flow-following census replaces them.
+
+## Archive
+
 | Property | Value | Evidence |
 |---|---|---|
 | Archive filename | `Prince_Of_Persia2.SIT` | MEASURED |
 | Size | 7,716,607 bytes | MEASURED |
 | SHA-256 | `02437dc253dffec4eee516f8e5e0f2ecaccc4bd31f3d6957d42ea4f87b80b080` | MEASURED |
 | Local copy | `tmp/originals/Prince_Of_Persia2.SIT` (ignored, read-only) | MEASURED |
+| Format | StuffIt 5, Arsenic method; no nested disk image or installer | MEASURED |
+| Contents | folder `Prince of Persia 2` with the application and a `Data` folder of 31 files | MEASURED |
 
 The checksum is pinned in `manifest/originals.sha256`. The supplied file is untouched.
-Release/version, archive contents, executable architecture, loader, resource layout,
-OS requirements and reference configuration are unexamined. No game-derived output
-has been created.
+
+## Application
+
+| Property | Value | Evidence |
+|---|---|---|
+| Name, type, creator | `Prince of Persia 2`, `APPL`, `PoP2`; resource fork only, dated 1995-05-23 | MEASURED |
+| Version | `vers` 1 = 1.0; About box: © 1993, 1994 Jordan Mechner, published by Brøderbund | MEASURED |
+| Architecture | 68k only; no `cfrg` | MEASURED |
+| Segments | CODE 0 plus 23 segments; CODE 12–14 (Editor 1–3) are 4-byte stubs | MEASURED |
+| A5 world | 8,176 bytes above A5, 22,266 below; 1,018-entry jump table at A5+32, all in unloaded form | MEASURED |
+| Model | near-model segment headers; no CREL resources | MEASURED |
+| Runtime | CODE 1 (1,058 bytes) with `DATA` 0, `ZERO` 0, `DREL` 0, `_STD`, `_STI`, `STRS`; THINK/Symantec family like Alone in the Dark | INFERRED |
+| Symbols | 1,324 embedded MacsBug procedure names, including C++ (cfront-style) names | MEASURED |
+| CPU | 216 68020-only instructions on flow-reached paths (CODE 5, 11, 16, 17, 21, 22); 74.3% coverage | MEASURED |
+| `SIZE` | flags `$4A80` (suspend/resume, MultiFinder aware, front clicks, 32-bit compatible; not high-level-event aware); 2,560,000 minimum, 3,072,000 preferred | MEASURED |
+| Stated requirements | DITL 402: System 6.0.7 or higher, 256 colours, 32-Bit QuickDraw; DITL 602: Virtual Memory off | MEASURED |
+| Game window | WIND 400, 512×384 content, procID 4 | MEASURED |
+| Sound | Halestorm SoundMusicSys: `MDRV` 11 "MIDI Synth 3.45 4/27/94", `SMOD` 0–3, 34 `INST`, 34 `snd `; `Jnth` and `MDRV` resource requests sit beside `DecryptHandle`, the seam Alone in the Dark replaces | MEASURED |
+| Copy protection | `CopyProtectionDialog`; `COPY` resource in `Prince.rsrc` | MEASURED |
+| In-place packing | "Compress Data" menu item and a startup offer (`PackAllData`, `LZPackDataFile`, `PackDataAtStartUp`) rewrite `Data` files | MEASURED |
+
+### Service surface
+
+Selectors were read from the instruction loading D0 before each trap.
+
+| Trap | Use | Evidence |
+|---|---|---|
+| `_QDExtensions` | NewGWorld, LockPixels, UnlockPixels, DisposeGWorld, GetGWorld, SetGWorld, GetPixBaseAddr (20 sites); no GetGWorldPixMap | MEASURED (linear) |
+| `_HighLevelFSDispatch` | selectors 1, 4, 5, 7, 8, 9 (FSSpec calls) | MEASURED (linear) |
+| `_SoundDispatch` | MIDI Manager (selector 4, client `MPLR`), SndSoundManagerVersion, Sound Manager 3 default output volume | MEASURED (linear) |
+| Other | `Gestalt`, `SysEnvirons`, `_SwapMMUMode` (16), Time Manager, `VInstall`, `_PaletteDispatch`, SANE `Pack4` | MEASURED (linear) |
+
+The program targets System 6 with feature checks; whether it selects FSSpec, Sound
+Manager 3 or MIDI Manager paths from `Gestalt` answers is INFERRED and must be measured
+on the reference. Alone in the Dark's System 7 dependency (`GetGWorldPixMap`) is absent.
+
+## Data
+
+| Files | Contents | Evidence |
+|---|---|---|
+| `Prince.rsrc` | `LEVL` 14, `SEQS` 236, `SHAP`, `CTBL`, fonts, `TEXT`, `COPY` | MEASURED |
+| Level files (`Rooftops`, `Ruins`, `Caverns`, `Desert`, `Temple`, `Final`) | `SHAP`, `CTBL`, `PIEC`, `CUST`, `SHPL` | MEASURED |
+| Character files (`Kid`, `Guard`, `Skeleton`, `Head`, `Birdhead`, `Jinnee`, `FlameSword`, `Horse`) | `SHAP`, `CTBL`, `FRAM`, `AFRM`, `SHPL` | MEASURED |
+| Cutscene files (`NIS`, `NISTree`, `TNIS1`–`3`, `TempleNIS`, `ThroneNIS`, `TowerNIS`, `Title`, `Happy`) | `SHAP`, `CTBL`, `SCRP`, `ANI ` | MEASURED |
+| `DigiSnd.dat`, `MIDISnd.dat`, `NISDIGI.dat`, `NISMIDI.dat` | data-fork Mohawk `MHWK`/`RSRC` archives (`WAVE`, `Cue#`, …) | MEASURED |
+| `Mohawk.ini` | audio configuration text: 4 MIDI voices, 1 wave voice, low resolution, no interpolation | MEASURED |
+| `Prince2.opt` | `DSLV` resource and a 16-byte data fork | MEASURED |
+
+`SHAP` headers start with a flags word followed by row bytes, width and height.
+Full-screen images are 510–520 pixels wide and 365–384 lines tall. INFERRED
+
+No game-derived output has been committed.
