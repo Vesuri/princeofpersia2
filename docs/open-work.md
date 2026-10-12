@@ -5,12 +5,6 @@ committed, except where an item says it runs in parallel.
 
 1. **Owner decision D9** on "Compress Data" (`docs/design.md`).
    Acceptance: the decision table records the owner's answer.
-5. **Scaffold.** Copy Alone in the Dark's runtime (`src/mac/`), Amiga platform layer,
-   framework with `UPSTREAM.md`, Kalms C2P, `amiga/` scripts, checker discipline,
-   WHDLoad slave and release tools, without its game-specific hooks; pin the source
-   commit in `manifest/references.tsv`.
-   Acceptance: host tests and an empty Amiga executable that `amiga/run.sh` boots
-   and quits cleanly, proven by a probe.
 6. **Core runtime.** Loader and A5 world with byte checks, original CODE 1 unchanged,
    low-memory shadows, 3 MB application zone, reference identity answers, loud stops.
    Acceptance: a headless run reaches the first unimplemented service as a named stop

@@ -7,8 +7,8 @@ showing the original 512×384 window.
 
 The release can be inspected and extracted reproducibly (see the source inventory).
 A pinned headless Macintosh reference reaches the opening cutscene, with a verified
-static/live map of that route. No runnable
-Amiga port exists yet.
+static/live map of that route. An empty Amiga scaffold boots and returns cleanly;
+original game execution is not implemented yet.
 
 ## Setup checks
 
@@ -43,3 +43,8 @@ See [source inventory](docs/source-inventory.md), [design](docs/design.md),
 Run `make map` for the static census, `make ghidra` for headless exports, and
 `make static-map-check` for two fresh original runs plus rejection controls. See
 [static and live map](docs/static-map.md) for coverage, service seams and limits.
+
+Run `make` for the empty host build and synthetic helper tests, `make amiga` for
+the empty Amiga executable, or `make scaffold-check` for the full boot/quit and
+rejection gate. See [runtime scaffold](docs/scaffold.md) for reuse boundaries,
+launchers, build audits and development-only packaging.

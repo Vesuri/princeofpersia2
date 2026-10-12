@@ -11,7 +11,7 @@ disasm/*
 !disasm/symbols.csv
 amiga/obj/
 amiga/out/
-amiga/.run*/
+amiga/.run*
 amiga/assets/
 tools/vendor/
 tools/ghidra

@@ -1,9 +1,11 @@
 SHELL := /bin/bash
-.DEFAULT_GOAL := help
+.DEFAULT_GOAL := all
 
 .PHONY: help verify-input check inspect extract-original-data check-extraction reference check-reference
 help:
-	@echo 'Original archive inspection and extraction; no game build yet.'
+	@echo 'make / make host-tests  build the empty host program and test portable helpers'
+	@echo 'make amiga / make scaffold-check  build / verify the empty Amiga boot and quit'
+	@echo 'Original archive tools and empty Amiga scaffold.'
 	@echo 'make verify-input  verify the locally staged original archive'
 	@echo 'make inspect       reproduce the source inventory from the archive'
 	@echo 'make extract-original-data  verify and extract to tmp/runtime-data/'
@@ -46,3 +48,16 @@ ghidra:
 static-map-check: ghidra
 	@. amiga/env.sh && python3 tools/test_static_map.py
 	@. amiga/env.sh && python3 tools/check_map_gate.py
+
+.PHONY: all host-tests amiga scaffold-check slave dist-scaffold
+all: host-tests
+host-tests:
+	@. amiga/env.sh && python3 tools/host_tests.py
+amiga:
+	@. amiga/env.sh && $(MAKE) -C amiga
+scaffold-check: host-tests amiga
+	@. amiga/env.sh && python3 tools/check_scaffold.py
+slave:
+	@. amiga/env.sh && $(MAKE) -C whdload
+dist-scaffold: amiga slave
+	@. amiga/env.sh && python3 tools/package_release.py

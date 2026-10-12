@@ -1,0 +1,15 @@
+Prince of Persia 2 scaffold 0.1 (12.10.2026)
+
+Development scaffold, not a playable game or a supported game installation.
+Requires PAL AGA and a 68020 or later. The empty executable takes over the
+hardware for four fields, restores the OS, and returns to the Shell.
+Test configuration: A1200, 2 MB Chip, 8 MB Fast. Final RAM requirement unmeasured.
+
+Run PrinceOfPersia2 from the Amiga Shell. The included KickEmu slave is scaffold
+source/build infrastructure; WHDLoad execution and installation are not validated.
+The future installer must extract and verify the user's matching original archive.
+No originals, ROMs, Kickstart, WHDLoad binary, saves or captured data are included.
+
+Credits: Vesa Halttunen; reusable runtime and platform code from Alone in the Dark;
+dA JoRMaS hardware framework via AmigaXDev; public-domain C2P by Mikael Kalms.
+See repository docs/scaffold.md and the source provenance manifests.
