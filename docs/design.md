@@ -12,7 +12,7 @@
 | D6 | Bypass the copy protection at a measured, byte-verified seam | Decided |
 | D7 | Music: reuse Alone in the Dark's native Halestorm driver in place of the original `MDRV`, improving it as needed. All audio through Paula DMA voices; no software mixing | Decided |
 | D8 | Remove all Macintosh UI: menu bar, window frames, dialogs and pointer. Reached functions get port-owned replacements | Decided |
-| D9 | "Compress Data" (in-place LZ packing of the installed data files): not offered; the startup packing prompt is kept from appearing through the original's own check | Proposed, awaiting owner |
+| D9 | Do not support "Compress Data". Installation supplies uncompressed data, which stays uncompressed; no in-place packing or startup packing prompt | Decided |
 
 ## Faithfulness boundary
 
