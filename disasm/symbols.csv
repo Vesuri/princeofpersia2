@@ -1087,3 +1087,4 @@ segment,offset,name,evidence,notes
 17,0x245E,DrawAbout,MEASURED,Original About 600 returns after ordinary Return input
 17,0x463A,CheckPackDataFromGame,MEASURED,Original compression offer declined returns false
 17,0x6D42,MainAlert,MEASURED,Original 401 404 405 406 prompt outcomes paired with port-owned replacements
+11,0x32AA,InstalledAudioDriverEntry,MEASURED,Pointer at A5 minus 0x0F24 installed immediately before this point; guarded audio observer

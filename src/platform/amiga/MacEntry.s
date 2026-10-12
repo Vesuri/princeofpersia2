@@ -727,3 +727,51 @@ pop2_ui_fixture:
 	move.l (sp)+,(a2)+
 	rts
 pop2_ui_fixture_end:
+
+	.text
+	.even
+	.globl pop2_audio_callback
+pop2_audio_callback:
+	movem.l d0-d7/a0-a6,-(sp)
+	move.w ccr,-(sp)
+	move.l g_audioCallbackContext,-(sp)
+	move.l g_audioCallbackCode,a0
+	jsr (a0)
+	addq.l #4,sp
+	move.w (sp)+,ccr
+	movem.l (sp)+,d0-d7/a0-a6
+	rts
+	.globl pop2_audio_lookup
+pop2_audio_lookup:
+	clr.l -(sp)
+	move.l g_audioLookupType,-(sp)
+	move.w #11,-(sp)
+	.word 0xa9a0
+	move.l (sp)+,a0
+	move.l (a0),g_audioEntry
+	move.l a0,-(sp)
+	.word 0xa992
+	rts
+	.globl pop2_audio_invoke
+pop2_audio_invoke:
+	move.l g_audioArgument,-(sp)
+	move.l g_audioSelector,-(sp)
+	move.l g_audioEntry,a0
+	movem.l d2-d7/a0-a6,g_audioBefore
+	jsr (a0)
+	movem.l d2-d7/a0-a6,g_audioAfter
+	addq.l #8,sp
+	move.l d0,g_audioResult
+	rts
+	.globl pop2_audio_test_callback
+pop2_audio_test_callback:
+	move.l 4(sp),a0
+	addq.l #1,(a0)
+	addq.l #1,g_audioCallbacks
+	move.l #0x12345678,d0
+	move.l #0x76543210,d1
+	move.l d0,a0
+	move.l d1,a1
+	rts
+	.globl pop2_audio_fixture_end
+pop2_audio_fixture_end:

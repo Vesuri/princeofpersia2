@@ -150,7 +150,7 @@ disassembled as though it were the executing driver.
 | Frame publication | CODE 17+$5020 and +$508A | CopyBits wrappers; five calls at +$5020 in the opening route. `PaintCopy` at +$55FA is an unscaled row copier, not the publication service |
 | Timing | CODE 17 GetTimer +$3032, SetTimer +$3136, WaitTimer +$3184, WaitTimerNoPoll +$31B8 | TickCount paths; Time Manager sites are separately enumerated in CODE 21/22 |
 | Keyboard | CODE 16+$2832/+283C; CODE 2+$2EFE, +$449E, +$5620 | GetKeys address stored at A5−8040 and invoked indirectly. Startup +$449E is positively observed with target equal to the installed slot |
-| Audio | CODE 11 GetDriverCodeResource +$2212, DecryptHandle +$21B8, LZSS decoder +$3858 | Jnth lookup precedes MDRV fallback; original driver initialization calls through the stored entry at +$32F4. Replacement remains D7 work |
+| Audio | CODE 11 GetDriverCodeResource +$2212, DecryptHandle +$21B8, LZSS decoder +$3858 | Jnth lookup precedes MDRV fallback; original driver initialization calls through the stored entry at +$32F4. The audio build supplies the D7 native Jnth driver; see audio.md |
 | Files | CODE 21 HighLevelFSDispatch sites, beginning +$0BCE; resource calls across CODE 11/17/21/22 | Census retains call-site contexts/selectors; fork-based and Mohawk data files remain distinct. No file-service implementation is claimed |
 | Copy protection | CODE 2+$1A36; choice at +$02F8 | Original cutscene selector 7 avoids challenge selector 100 in this route; no bypass implemented |
 | Packing | CODE 2+$3CE8; CODE 17+$4560 and PackAllData +$41A6 | Original options 0/1 skip the prompt. D9 is still awaiting the owner; no packing policy change |

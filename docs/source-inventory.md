@@ -128,3 +128,7 @@ presentation references, distinct from end-to-end native gameplay.
 The [input/UI contract](input-ui.md) measures original keyboard events, command
 selection and prompt outcomes. D6/D8/D9 replacements use seven hash-pinned,
 byte-verified seams; original code and captured records remain ignored.
+
+The [audio contract](audio.md) distinguishes the configured text from the measured
+five-music/one-effect runtime, identifies MIDI Synth 3.45 inputs, and validates
+original song/effect events against the port-owned Paula driver.

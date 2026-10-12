@@ -44,13 +44,13 @@ def run(name=None, control=None):
           '-nvram_directory',str(destination/'nvram'),'-cfg_directory',str(destination/'cfg'),
           '-snapshot_directory',str(destination/'snap'),'-video','none','-sound','none','-window',
           '-nothrottle','-skip_gameinfo','-debug','-debugger','none','-oslog','-nosamples',
-          '-autoboot_delay','0','-autoboot_script',str(destination/'syntax.lua'),'-seconds_to_run','180']
+          '-autoboot_delay','0','-autoboot_script',str(destination/'syntax.lua'),'-seconds_to_run','600' if env.get('POP2_AUDIO')=='cutscene' else '240' if env.get('POP2_AUDIO') else '180']
     pidfile=destination/'mame.pid'
     with (destination/'session.log').open('wb') as output:
         process=subprocess.Popen(args,cwd=ROOT,env=env,stdout=output,stderr=subprocess.STDOUT)
         pidfile.write_text(str(process.pid)+'\n')
         try:
-            result=process.wait(timeout=240)
+            result=process.wait(timeout=480 if env.get('POP2_AUDIO') else 240)
         except BaseException:
             # Use the shared identity-checked helper; never kill by process name.
             subprocess.run(['/bin/bash','-c','. amiga/env.sh; . "$FSUAE_COMMON"; fsuae_kill_recorded "$1" mame','reference',str(pidfile)],cwd=ROOT,check=True)
@@ -70,7 +70,18 @@ def run(name=None, control=None):
             "FILE_ROUTINE_COMPLETE HallOfFame write-readback", "FILE_ROUTINE_COMPLETE SaveGame write", "FILE_ROUTINE_COMPLETE ResumeGame readback")
         if any(log.count(marker)!=1 for marker in markers+("FILE_ROUTINE_COMPLETE volume-flushed",)):
             raise ValueError("REFERENCE / FILE ROUTINE COMPLETION MISSING")
-    if env.get('POP2_DISPLAY_ROUTE'):
+    if env.get('POP2_AUDIO'):
+        log=(destination/'session.log').read_text()
+        marker='AUDIO_FIXTURE_COMPLETE calls=27' if env['POP2_AUDIO']=='fixture' else 'AUDIO_CUTSCENE_COMPLETE' if env['POP2_AUDIO']=='cutscene' else 'AUDIO_ROUTE_COMPLETE' if env.get('POP2_DISPLAY_ROUTE') else 'AUDIO_OBSERVER_COMPLETE'
+        if log.count(marker+'\n')!=1 or 'FAIL REFERENCE' in log:
+            raise ValueError('REFERENCE / AUDIO COMPLETION MISSING')
+        from driver_image import decrypt, expand
+        from extract_original_data import DESTINATION
+        from amigaxdev.mac.resource_fork import read_resource_fork
+        driver=next(r.body for r in read_resource_fork(DESTINATION/'Prince of Persia 2.rsrc') if r.kind==b'MDRV' and r.rid==11)
+        if (destination/'audio-driver.bin').read_bytes()!=expand(decrypt(driver)):
+            raise ValueError('REFERENCE / AUDIO DRIVER IDENTITY')
+    if env.get('POP2_DISPLAY_ROUTE') and env.get('POP2_AUDIO')!='cutscene':
         log=(destination/'session.log').read_text()
         for label in ('title','first-room'):
             if log.count('DISPLAY_ROUTE_CAPTURED '+label+'\n')!=1:
@@ -90,12 +101,12 @@ def run(name=None, control=None):
         from video_transfer import measure
         measure(destination)
     from report_reference import report
-    report(destination,"file-restart" if env.get("POP2_RESTART_FROM") else "ui" if env.get("POP2_UI") else "display" if env.get("POP2_DISPLAY") else "opening")
+    report(destination,"opening" if env.get("POP2_AUDIO") else "file-restart" if env.get("POP2_RESTART_FROM") else "ui" if env.get("POP2_UI") else "display" if env.get("POP2_DISPLAY") else "opening")
     return destination
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--name')
-    parser.add_argument('--control',choices=['bad-guard'])
+    parser.add_argument('--control',choices=['bad-guard','bad-audio-guard'])
     args=parser.parse_args()
     run(args.name,args.control)

@@ -15,6 +15,7 @@ local files=os.getenv('POP2_FILES') and dofile('tools/mac_files.lua') or nil
 local fileRoutines=os.getenv('POP2_FILE_ROUTINES') and dofile('tools/mac_file_routines.lua') or nil
 local uiRoutines=os.getenv('POP2_UI_ROUTINES') and dofile('tools/mac_ui_routines.lua') or nil
 local inputProbe=os.getenv('POP2_INPUT_PROBE') and dofile('tools/mac_input_probe.lua') or nil
+local audio=os.getenv('POP2_AUDIO') and dofile('tools/mac_audio.lua') or nil
 local inputStage=false
 local ui=os.getenv('POP2_UI') and dofile('tools/mac_ui.lua') or nil
 local display=os.getenv('POP2_DISPLAY') and dofile('tools/mac_display.lua') or nil
@@ -78,6 +79,7 @@ local function observe()
     assert(u(base)==tonumber(info.hex:sub(1,8),16),'SEGMENT HEADER')
     mapped[key]=true
     if mapper then mapper.map(seg,base)end
+    if audio then audio.map(seg,base,guard,meta)end
     print(string.format('MAP seg=%d base=%08X size=%d',seg,base,#info.hex/2))
     if displayRoute and (seg==15 or seg==2) then
      local off=seg==15 and 0x6fec or 0x6056
@@ -117,6 +119,11 @@ emu.register_frame_done(function()
 end)
 emu.register_periodic(function()
  if finished then return end
+ if audio then
+  local ok,handled=pcall(audio.poll)
+  if not ok then fail(handled);return end
+  if handled then return end
+ end
  if videoTransfer then
   local ok,handled=pcall(videoTransfer.poll)
   if not ok then fail(handled);return end
@@ -168,7 +175,7 @@ emu.register_periodic(function()
    frame.rgb(run..'/'..label..'.ppm');frame.indexed(run..'/'..label..'.indices');frame.palette(run..'/'..label..'.rgb');frame.logical(run..'/'..label..'.clut')
    print('DISPLAY_ROUTE_CAPTURED '..label)
    cpu.debug:bpclear(routeProbes[pc]);routePoints[pc]=nil;routeStage=label
-   if label=='first-room' then
+   if label=='first-room' and not audio then
     if display then display.finish()end
     finished=true;manager.machine:exit()
    end
@@ -185,6 +192,7 @@ emu.register_periodic(function()
    print('MEMORY configured=8M addressing=24-bit')
    assert(mem:readv_u8(0xcb2)==0,'ADDRESSING MODE')
    if mapper then mapper.finish()end
+   if audio then print('AUDIO_PHASE opening-checkpoint');if not displayRoute then audio.finish()end end
    if display and not displayRoute then display.finish()end
    if ui then ui.finish()end
    if files then files.finish()end
@@ -194,6 +202,9 @@ emu.register_periodic(function()
    print('REFERENCE_CAPTURED opening-text-1')
   end)
   if not ok then fail(err);return end
+  if os.getenv('POP2_AUDIO')=='fixture' then
+   cpu.debug:bpclear(checkpointProbe);audio.startFixture(checkpoint);checkpoint=nil;return
+  end
   if uiRoutines then
    cpu.debug:bpclear(checkpointProbe)
    local ok,err=pcall(uiRoutines.start,meta,checkpoint);checkpoint=nil
@@ -270,9 +281,22 @@ mac.run(function()
   end
   if displayRoute then
    assert(mac.wait_for('opening',function()return routeStage=='opening'end,18000),'DISPLAY OPENING')
-   mac.press('Esc')
+   if os.getenv('POP2_AUDIO')~='cutscene' then mac.press('Esc')end
    assert(mac.wait_for('title-start',function()return routeStage=='title-start'end,18000),'DISPLAY TITLE START')
-   assert(mac.wait_for('title',function()return routeStage=='title'end,18000),'DISPLAY TITLE');mac.press('Space')
+   if os.getenv('POP2_AUDIO')=='cutscene' then
+    audio.finish();print('AUDIO_CUTSCENE_COMPLETE');finished=true;manager.machine:exit();return
+   end
+   assert(mac.wait_for('title',function()return routeStage=='title'end,18000),'DISPLAY TITLE')
+   if audio then print('AUDIO_PHASE title');mac.wait(120)end
+   mac.press('Space')
+   if audio then
+    assert(mac.wait_for('first-room',function()return routeStage=='first-room'end,18000),'AUDIO GAMEPLAY')
+    print('AUDIO_PHASE gameplay')
+    mac.wait(120);mac.key_down('Right Arrow')
+    assert(mac.wait_for('death',audio.dead,3600),'AUDIO DEATH NOT REACHED')
+    mac.key_up('Right Arrow');mac.wait(240)
+    audio.finish();print('AUDIO_ROUTE_COMPLETE');finished=true;manager.machine:exit();return
+   end
    mac.wait(18000);error('DISPLAY FIRST ROOM NOT REACHED')
   else
    mac.wait(display and 18000 or 6000);error('MILESTONE NOT REACHED')

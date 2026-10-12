@@ -3,12 +3,6 @@
 In playbook order. Each item's acceptance gate passes before the next item's work is
 committed, except where an item says it runs in parallel.
 
-10. **Audio (D7)**, parallel with 8–9. Alone in the Dark's native driver behind a
-    port `Jnth` 11, re-measured for MIDI Synth 3.45; songs from `MIDISnd.dat` and
-    `NISMIDI.dat`; samples from `DigiSnd.dat` and `NISDIGI.dat`; Paula DMA voices
-    only, with measured voice priority.
-    Acceptance: paired audio event logs against the reference for title, gameplay,
-    death and one cutscene.
 11. **Timing.** 60 Hz ticks from PAL fields, Time Manager and VBL tasks at safe
     user-mode points, completed frames paced at vertical blank.
     Acceptance: game-step cadence matches the reference on the fixed 68020 and on

@@ -3,8 +3,8 @@
 `make ui` enables the VBI keyboard bridge and port-owned UI. Original startup
 executes 144 calls matching the Macintosh reference, through menu initialization
 and window setup, then stops at unsupported `Palette2CTab` (CODE 17+$0820,
-trap $AAA0). This is a bounded runtime, not a playable game. Audio and game timing
-remain separate work items; the new UI gate does not claim end-to-end gameplay.
+trap $AAA0). This is a bounded runtime, not a playable game. The audio build adds the separately validated [native driver](audio.md); game timing
+remains open. The UI gate does not claim end-to-end gameplay.
 
 `make ui-check` repeats original input and UI fixtures, checks native execution
 and AGA output, and exercises rejection controls. Reports are in ignored

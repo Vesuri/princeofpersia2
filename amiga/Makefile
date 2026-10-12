@@ -11,7 +11,7 @@ OUT = out/PrinceOfPersia2
 COMMON = -g -m68020 -mtune=68020 -msoft-float -O2 -nostdlib -ffunction-sections -fdata-sections -fno-tree-loop-distribution -MMD -MP
 CXXFLAGS = $(COMMON) -std=gnu++17 -fno-rtti -fno-exceptions -fno-use-cxa-atexit -fcheck-new -fpermissive -Wno-write-strings -DPOP2_PLATFORM_AMIGA $(EXTRA_DEFINES) -include $(FW)/SASCCompat.h -I$(FW) -I$(FW)/compat-include -I../src
 FW_NAMES = AmigaHardware Bitmap CopperList Palette Palette24Bit Sprite Util
-CXX_SRC = ../src/main.cpp ../src/platform/amiga/PlatformAmiga.cpp ../src/platform/amiga/PrinceScreen.cpp ../src/platform/amiga/GCCRuntime.cpp ../src/platform/amiga/CoreRuntime.cpp ../src/platform/amiga/NativeUI.cpp ../src/platform/amiga/NativeInput.cpp ../src/platform/amiga/NativeFiles.cpp ../src/platform/amiga/NativeDisplay.cpp ../src/platform/amiga/NativeResources.cpp $(addprefix $(FW)/,$(addsuffix .cpp,$(FW_NAMES))) $(wildcard ../src/mac/*.cpp)
+CXX_SRC = ../src/main.cpp ../src/platform/amiga/PlatformAmiga.cpp ../src/platform/amiga/PrinceScreen.cpp ../src/platform/amiga/GCCRuntime.cpp ../src/platform/amiga/CoreRuntime.cpp ../src/platform/amiga/NativeAudio.cpp ../src/platform/amiga/PaulaAudio.cpp ../src/platform/amiga/NativeUI.cpp ../src/platform/amiga/NativeInput.cpp ../src/platform/amiga/NativeFiles.cpp ../src/platform/amiga/NativeDisplay.cpp ../src/platform/amiga/NativeResources.cpp $(addprefix $(FW)/,$(addsuffix .cpp,$(FW_NAMES))) $(wildcard ../src/mac/*.cpp)
 ASM_NAMES = AmigaHardwareAssembler BitmapAssembler CopperListAssembler UtilAssembler
 OBJS = $(addprefix obj/,$(notdir $(CXX_SRC:.cpp=.o))) $(addprefix obj/,$(addsuffix .o,$(ASM_NAMES))) obj/Startup.o obj/version.o obj/DisplayC2P.o obj/gcc8_c_support.o obj/gcc8_a_support.o
 PROBES = g_inputVectorRestored g_scaffoldStage g_scaffoldFields g_scaffoldError g_savedDMA g_actualDMA g_savedIRQ g_actualIRQ g_viewRestored g_vectorRestored
@@ -23,6 +23,21 @@ verify-core:
 	@python3 ../tools/core_inputs.py --verify
 PROBES += g_coreTrace g_coreCount g_coreA5 g_coreBelow g_coreSegments g_coreInitial g_coreStopTrap g_coreStopSegment g_coreStopOffset g_coreZoneBytes g_coreHeapOK g_coreVectorRestored g_coreReason
 obj/CoreRuntime.o: ../build/core/Inputs.h
+ifneq (,$(filter -DPOP2_AUDIO,$(EXTRA_DEFINES)))
+obj/CoreRuntime.o: ../build/audio/AudioInputs.h
+ifneq (,$(filter -DPOP2_AUDIO_PROBE,$(EXTRA_DEFINES)))
+obj/CoreRuntime.o: ../build/audio/AudioReplay.h
+verify: verify-audio-replay
+.PHONY: verify-audio-replay
+verify-audio-replay:
+	@python3 ../tools/audio_replay.py --verify
+PROBES += g_audioCalls g_audioDone g_audioRows g_audioCallbacks g_audioABI g_audioDmaCount g_audioDma g_audioSavedADK g_audioActualADK
+endif
+.PHONY: verify-audio
+verify: verify-audio
+verify-audio:
+	@python3 ../tools/audio_inputs.py --verify
+endif
 ifneq (,$(filter -DPOP2_UI,$(EXTRA_DEFINES)))
 obj/CoreRuntime.o: ../build/ui/UIInputs.h
 .PHONY: verify-ui

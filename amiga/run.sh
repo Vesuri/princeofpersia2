@@ -21,7 +21,7 @@ trap 'exit 143' TERM
 python3 ../tools/build_receipt.py verify
 FSUAE="$FSUAE_ARM"
 AMIGA_SETUP=a1200-fast
-NTSC=0 DEBUG=1 SOUND=0 WINDOW="${WINDOW:-none}" WARP="${WARP:-1}"
+NTSC=0 DEBUG=1 SOUND="${SOUND:-0}" WINDOW="${WINDOW:-none}" WARP="${WARP:-1}"
 DEADLINE="${DEADLINE:-60}"
 [[ "$DEADLINE" =~ ^[1-9][0-9]*$ ]] || exit 2
 DH0="$RUN/dh0"; DH1="$RUN/dh1"
@@ -71,7 +71,11 @@ cat "$RUN/gdb-out.log"
 [ "$status" = 0 ] || exit "$status"
 for ((i=0;i<20;i++)); do [ -f "$DH1/Shell.done" ] && break; sleep 1; done
 if [ "${CORE:-0}" = 1 ]; then
-  if [ "${UI_PROBE:-0}" = 1 ]; then
+  if [ "${AUDIO_PROBE:-0}" = 1 ]; then
+    python3 ../tools/check_audio_result.py "$RUN"
+  elif [ "${AUDIO_STARTUP:-0}" = 1 ]; then
+    python3 ../tools/check_audio_result.py "$RUN" --startup "$AUDIO_REFERENCE"
+  elif [ "${UI_PROBE:-0}" = 1 ]; then
     python3 ../tools/check_ui_result.py "$RUN" "$UI_REFERENCE"
   elif [ "${UI_STARTUP:-0}" = 1 ]; then
     python3 ../tools/check_ui_result.py "$RUN" "$UI_REFERENCE" --startup

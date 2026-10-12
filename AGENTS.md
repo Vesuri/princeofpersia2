@@ -7,8 +7,9 @@ The Amiga core executes verified original startup through the named InitGraf sto
 File/resource services have separate paired probes and save/restart checks.
 The display build passes InitGraf and stops at InitFonts; paired display services and
 title/first-room presentation replay exist. The UI build reaches Palette2CTab after
-144 original calls; paired VBI input and owned UI/seam probes exist. Audio, timing
-and later game services remain open.
+144 original calls; paired VBI input and owned UI/seam probes exist. The audio
+build supplies Jnth 11 with paired original audio-service and Paula DMA probes.
+Timing and later game services remain open.
 
 ## Rules
 

@@ -10,6 +10,9 @@
 #include <hardware/intbits.h>
 #include "PlatformAmiga.h"
 #include "PrinceScreen.h"
+#ifdef POP2_AUDIO
+#include "NativeAudio.h"
+#endif
 #ifdef POP2_INPUT
 #include "NativeInput.h"
 static uint32_t inputTicks=0;
@@ -83,6 +86,9 @@ static uint32_t windowVbi() {
 #ifdef POP2_DISPLAY
     display.field();
 #endif
+#ifdef POP2_AUDIO
+    NativeAudio::field();
+#endif
     ++g_systemWindowFields;++g_scaffoldFields;return 0; }
 // Scheduling and exception-vector handback adapted from Alone in the Dark.
 int32_t pop2SystemWindow(int32_t (*operation)(void*),void* context) {
@@ -117,6 +123,9 @@ static uint32_t vbi() { *intreqPointer=INTF_VERTB;
 #endif
 #if defined(POP2_DISPLAY_PROBE) || defined(POP2_DISPLAY)
     display.field();
+#endif
+#ifdef POP2_AUDIO
+    NativeAudio::field();
 #endif
     ++g_scaffoldFields;return 0; }
 static_assert(__builtin_offsetof(ExecBase,IntVects)==84,"Exec vector layout changed");
@@ -215,7 +224,13 @@ bool PlatformAmiga::run() {
     for(unsigned i=0;i<128;++i)NativeInput::inject(0x20,(i&1)==0);
     {uint32_t field=g_scaffoldFields;while(g_scaffoldFields==field){__asm__ volatile("nop" ::: "memory");}}
 #endif
+#ifdef POP2_AUDIO
+    NativeAudio::take();
+#endif
     CoreRuntime::execute();
+#ifdef POP2_AUDIO
+    NativeAudio::restore();
+#endif
 #endif
 #ifdef POP2_INPUT
     NativeInput::shutdown();

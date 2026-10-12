@@ -8,7 +8,7 @@ showing the original 512×384 window.
 The release can be inspected and extracted reproducibly (see the source inventory).
 A pinned headless Macintosh reference reaches the opening cutscene, with a verified
 static/live map of that route. The Amiga UI build executes 144 matching original
-startup calls before its unsupported `Palette2CTab` boundary. Paired service and
+startup calls before its unsupported `Palette2CTab` boundary. Paired service, audio and
 presentation probes exist; end-to-end native gameplay remains unverified.
 
 ## Setup checks
@@ -68,3 +68,8 @@ paired original contracts, byte-verified protection/compression seams and native
 output/rejection checks. Startup reaches the named `Palette2CTab` boundary after
 144 matching original calls. See [input and UI](docs/input-ui.md) for controls,
 coverage and the distinction between service fixtures and native gameplay.
+
+Run `make audio` for the port-owned Halestorm driver or `make audio-check` for
+paired original title/gameplay/death/cutscene audio events and Paula DMA checks.
+See [audio](docs/audio.md) for measured voice priority, data provenance and the
+service-replay boundary. Audio uses Paula voices without software mixing.

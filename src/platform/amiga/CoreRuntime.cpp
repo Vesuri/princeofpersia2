@@ -6,6 +6,13 @@
 #include "NativeFiles.h"
 #include "NativeDisplay.h"
 #include "NativeResources.h"
+#ifdef POP2_AUDIO
+#include "NativeAudio.h"
+#ifdef POP2_AUDIO_PROBE
+#include "../../../build/audio/AudioReplay.h"
+#endif
+#include "../../../build/audio/AudioInputs.h"
+#endif
 #ifdef POP2_UI
 #include "NativeUI.h"
 #include "NativeInput.h"
@@ -29,6 +36,14 @@
 extern DosLibrary* DOSBase;
 extern "C" {
 void pop2_call_mac(void*,void*,void*);
+void pop2_audio_callback();void pop2_audio_lookup();void pop2_audio_invoke();void pop2_audio_fixture_end();
+uint32_t g_audioCallbackCode=0,g_audioCallbackContext=0;
+void pop2_audio_test_callback();
+uint32_t g_audioBefore[13]={},g_audioAfter[13]={};
+uint32_t g_audioCalls=0,g_audioDone=0,g_audioCallbacks=0,g_audioABI=0;
+uint32_t g_audioRows[16000][6]={};
+uint32_t g_audioLookupType=0x4a6e7468;
+uint32_t g_audioEntry=0,g_audioArgument=0,g_audioSelector=0,g_audioResult=0;
 void pop2_unknown_fixture();void pop2_illegal_fixture();
 void pop2_identity_fixture();void pop2_identity_fixture_end();
 void pop2_file_fixture();void pop2_file_fixture_end();
@@ -112,6 +127,10 @@ void flushCode() {
 }
 uint8_t *file=0,*plan=0,*arena=0,*world=0,*stack=0,*initial=0,*a5=0,*low=0;
 uint32_t fileSize=0,planSize=0,worldSize=0;
+uint8_t* audioPitch=nullptr;uint32_t audioPitchSize=0;
+#ifdef POP2_AUDIO_PROBE
+uint8_t* audioReplay=nullptr;uint32_t audioReplaySize=0;uint8_t* audioPacket=nullptr;
+#endif
 uint8_t* uiPlan=nullptr;uint32_t uiPlanSize=0;
 uint8_t* displayFrames=nullptr;uint32_t displayFramesSize=0;
 uint8_t* videoTransfer=nullptr;uint32_t videoTransferSize=0;
@@ -170,6 +189,7 @@ bool load(Resource& r) {
     if(heap.reallocateHandle(r.handle,r.source.size))return fail("RESOURCE / ALLOCATION");
     int32_t readError=NativeResources::read(r.identity,*r.handle,r.source.size);
     if(readError)return fail("RESOURCE / PAYLOAD READ");
+    if(r.type==0x4a6e7468)flushCode();
     if(r.type==0x53545253)g_coreStrs=(uint32_t)*r.handle;
 #ifdef POP2_BAD_RELOCATION
     if(r.type==0x434f4445 && r.id==1)(*r.handle)[16]^=1;
@@ -182,6 +202,9 @@ bool load(Resource& r) {
     return true;
 }
 Resource* get(uint32_t type,int16_t id) {
+#ifdef POP2_AUDIO
+    if(type==0x4d445256){resourceError=0;fail("AUDIO / ORIGINAL MDRV FORBIDDEN");return 0;}
+#endif
     NativeResources::Item item={};resourceError=NativeResources::find(type,id,false,item);
     sw(low+0xa60,resourceError);
     if(resourceError)return 0;
@@ -276,6 +299,18 @@ bool prepare() {
 #endif
 #ifdef POP2_UI
     if(!NativeUI::prepare(heap,low,validMemory,[](uint32_t type,int16_t id,const uint8_t*& bytes,uint32_t& size){Resource* r=get(type,id);if(!r || !load(*r))return false;bytes=*r->handle;size=heap.handleSize(r->handle);return true;}))return fail(NativeUI::error());
+#endif
+#ifdef POP2_AUDIO
+    if(!readFile("audio-pitch.bin",audioPitch,audioPitchSize,512,audioPitchSHA256))return false;
+    if(audioPitchSize!=512)return fail("AUDIO / PITCH INPUT SIZE");
+#ifdef POP2_AUDIO_PROBE
+    if(!readFile("audio-replay.bin",audioReplay,audioReplaySize,2097152,audioReplaySHA256))return false;
+    if(audioReplaySize<12 || l(audioReplay)!=0x50415231 || l(audioReplay+4)>16000 || l(audioReplay+8)>1048576 || audioReplaySize!=12+l(audioReplay+4)*64+l(audioReplay+8))return fail("AUDIO / REPLAY EXTENT");
+    uint8_t* ownedReplay=heap.newPtr(audioReplaySize,true);audioPacket=heap.newPtr(128,true);
+    if(!ownedReplay || !audioPacket)return fail("AUDIO / REPLAY MEMORY");
+    copy(ownedReplay,audioReplay,audioReplaySize);FreeMem(audioReplay,audioReplaySize);audioReplay=ownedReplay;
+#endif
+    if(!NativeAudio::prepare(audioPitch,[](uint32_t type,int16_t id,const uint8_t*& bytes,uint32_t& size){OriginalApplication::Resource r;if(!app.resource(type,id,r))return false;bytes=r.bytes;size=r.size;return true;},validMemory))return fail(NativeAudio::error());
 #endif
 #ifdef POP2_UI_PROBE
     g_uiText=(uint32_t)heap.newPtr(64,true);if(!g_uiText)return fail("UI / PROBE TEXT MEMORY");
@@ -386,6 +421,46 @@ void execute() {
 #else
     pop2_call_mac((void*)pop2_identity_fixture,a5,stack+65536);
 #endif
+#ifdef POP2_AUDIO_PROBE
+    NativeAudio::replay(true);
+#ifdef POP2_AUDIO_BAD_RESOURCE
+    g_audioLookupType=0x4d445256;
+#endif
+    if(!didStop)pop2_call_mac((void*)pop2_audio_lookup,a5,stack+65536);
+#ifdef POP2_AUDIO_BAD_THUNK
+    if(!didStop){((uint8_t*)g_audioEntry)[1]^=1;flushCode();}
+#endif
+    const uint32_t audioCount=l(audioReplay+4);g_audioCalls=audioCount;
+    for(unsigned index=0;index<audioCount && !didStop;++index){
+        const uint8_t* r=audioReplay+12+index*64;
+        if(!NativeAudio::advanceTo(l(r))){fail(NativeAudio::error());didStop=true;break;}
+        g_audioSelector=l(r+4);g_audioArgument=l(r+8);copy(audioPacket,r+16,40);
+        if(g_audioSelector==17){
+            uint32_t offset=l(r+56),size=l(r+60);
+            if(offset>l(audioReplay+8) || size>l(audioReplay+8)-offset){fail("AUDIO / REPLAY SAMPLE");didStop=true;break;}
+            sl(audioPacket,(uint32_t)(audioReplay+12+audioCount*64+offset));
+            sl(audioPacket+20,(uint32_t)(audioPacket+64));
+            sl(audioPacket+30,(uint32_t)pop2_audio_test_callback);sl(audioPacket+34,(uint32_t)(audioPacket+68));
+        }
+        if(g_audioSelector==18 && l(audioPacket+30)){sl(audioPacket+30,(uint32_t)pop2_audio_test_callback);sl(audioPacket+34,(uint32_t)(audioPacket+68));}
+        if(g_audioSelector==9 || g_audioSelector==12 || g_audioSelector==17 || g_audioSelector==18 || g_audioSelector==20 || g_audioSelector==21 || g_audioSelector==27)g_audioArgument=(uint32_t)audioPacket;
+#ifdef POP2_AUDIO_BAD_SELECTOR
+        if(index==7)g_audioSelector=38;
+#endif
+#ifdef POP2_AUDIO_BAD_CALLBACK
+        if(g_audioSelector==17)sl(audioPacket+30,0x00bad000);
+#endif
+        pop2_call_mac((void*)pop2_audio_invoke,a5,stack+65536);
+        bool preserved=true;for(unsigned reg=0;reg<13;++reg)if(g_audioBefore[reg]!=g_audioAfter[reg])preserved=false;
+        if(!didStop){if(preserved)++g_audioABI;else {fail("AUDIO / ABI REGISTERS");didStop=true;}}
+        const auto& audioState=NativeAudio::state();
+        auto* row=g_audioRows[index];row[0]=g_audioResult;row[1]=int32_t(audioState.selected);
+        row[2]=audioState.selected<0?0:audioState.cursors[audioState.selected].step;
+        row[3]=audioState.voices.effect.duration>=0;row[4]=g_audioCallbacks;row[5]=g_audioABI;
+        if(!didStop)++g_audioDone;
+    }
+    if(!didStop){fail("AUDIO / FIXTURE COMPLETE");didStop=true;}
+#endif
 #ifdef POP2_RESOURCE_PROBE
     if(!didStop)pop2_call_mac((void*)pop2_resource_fixture,a5,stack+65536);
 #endif
@@ -448,6 +523,10 @@ void execute() {
     }
 }
 void release() {
+#ifdef POP2_AUDIO
+    NativeAudio::release();
+#endif
+    if(audioPitch)FreeMem(audioPitch,audioPitchSize);audioPitch=nullptr;
     NativeDisplay::reset();NativeResources::release();app.close();heap.reset();
     if(uiPlan)FreeMem(uiPlan,uiPlanSize);uiPlan=nullptr;
     if(initial)FreeMem(initial,g_coreBelow);if(stack)FreeMem(stack,65536);if(world)FreeMem(world,worldSize);
@@ -461,17 +540,26 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
     uint32_t pc=l(frame+2),seg=0,off=0;
     if(usp<stack || usp>stack+65536-4)return stop(frame,usp,"STACK / TRAP ARGUMENT EXTENT",0,seg,off);
     bool codeCaller=location(pc,seg,off);
+    bool audioCaller=false;
+#ifdef POP2_AUDIO
+    for(unsigned i=0;i<resourceCount;++i){auto& r=resources[i];
+        if(r.type==0x4a6e7468 && r.id==11 && r.identity==0xfffffff0UL && r.handle && *r.handle && pc==(uint32_t)*r.handle){
+            if(heap.handleSize(r.handle)!=4 || l(*r.handle)!=0xaffc4e75)return stop(frame,usp,"AUDIO / JNTH BYTES",0,seg,off);
+            audioCaller=true;break;
+        }
+    }
+#endif
 #ifdef POP2_UI
     bool cachedCaller=pc>=(uint32_t)pop2_cached_services && pc<(uint32_t)pop2_cached_services_end && !((pc-(uint32_t)pop2_cached_services)&3);
 #else
     bool cachedCaller=false;
 #endif
     bool tableCaller=pc>=(uint32_t)a5+app.world().jumpOffset && pc<(uint32_t)a5+app.world().jumpOffset+app.world().jumpBytes;
-    bool fixtureCaller=(pc>=(uint32_t)pop2_ui_fixture && pc<(uint32_t)pop2_ui_fixture_end) || (pc>=(uint32_t)pop2_display_scene_init && pc<(uint32_t)pop2_display_scene_end) || (pc>=(uint32_t)pop2_display_fixture && pc<(uint32_t)pop2_display_fixture_end) || (pc>=(uint32_t)pop2_identity_fixture && pc<(uint32_t)pop2_identity_fixture_end) ||
+    bool fixtureCaller=(pc>=(uint32_t)pop2_audio_lookup && pc<(uint32_t)pop2_audio_fixture_end) || (pc>=(uint32_t)pop2_ui_fixture && pc<(uint32_t)pop2_ui_fixture_end) || (pc>=(uint32_t)pop2_display_scene_init && pc<(uint32_t)pop2_display_scene_end) || (pc>=(uint32_t)pop2_display_fixture && pc<(uint32_t)pop2_display_fixture_end) || (pc>=(uint32_t)pop2_identity_fixture && pc<(uint32_t)pop2_identity_fixture_end) ||
         (pc>=(uint32_t)pop2_file_fixture && pc<(uint32_t)pop2_file_fixture_end) ||
         (pc>=(uint32_t)pop2_replay_fixture && pc<(uint32_t)pop2_replay_fixture_end) ||
         (pc>=(uint32_t)pop2_resource_fixture && pc<(uint32_t)pop2_resource_fixture_end);
-    if(!codeCaller && !tableCaller && !fixtureCaller && !cachedCaller && pc!=(uint32_t)pop2_old_loadseg && pc!=(uint32_t)pop2_old_exit)
+    if(!codeCaller && !tableCaller && !fixtureCaller && !cachedCaller && !audioCaller && pc!=(uint32_t)pop2_old_loadseg && pc!=(uint32_t)pop2_old_exit)
         return stop(frame,usp,"TRAP / UNKNOWN CALLER",0,seg,off);
     uint16_t trap=w((uint8_t*)pc);
     if((trap&0x0800) && !fixtureCaller && usp>stack+65536-10)
@@ -481,13 +569,23 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
     if(codeCaller) {
         if(g_coreCount==traceCapacity)return stop(frame,usp,"TRACE / CAPACITY",trap,seg,off);
         uint32_t* row=g_coreTrace[g_coreCount++];row[0]=seg;row[1]=off;row[2]=trap;
-    } else if(!builtin && !fixtureCaller && !(pc>=(uint32_t)a5+app.world().jumpOffset && pc<(uint32_t)a5+app.world().jumpOffset+app.world().jumpBytes && trap==0xa9f0))
+    } else if(!builtin && !fixtureCaller && !audioCaller && !(pc>=(uint32_t)a5+app.world().jumpOffset && pc<(uint32_t)a5+app.world().jumpOffset+app.world().jumpBytes && trap==0xa9f0))
         return stop(frame,usp,"TRAP / UNKNOWN CALLER",trap,seg,off);
     if(cachedCaller){
         uint32_t caller=l(usp),callerSegment=0,callerOffset=0;
         if(!location(caller,callerSegment,callerOffset) && !(caller>=(uint32_t)pop2_ui_fixture && caller<(uint32_t)pop2_ui_fixture_end))return stop(frame,usp,"TRAP / CACHED RETURN OWNER",trap,seg,off);
         sl(frame+2,caller);usp+=4;
     }else sl(frame+2,pc+(builtin?4:2));
+#ifdef POP2_AUDIO
+    if(audioCaller){
+        uint32_t caller=l(usp),callerSeg=0,callerOff=0;
+        bool fromFixture=caller>=(uint32_t)pop2_audio_lookup && caller<(uint32_t)pop2_audio_fixture_end;
+        if(!location(caller,callerSeg,callerOff) && !fromFixture)return stop(frame,usp,"AUDIO / JNTH RETURN OWNER",trap,seg,off);
+        if(!validMemory((uint32_t)usp,12))return stop(frame,usp,"AUDIO / ABI STACK",trap,seg,off);
+        if(!NativeAudio::dispatch(l(usp+4),l(usp+8),regs[0]))return stop(frame,usp,NativeAudio::error(),trap,seg,off);
+        return (uint32_t)usp;
+    }
+#endif
     if(!builtin && (trap==0xa9f0 || trap==0xa9f4)) {
         uint8_t* patch=trap==0xa9f0?patchedLoad:patchedExit;
         if(patch) { flushCode();usp-=4;sl(usp,pc+2);sl(frame+2,(uint32_t)patch);return (uint32_t)usp; }
@@ -693,6 +791,25 @@ extern "C" uint32_t pop2UserDispatch(uint32_t* parked) {
     g_coreServiceActive=1;
     uint8_t* resumed=(uint8_t*)pop2Dispatch(regs,frame,usp);
     g_coreServiceActive=0;
+#ifdef POP2_AUDIO
+    if(!didStop){
+        if(!NativeAudio::sync())resumed=(uint8_t*)stop(frame,resumed,NativeAudio::error(),0,0,0);
+        uint32_t callback=0,context=0,cs=0,co=0;
+        if(!didStop && NativeAudio::callback(callback,context)){
+            bool fixtureCallback=false;
+#ifdef POP2_AUDIO_PROBE
+            fixtureCallback=callback==(uint32_t)pop2_audio_test_callback;
+#endif
+            bool jump=callback>=(uint32_t)a5+app.world().jumpOffset+2 && callback<(uint32_t)a5+app.world().jumpOffset+app.world().jumpBytes && ((callback-(uint32_t)a5-app.world().jumpOffset)&7)==2;
+            if((!location(callback,cs,co) && !jump && !fixtureCallback) || !validMemory(context,1) || resumed<stack+128)
+                resumed=(uint8_t*)stop(frame,resumed,"AUDIO / CALLBACK OWNER",0,0,0);
+            else{
+                g_audioCallbackCode=callback;g_audioCallbackContext=context;
+                resumed-=4;sl(resumed,l(frame+2));sl(frame+2,(uint32_t)pop2_audio_callback);
+            }
+        }
+    }
+#endif
     uint8_t* image=resumed-66;
     for(unsigned i=0;i<15;++i)sl(image+4*i,regs[i]);
     sw(image+60,w(frame));sl(image+62,l(frame+2));

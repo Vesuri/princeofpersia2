@@ -66,6 +66,9 @@ int32_t find(uint32_t type,int16_t id,bool currentOnly,Item& out) {
     if(!directory || selected<0)return -193;
     int16_t key=selected;ResourceDirectory::View view={};
     do {
+#ifdef POP2_AUDIO
+        if(key==0 && type==0x4a6e7468 && id==11){out={0xfffffff0UL,type,4,id,forks[0].ref,0};return 0;}
+#endif
         if(directory->find(key,type,id,view)) {
             out={view.identity,view.entry.type,view.entry.size,view.entry.id,forks[key].ref,view.entry.attrs};return 0;
         }
@@ -74,12 +77,20 @@ int32_t find(uint32_t type,int16_t id,bool currentOnly,Item& out) {
     return -192;
 }
 int32_t info(uint32_t identity,Item& out,const uint8_t*& name,uint8_t& nameLength) {
-    if(!directory)return -193;ResourceDirectory::View view={};if(!directory->get(identity,view))return -192;
+    if(!directory)return -193;
+#ifdef POP2_AUDIO
+    if(identity==0xfffffff0UL){static const uint8_t label[]="Paula Halestorm";out={identity,0x4a6e7468,4,11,forks[0].ref,0};name=label;nameLength=sizeof(label)-1;return 0;}
+#endif
+    ResourceDirectory::View view={};if(!directory->get(identity,view))return -192;
     out={identity,view.entry.type,view.entry.size,view.entry.id,forks[view.ref].ref,view.entry.attrs};
     name=view.entry.name;nameLength=view.entry.nameLength;return 0;
 }
 int32_t read(uint32_t identity,uint8_t* bytes,uint32_t size) {
-    if(!directory)return -193;ResourceDirectory::View view={};
+    if(!directory)return -193;
+#ifdef POP2_AUDIO
+    if(identity==0xfffffff0UL){if(size!=4)return -50;bytes[0]=0xaf;bytes[1]=0xfc;bytes[2]=0x4e;bytes[3]=0x75;return 0;}
+#endif
+    ResourceDirectory::View view={};
     if(!directory->get(identity,view))return -192;
     if(size!=view.entry.size)return -50;
     return directory->read(identity,0,bytes,size);
