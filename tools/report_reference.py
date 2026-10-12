@@ -81,12 +81,13 @@ def png(rgb):
     return b'\x89PNG\r\n\x1a\n'+chunk(b'IHDR',struct.pack('>IIBBBBB',640,480,8,2,0,0,0))+chunk(b'IDAT',zlib.compress(rows))+chunk(b'IEND',b'')
 
 
-def report(directory):
+def report(directory,profile="opening"):
+    require(profile in ("opening","file-restart"),"RESULT PROFILE")
     trace,facts=analyze((directory/'session.log').read_text())
     frame=(directory/'opening.ppm').read_bytes()
     require(frame.startswith(b'P6\n640 480\n255\n') and len(frame)==921615,'CAPTURE FORMAT')
     outputs={'opening.ppm':frame,'traps.txt':trace}
-    expected=pins(ROOT/'manifest/reference-results.sha256')
+    expected=pins(ROOT/('manifest/reference-results.sha256' if profile=='opening' else 'manifest/reference-file-restart.sha256'))
     # Preserve useful diagnostic output even when the pinned comparison fails.
     (directory/'traps.txt').write_bytes(trace)
     (directory/'opening.png').write_bytes(png(frame[15:]))

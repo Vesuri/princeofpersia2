@@ -29,6 +29,13 @@ def generate(path):
     for seg,(jt,offset) in sorted(first.items()):
         data=code[seg]
         lines.append('[%d]={jt=%d,offset=%d,hex=%s},'%(seg,jt,offset,json.dumps(data.hex())))
+    lines.append('},resources={')
+    for fork in sorted(DESTINATION.rglob('*.rsrc')):
+        if not fork.stat().st_size:continue
+        name=str(fork.relative_to(DESTINATION))[:-5]
+        resources=read_resource_fork(fork)
+        entries=','.join('[%s]=%d'%(json.dumps(r.kind.hex()+':'+str(r.rid)),len(r.body)) for r in resources)
+        lines.append('[%s]={%s},'%(json.dumps(name),entries))
     lines.append('}}\n')
     path.write_text('\n'.join(lines))
 

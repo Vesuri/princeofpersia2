@@ -65,5 +65,50 @@ if g_coreSegments[2][0] != 0
  printf "CORE SEGMENT id=2 base=%08lx size=%lu\n",g_coreSegments[2][0],g_coreSegments[2][1]
  dump binary memory @RUN@/CODE_2.bin g_coreSegments[2][0] g_coreSegments[2][0]+g_coreSegments[2][1]
 end
+printf "FILE VERIFY files=%lu bytes=%lu\n",g_fileVerifiedFiles,g_fileVerifiedBytes
+if g_fileVolumeQueries != 0
+ printf "FILE VOLUMES count=%lu\n",g_fileVolumeQueries
+ set $i=0
+ while $i<g_fileVolumeQueries && $i<128
+  printf "FILE VOLUME index=%u blocks=%lu used=%lu blockbytes=%lu created=%lu modified=%lu locked=%lu\n",$i,g_fileVolume[$i][0],g_fileVolume[$i][1],g_fileVolume[$i][2],g_fileVolume[$i][3],g_fileVolume[$i][4],g_fileVolume[$i][5]
+  set $i=$i+1
+ end
+end
+if g_replayBegin != 0
+ printf "FILE REPLAY completed=%lu count=%lu size=%lu\n",g_replayCompleted,g_replayCount,g_replaySize
+ dump binary memory @RUN@/file-replay-out.bin g_replayBegin g_replayBegin+g_replaySize
+end
+if g_fileProbePB != 0
+ printf "FILE WRITE mode=%lu result=%ld\n",g_fileProbeWriteMode,g_fileProbeWriteResult
+ printf "FILE PROBE open=%ld read=%ld close=%ld windows=%lu fields=%lu active=%u actual=%lu\n",g_fileProbeResults[0],g_fileProbeResults[1],g_fileProbeResults[2],g_systemWindows,g_systemWindowFields,g_systemWindowActive,*(unsigned long*)(g_fileProbePB+40)
+ dump binary memory @RUN@/file-probe.bin g_fileProbeBuffer g_fileProbeBuffer+16
+end
+if g_fileProbeFCB != 0
+ printf "FCB PROBE open=%ld query=%ld close=%ld\n",g_fileProbeFCBResults[0],g_fileProbeFCBResults[1],g_fileProbeFCBResults[2]
+ dump binary memory @RUN@/file-fcb.bin g_fileProbeFCB g_fileProbeFCB+128
+ set $name=*(unsigned long*)(g_fileProbeFCB+18)
+ dump binary memory @RUN@/file-fcb-name.bin $name $name+32
+end
+if g_specProbeCount > 11
+ printf "SPEC PROBE INVALID COUNT %lu\n",g_specProbeCount
+ quit 1
+end
+if g_specProbeCount != 0
+ set $i=0
+ while $i<g_specProbeCount
+  printf "SPEC PROBE index=%u result=%d\n",$i,g_specProbeResults[$i]
+  set $i=$i+1
+ end
+ dump binary memory @RUN@/file-specs.bin g_specProbeOutputs[0] g_specProbeOutputs[0]+g_specProbeCount*70
+end
+if g_resourceProbeHandle != 0
+ printf "RESOURCE CODE NAME address=%08lx\n",g_resourceProbeNames[3]
+ printf "RESOURCE PROBE shape=%08lx option=%08lx refs=%u/%u/%u/%u\n",g_resourceProbeHandle,g_resourceProbeOption,g_resourceProbeRefs[0],g_resourceProbeRefs[1],g_resourceProbeRefs[2],g_resourceProbeRefs[3]
+ set $shape=*(unsigned long*)g_resourceProbeHandle
+ dump binary memory @RUN@/resource-shape.bin $shape $shape+g_resourceProbeSizes[0]
+ set $option=*(unsigned long*)g_resourceProbeOption
+ dump binary memory @RUN@/resource-option.bin $option $option+g_resourceProbeSizes[1]
+ dump binary memory @RUN@/resource-info.bin g_resourceProbeInfo g_resourceProbeInfo+264
+end
 detach
 quit 0

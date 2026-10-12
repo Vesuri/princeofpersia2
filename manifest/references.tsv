@@ -1,7 +1,7 @@
 project	commit	role
 AmigaXDev	b725a04135a9b79646ec9c12d256daa302082676	setup conventions and shared port playbook
 Vette	b3074ba6784a834864c222db9b4f0ccabd38de03	Macintosh native-instruction port reference; no code copied
-Alone in the Dark	935aed56a0ec6f7cf5965969c2ea2d85d74637e6	Macintosh runtime reuse reference; extraction, AFI1 metadata, HFS installer, reference input/framebuffer/trap harness, literal checker, flow-following trap census and scaffold runtime/platform/launch/slave/release patterns adapted
+Alone in the Dark	935aed56a0ec6f7cf5965969c2ea2d85d74637e6	Macintosh runtime reuse reference; extraction, AFI1 metadata, HFS installer, reference input/framebuffer/trap harness, literal checker, flow-following trap census and scaffold runtime/platform/launch/slave/release patterns and file/resource/DOS-window services adapted
 AmigaXDev	cbec18036ea0ccda2fbdbff0e6f4eedb1463a63b	canonical dA JoRMaS framework scaffold
 Kalms C2P	d8ecf79a3325615305dd800ae7704b518e0d9dda	public-domain eight-plane converter via Alone in the Dark
 AmigaXDev	be5bac453efaa23f571009b2bfc9e0f4f35ffcae	shared FS-UAE launcher and monitor helper

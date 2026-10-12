@@ -89,7 +89,7 @@ uint8_t* ResourceDirectory::copyName(const Entry& e) {
 int32_t ResourceDirectory::mutation(int16_t f,int16_t replaced,const Entry* entry) const {
     if(!forks_[f].writable && entry)return -54;
     uint16_t n=count(forks_[f].ref)+(replaced<0 && entry ? 1 : 0)-(replaced>=0 && !entry ? 1 : 0);
-    if(n>maximumResources)return -108;Entry* recipe=n ? new Entry[n] : 0;if(n && !recipe)return -108;
+    if(n>ResourceMap::maximumResources)return -108;Entry* recipe=n ? new Entry[n] : 0;if(n && !recipe)return -108;
     uint16_t indices[maximumResources],total=order(f,indices),at=0;
     for(uint16_t i=0;i<total;++i) {
         if(indices[i]==replaced) { if(entry)recipe[at++]=*entry; }

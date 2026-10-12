@@ -52,3 +52,7 @@ launchers, build audits and development-only packaging.
 Run `make core` for the bounded original startup executable or `make core-check`
 for paired Macintosh/Amiga execution and rejection controls. See
 [core runtime](docs/core-runtime.md) for relocations, services and current limits.
+
+Run `make files-check` for paired original/native file operations, resource
+validation and save persistence across a fresh boot. See [file services](docs/file-services.md)
+for the tested scope and the distinction between service probes and continued gameplay.

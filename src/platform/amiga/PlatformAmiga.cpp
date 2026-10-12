@@ -8,6 +8,7 @@
 #include <hardware/dmabits.h>
 #include <hardware/intbits.h>
 #include "PlatformAmiga.h"
+#include "SystemWindow.h"
 #include "framework/CopperList.h"
 #include "framework/AmigaHardware.h"
 #ifdef POP2_CORE
@@ -21,6 +22,40 @@ volatile uint16_t g_savedDMA=0,g_actualDMA=0,g_savedIRQ=0,g_actualIRQ=0,g_viewRe
 __attribute__((noinline)) void pop2ScaffoldRestored() { __asm__ volatile("nop" ::: "memory"); }
 }
 static Interrupt server;
+#ifdef POP2_CORE
+static Interrupt windowServer;
+static IntVector savedVertb;
+static bool vertbTaken=false;
+extern "C" uint16_t g_coreServiceActive;
+extern "C" { volatile uint32_t g_systemWindows=0,g_systemWindowFields=0;volatile uint16_t g_systemWindowActive=0; }
+static uint32_t windowVbi() { ++g_systemWindowFields;++g_scaffoldFields;return 0; }
+// Scheduling and exception-vector handback adapted from Alone in the Dark.
+int32_t pop2SystemWindow(int32_t (*operation)(void*),void* context) {
+    if(!operation || !vertbTaken || !g_coreServiceActive || g_systemWindowActive ||
+       SysBase->TDNestCnt!=0 || SysBase->IDNestCnt!=-1)return -50;
+    Disable();
+    if(!CoreRuntime::suspendVectors()) { Enable();return -50; }
+    uint16_t mask=AmigaHardware::enabledInterrupts();
+    IntVector portVertb=SysBase->IntVects[INTB_VERTB];
+    SysBase->IntVects[INTB_VERTB]=savedVertb;
+    windowServer.is_Node.ln_Type=NT_INTERRUPT;windowServer.is_Node.ln_Pri=127;
+    windowServer.is_Node.ln_Name=(char*)"Prince file VBI";
+    windowServer.is_Data=0;windowServer.is_Code=(void(*)())windowVbi;
+    AddIntServer(INTB_VERTB,&windowServer);
+    g_systemWindowActive=1;
+    AmigaHardware::setInterrupts(0x7fff,false);
+    AmigaHardware::setInterrupts(INTF_INTEN|g_savedIRQ|mask,true);
+    Enable();Permit();
+    int32_t result=operation(context);
+    Forbid();Disable();
+    RemIntServer(INTB_VERTB,&windowServer);SysBase->IntVects[INTB_VERTB]=portVertb;
+    CoreRuntime::resumeVectors();
+    AmigaHardware::setInterrupts(0x7fff,false);
+    AmigaHardware::setInterrupts(mask,true);
+    g_systemWindowActive=0;++g_systemWindows;
+    Enable();return result;
+}
+#endif
 static uint32_t vbi() { *intreqPointer=INTF_VERTB;++g_scaffoldFields;return 0; }
 static_assert(__builtin_offsetof(ExecBase,IntVects)==84,"Exec vector layout changed");
 bool PlatformAmiga::run() {
@@ -53,6 +88,9 @@ bool PlatformAmiga::run() {
     server.is_Node.ln_Type=NT_INTERRUPT;server.is_Node.ln_Name=(char*)"Prince scaffold VBI";
     server.is_Code=(void(*)())vbi;
     Disable();IntVector saved=SysBase->IntVects[INTB_VERTB];
+#ifdef POP2_CORE
+    savedVertb=saved;vertbTaken=true;
+#endif
     SysBase->IntVects[INTB_VERTB].iv_Data=0;
     SysBase->IntVects[INTB_VERTB].iv_Code=(void(*)())vbi;
     SysBase->IntVects[INTB_VERTB].iv_Node=&server.is_Node;
@@ -68,7 +106,11 @@ bool PlatformAmiga::run() {
     AmigaHardware::clearInterruptRequests(INTF_VERTB);
     AmigaHardware::setCopperList(osCopper,true);
     *bplcon3Pointer=0x0c00;
-    Disable();SysBase->IntVects[INTB_VERTB]=saved;Enable();
+    Disable();SysBase->IntVects[INTB_VERTB]=saved;
+#ifdef POP2_CORE
+    vertbTaken=false;
+#endif
+    Enable();
     AmigaHardware::setDMAChannels(dmaMask,false);
     AmigaHardware::setInterrupts(0x7fff,false);
     AmigaHardware::setDMAChannels(g_savedDMA,true);

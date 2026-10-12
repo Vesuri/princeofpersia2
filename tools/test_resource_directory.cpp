@@ -112,7 +112,11 @@ int main(int argc,char** argv) {
     Sink fullSink;assert(!ResourceWriter::serialize(full.data(),full.size(),fullSink.sink()));
     Data fullSource;fullSource.bytes=fullSink.target;assert(!directory.open(1,fullSource.source(),true));
     assert(directory.add(1,e,id)==-108 && directory.count(1)==768);
-    assert(directory.open(2,source.source(),true)==-108 && !directory.active(2) && directory.count(1)==768);
+    // A per-file limit must not also cap the whole open resource chain.
+    for(int16_t fork=2;fork<=5;++fork)assert(!directory.open(fork,fullSource.source(),true));
+    assert(directory.open(6,fullSource.source(),true)==-108 && !directory.active(6));
+    for(int16_t fork=1;fork<=5;++fork)assert(directory.count(fork)==768);
+    assert(!directory.open(6,source.source(),true));
     if(argc>3) {
         directory.clear();Data original;std::ifstream file(argv[2],std::ios::binary);
         original.bytes.assign(std::istreambuf_iterator<char>(file),{});original.metadataOnly=true;

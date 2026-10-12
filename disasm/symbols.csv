@@ -24,9 +24,13 @@ segment,offset,name,evidence,notes
 2,0x0D2C,DialogDrawBox_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x0D78,DrawSaveGameMsg_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x0EB0,GetSaveGameLocation_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
+2,0x0F1A,InitSavedGameStruct,DERIVED,Followed routine entry and original call sites; RTS-adjacent MacsBug name identifies routine
 2,0x0FF2,InitSavedGameStruct_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
+2,0x1038,ResumeGame,DERIVED,Followed routine entry and original call sites; RTS-adjacent MacsBug name identifies routine
 2,0x11E4,ResumeGame_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
+2,0x1270,SaveGame,DERIVED,Followed routine entry and original call sites; RTS-adjacent MacsBug name identifies routine
 2,0x1440,SaveGame_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
+2,0x1504,SetCheckSavedGameCheckSumValues,DERIVED,Followed routine entry and original call sites; RTS-adjacent MacsBug name identifies routine
 2,0x15AC,SetCheckSavedGameCheckSumValues_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x1786,SaveRebirthPtStatus_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x190A,SetRebirthPtInitials_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
@@ -43,8 +47,10 @@ segment,offset,name,evidence,notes
 2,0x2208,DrawHallOfFameDialog_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x25B6,GetHallOfFameName_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x274C,HOFAddPlayer_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
+2,0x275C,InitHallOfFame,DERIVED,Followed routine entry and original call sites; RTS-adjacent MacsBug name identifies routine
 2,0x2856,InitHallOfFame_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x29CC,ShowHallOfFame_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
+2,0x29DE,WriteHallOfFameFile,DERIVED,Followed routine entry and original call sites; RTS-adjacent MacsBug name identifies routine
 2,0x2AB8,WriteHallOfFameFile_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x2D0C,DoCreditsDialog_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x2D6C,DrawCreditsPage_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
@@ -69,9 +75,11 @@ segment,offset,name,evidence,notes
 2,0x3CE8,StartupPackingChoice,MEASURED,Reference records original option words before packing decision
 2,0x3E1E,MRInit_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x3E7C,SetWindowPos_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
+2,0x3E90,CoreInitGrafBoundary,MEASURED,First unsupported native service after matched original startup
 2,0x4126,InitGame_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x4174,ExitGame_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x426A,GetSetDefaultSettings_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
+2,0x4284,OptionsResourceFileName,MEASURED,OpenResFile calls pass this original CODE-resident Pascal filename
 2,0x445E,MakeGameFile_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x449E,GetKeys_Startup,DERIVED,Indirect call through cached GetKeys service
 2,0x44BA,SetCheatMode_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
@@ -981,8 +989,10 @@ segment,offset,name,evidence,notes
 18,0x0C74,RemoveLastStonePeel_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 18,0x0CF4,SinkDsrtStone_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 18,0x0EC4,TriggerStone_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
+19,0x02D6,RegisterRuntimeExit,MEASURED,Original writes the A5-relative exit callback slot
 19,0x0478,RuntimeSavedA5,MEASURED,Data slot addressed through return-address getter; eight observed stores
 19,0x0480,SaveRuntimeA5,MEASURED,Original writes A5 into CODE 19 data slot
+19,0x4CD2,RunStaticInitializers,MEASURED,Original STD STI resource sequence and constructor execution
 20,0x005A,SysEnvirons_Trap,MEASURED,Reference service call and returned environment record
 20,0x01C2,Gestalt_Trap,MEASURED,Reference identity selectors and returned values
 20,0x0D68,audioGetError_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
@@ -1067,6 +1077,3 @@ segment,offset,name,evidence,notes
 23,0x140A,ATMGlass_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 23,0x1470,DrawObjGlass_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 23,0x154A,TriggerGlass_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
-2,0x3E90,CoreInitGrafBoundary,MEASURED,First unsupported native service after matched original startup
-19,0x02D6,RegisterRuntimeExit,MEASURED,Original writes the A5-relative exit callback slot
-19,0x4CD2,RunStaticInitializers,MEASURED,Original STD STI resource sequence and constructor execution

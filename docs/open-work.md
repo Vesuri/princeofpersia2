@@ -3,9 +3,6 @@
 In playbook order. Each item's acceptance gate passes before the next item's work is
 committed, except where an item says it runs in parallel.
 
-7. **Files and resources.** Mohawk resource files, `MHWK` data-fork archives, the
-   file calls the reference path uses, saves, `Prince2.opt` and Hall of Fame.
-   Acceptance: paired read/write traces against the reference; saves survive restart.
 8. **Display (D3).** 640×480×8 logical screen and GDevice, GWorlds, CopyBits and
    palettes from Alone in the Dark; a new PAL hires interlaced 8-plane FMODE 3 screen
    showing WIND 400 1:1, with Vette's interlace parity handling; dirty-rectangle C2P;

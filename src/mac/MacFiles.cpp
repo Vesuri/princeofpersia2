@@ -254,7 +254,7 @@ int16_t MacFiles::selectVolume(int16_t& ref,int16_t index,const char* name,uint3
 static void volumeWord(uint8_t* pb,uint16_t offset,uint16_t value) { pb[offset]=value>>8;pb[offset+1]=value; }
 static void volumeLong(uint8_t* pb,uint16_t offset,uint32_t value) { volumeWord(pb,offset,value>>16);volumeWord(pb,offset+2,value); }
 int16_t MacFiles::volumeInfo(uint32_t directory,const MacVolumeBacking& backing,uint8_t* pb) const {
-    if(!pb || !entry(directory) || !entry(directory)->directory || !entry(system)
+    if(!pb || !entry(directory) || !entry(directory)->directory || (system && (!entry(system) || !entry(system)->directory))
         || !backing.blocks || backing.used>backing.blocks || !backing.blockBytes)return unsupported;
     uint32_t groups=1,blockBytes=backing.blockBytes;
     // Both HFS counts are 16-bit. Aggregate whole native blocks, rounding

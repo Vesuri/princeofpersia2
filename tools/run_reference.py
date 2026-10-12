@@ -31,6 +31,9 @@ def run(name=None, control=None):
         raise ValueError('REFERENCE / INVALID RUN NAME')
     destination=ROOT/'ref/mame/runs'/name
     prepare(destination,'755')
+    if os.environ.get('POP2_RESTART_FROM'):
+        from reference_saved_files import install_saved
+        install_saved(Path(os.environ['POP2_RESTART_FROM']),destination)
     generate(destination/'metadata.lua')
     subprocess.run(['python3','tools/check_mame_literals.py','--syntax-wrapper',str(destination/'syntax.lua')],cwd=ROOT,check=True)
     env=os.environ.copy()
@@ -61,8 +64,14 @@ def run(name=None, control=None):
             raise ValueError('REFERENCE / BYTE-GUARD CONTROL DID NOT REJECT')
         print('REFERENCE BYTE-GUARD CONTROL PASS:',destination.relative_to(ROOT))
         return destination
+    if env.get("POP2_FILE_ROUTINES"):
+        log=(destination/"session.log").read_text()
+        markers=("FILE_ROUTINE_COMPLETE HallOfFame restart-read", "FILE_ROUTINE_COMPLETE ResumeGame restart-read") if env.get("POP2_RESTART_FROM") else (
+            "FILE_ROUTINE_COMPLETE HallOfFame write-readback", "FILE_ROUTINE_COMPLETE SaveGame write", "FILE_ROUTINE_COMPLETE ResumeGame readback")
+        if any(log.count(marker)!=1 for marker in markers+("FILE_ROUTINE_COMPLETE volume-flushed",)):
+            raise ValueError("REFERENCE / FILE ROUTINE COMPLETION MISSING")
     from report_reference import report
-    report(destination)
+    report(destination,"file-restart" if env.get("POP2_RESTART_FROM") else "opening")
     return destination
 
 if __name__=='__main__':

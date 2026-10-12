@@ -9,7 +9,11 @@ local cpu=manager.machine.devices[':maincpu'];local mem=cpu.spaces.program
 local dbg=assert(manager.machine.debugger,'REFERENCE / DEBUGGER REQUIRED')
 local control=os.getenv('POP2_REFERENCE_CONTROL')
 local mapper=os.getenv('POP2_MAP') and dofile('tools/mac_map.lua') or nil
+local resourceCalls=os.getenv('POP2_RESOURCES') and dofile('tools/mac_resource_calls.lua') or nil
+local files=os.getenv('POP2_FILES') and dofile('tools/mac_files.lua') or nil
+local fileRoutines=os.getenv('POP2_FILE_ROUTINES') and dofile('tools/mac_file_routines.lua') or nil
 local finished,armed,checkpoint=false,false,nil
+local checkpointProbe
 local mapped={}
 local function u(a)return mem:readv_u32(a)end
 local function ptr(a)return u(a)&0xffffff end
@@ -41,6 +45,8 @@ local function observe()
  if not armed and u(0x28)==meta.dispatcher.address then
   assert(u(meta.dispatcher.address)==tonumber(meta.dispatcher.hex:sub(1,8),16)
    and u(meta.dispatcher.address+4)==tonumber(meta.dispatcher.hex:sub(9,16),16),'DISPATCHER BYTES')
+  if resourceCalls then resourceCalls.arm(meta,cond)end
+  if files then files.arm(meta,cond)end
   if mapper then mapper.arm(meta,cond)end
   -- Dynamic return probes capture even the first call immediately after LoadSeg.
   -- SP matches each return to its entry, including Gestalt nested by SysEnvirons.
@@ -75,7 +81,7 @@ local function observe()
     elseif seg==15 then
      checkpoint=base+0x416
      guard(seg,base,0x416,4)
-     cpu.debug:bpset(checkpoint,cond..' && w@(a6+0x8)==0x6978 && w@(a6+0xa)==0x1',
+     checkpointProbe=cpu.debug:bpset(checkpoint,cond..' && w@(a6+0x8)==0x6978 && w@(a6+0xa)==0x1',
       'logerror "MILESTONE opening-text-1\\n"')
      print('CHECKPOINT_ARMED')
     end
@@ -89,6 +95,21 @@ emu.register_frame_done(function()
 end)
 emu.register_periodic(function()
  if finished then return end
+ if fileRoutines then
+  local ok,handled=pcall(fileRoutines.poll)
+  if not ok then fail(handled);return end
+  if handled then return end
+ end
+ if resourceCalls then
+  local ok,handled=pcall(resourceCalls.poll)
+  if not ok then fail(handled);return end
+  if handled then return end
+ end
+ if files then
+  local ok,handled=pcall(files.poll)
+  if not ok then fail(handled);return end
+  if handled then return end
+ end
  if mapper then
   local ok,handled=pcall(mapper.poll)
   if not ok then fail(handled);return end
@@ -102,11 +123,20 @@ emu.register_periodic(function()
    print('MEMORY configured=8M addressing=24-bit')
    assert(mem:readv_u8(0xcb2)==0,'ADDRESSING MODE')
    if mapper then mapper.finish()end
+   if files then files.finish()end
+   if resourceCalls then resourceCalls.finish()end
    frame.rgb(run..'/opening.ppm')
    manager.machine.video:snapshot()
    print('REFERENCE_CAPTURED opening-text-1')
   end)
   if not ok then fail(err);return end
+  if fileRoutines then
+   cpu.debug:bpclear(checkpointProbe)
+   local ok,err=pcall(fileRoutines.start,meta,checkpoint)
+   checkpoint=nil
+   if not ok then fail(err)end
+   return
+  end
   finished=true;manager.machine:exit();dbg.execution_state='run'
  end
 end)

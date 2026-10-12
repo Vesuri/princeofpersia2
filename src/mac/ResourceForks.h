@@ -9,7 +9,7 @@ public:
     ~ResourceForks() { close(); }
     ResourceForks(const ResourceForks&)=delete;
     ResourceForks& operator=(const ResourceForks&)=delete;
-    static const uint16_t kForkCount=16,kMaximumResources=768;
+    static const uint16_t kForkCount=16,kMaximumResources=4096;
     static const uint32_t chunkBytes=65536,maximumMapBytes=262144;
     static const uint16_t kOverlayFork=kForkCount-1;
     struct Source {

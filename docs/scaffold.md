@@ -15,10 +15,11 @@ adaptations, not checksums of the local edited files.
 The portable `src/mac/` helpers cover heap management, fork metadata and bounded
 resource/file models, byte-pixel and region operations, palettes, windows and
 UI record parsing. Prefixes are changed to POP2. Heap profiling hooks are removed;
-the virtual volume has a neutral name and no Alone Movies exception. The bounded
-helper capacities are inherited limits, not measured Prince of Persia requirements.
-The core configuration wires the heap and application resource-map subset into trap dispatch;
-other helpers remain unwired. Unsupported operations remain errors.
+the virtual volume has a neutral name and no Alone Movies exception. Most bounded helper capacities are inherited limits; the aggregate resource
+capacity is raised to cover the measured multi-file lookup chain. The core
+configuration wires heap, file and resource services into trap dispatch; see
+[file services](file-services.md) for paired coverage. Display and UI helpers
+remain unwired. Unsupported operations remain errors.
 
 The 11,482-line donor MacLoader mixes reusable services with original offsets,
 identity answers, gameplay patches and probes. Its bounded replacement is `CoreRuntime`, documented separately. The donor's low-memory patch tables,

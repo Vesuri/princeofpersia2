@@ -3,7 +3,8 @@
 Macintosh-to-Amiga port following Vette! and Alone in the Dark. The owner has set the
 target and approach in `docs/design.md`; work proceeds through `docs/open-work.md` in
 order. Inspection, extraction, a verified Macintosh opening-cutscene reference and its static/live map exist.
-The Amiga core executes verified original startup through the named InitGraf stop; later game services remain open.
+The Amiga core executes verified original startup through the named InitGraf stop.
+File/resource services have separate paired probes and save/restart checks; display and later game services remain open.
 
 ## Rules
 

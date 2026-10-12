@@ -33,15 +33,15 @@ static initializers, loading CODE 21 and 22, before CODE 2 calls `InitGraf`.
 
 The application heap is 3 MiB (3,145,728 bytes). Input storage, A5 world, stack and
 service stacks are separate port allocations. This is not a final Fast RAM
-requirement or a performance measurement. The only wired resource operations
-serve the application startup resources. Data files, Mohawk archives, saves and
-resource-file services remain item 7.
+requirement or a performance measurement. File and resource services also support the separately tested reference file
+workloads. [File services](file-services.md) describes that integration, paired
+service replays and save/restart evidence.
 
 The reached memory/resource and trap-table services use the existing heap and
 resource-map helpers. A040 is `ResrvMem`; A11E is `NewPtr`. Unknown services,
-resource types, trap-table entries and invalid handles stop explicitly. Fatal
-68020 exceptions receive named stops. The exception bridge uses separate service
-and fault stacks, restores the original exception vectors, and returns through
+trap-table entries and invalid handles stop explicitly. Fatal
+68020 exceptions receive named stops. The exception bridge runs services in user mode on a private stack, uses a separate
+fault stack, restores the original exception vectors, and returns through
 the normal Amiga handback path. A native code-image audit rejects writes outside
 the two measured CODE data slots and authorized relocations.
 

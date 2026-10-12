@@ -34,19 +34,27 @@ def generate():
     plan=struct.pack('>I',len(rows))+b''.join(rows)
     assert hashlib.sha256(plan).hexdigest()==pins(ROOT/'manifest/core-inputs.sha256')['relocations.bin'], 'RELOCATION PLAN PIN'
     (out/'relocations.bin').write_bytes(plan)
+    from file_catalog import catalog
+    files=catalog()
+    assert hashlib.sha256(files).hexdigest()==pins(ROOT/'manifest/core-inputs.sha256')['file-catalog.bin'], 'FILE CATALOG PIN'
+    (out/'file-catalog.bin').write_bytes(files)
     (out/'Inputs.h').write_text(header())
     print('CORE INPUTS PASS:',len(rows),'byte-verified low-memory relocations')
 def header():
     def array(name,digest):return 'static const uint8_t '+name+'[32]={'+','.join('0x'+digest[i:i+2] for i in range(0,64,2))+'};\n'
     app=pins(ROOT/'manifest/runtime-data.sha256')['Prince of Persia 2.rsrc']
     plan=pins(ROOT/'manifest/core-inputs.sha256')['relocations.bin']
-    return '// Generated hashes only. Inputs themselves stay on disk.\n'+array('applicationSHA256',app)+array('relocationsSHA256',plan)
+    return '// Generated hashes only. Inputs themselves stay on disk.\n'+array('applicationSHA256',app)+array('relocationsSHA256',plan)+array('fileCatalogSHA256',pins(ROOT/'manifest/core-inputs.sha256')['file-catalog.bin'])
 
 def verify():
     out=ROOT/'build/core'
     if (out/'Inputs.h').read_text()!=header():raise ValueError('CORE / GENERATED HASH HEADER')
     if hashlib.sha256((out/'relocations.bin').read_bytes()).hexdigest()!=pins(ROOT/'manifest/core-inputs.sha256')['relocations.bin']:
         raise ValueError('CORE / RELOCATION PLAN PIN')
+    from file_catalog import catalog
+    expected=catalog()
+    if (out/'file-catalog.bin').read_bytes()!=expected or hashlib.sha256(expected).hexdigest()!=pins(ROOT/'manifest/core-inputs.sha256')['file-catalog.bin']:
+        raise ValueError('CORE / FILE CATALOG PIN')
     print('CORE BUILD INPUTS PASS')
 
 if __name__=='__main__':

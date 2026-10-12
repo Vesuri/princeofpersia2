@@ -6,6 +6,7 @@ help:
 	@echo 'make / make host-tests  build the empty host program and test portable helpers'
 	@echo 'make amiga / make scaffold-check  build / verify the empty Amiga boot and quit'
 	@echo 'make core / make core-check  build / verify bounded original startup'
+	@echo 'make files-check   verify paired file/resource calls and save persistence'
 	@echo 'Original archive tools, Amiga scaffold and startup runtime.'
 	@echo 'make verify-input  verify the locally staged original archive'
 	@echo 'make inspect       reproduce the source inventory from the archive'
@@ -71,3 +72,7 @@ core: core-inputs
 .PHONY: core-check
 core-check: host-tests
 	@. amiga/env.sh && python3 tools/check_core.py
+
+.PHONY: files-check
+files-check: host-tests
+	@. amiga/env.sh && python3 tools/check_files.py
