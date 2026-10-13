@@ -1,5 +1,5 @@
-#ifndef POP2_FILL_RECT8_H
-#define POP2_FILL_RECT8_H
+#ifndef AMIGAXDEV_FILL_RECT8_H
+#define AMIGAXDEV_FILL_RECT8_H
 #include "RectBounds.h"
 #include "RegionRows.h"
 namespace FillRect8 {
@@ -9,7 +9,7 @@ inline void fillSpan(uint8_t* out,uint32_t count,uint8_t color) {
     while(count && ((unsigned long)out&3)) {*out++=color;--count;}
     const uint32_t word=uint32_t(color)*0x01010101UL;
     while(count>=16) {
-#ifdef POP2_PLATFORM_AMIGA
+#ifdef __mc68000__
         __asm__ volatile("move.l %1,(%0)+\n\tmove.l %1,(%0)+\n\t"
                          "move.l %1,(%0)+\n\tmove.l %1,(%0)+"
                          : "+a"(out) : "d"(word) : "cc", "memory");
@@ -19,7 +19,7 @@ inline void fillSpan(uint8_t* out,uint32_t count,uint8_t color) {
         count-=16;
     }
     while(count>=4) {
-#ifdef POP2_PLATFORM_AMIGA
+#ifdef __mc68000__
         __asm__ volatile("move.l %1,(%0)+" : "+a"(out) : "d"(word) : "cc", "memory");
 #else
         for(unsigned i=0;i<4;++i)*out++=color;
@@ -27,7 +27,7 @@ inline void fillSpan(uint8_t* out,uint32_t count,uint8_t color) {
         count-=4;
     }
     while(count--)*out++=color;
-#ifndef POP2_PLATFORM_AMIGA
+#ifndef __mc68000__
     (void)word;
 #endif
 }
@@ -36,7 +36,7 @@ inline void fillSpan(uint8_t* out,uint32_t count,uint8_t color) {
 __attribute__((noinline)) inline void fillRows(uint8_t* row,uint16_t stride,
                                                uint16_t width,uint16_t height,uint8_t color) {
     if(!width || !height)return;
-#ifdef POP2_PLATFORM_AMIGA
+#ifdef __mc68000__
     if(!(stride&3)) {
         uint16_t prefix=uint16_t(-(unsigned long)row)&3;
         if(prefix>width)prefix=width;

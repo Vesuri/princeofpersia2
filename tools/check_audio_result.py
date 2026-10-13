@@ -91,12 +91,12 @@ def startup(run,reference):
     calls(reference)  # Requires a completed, byte-guarded original route.
     log=(run/'gdb-out.log').read_text();restored(run,log)
     assert 'CORE STOP trap=aaa0 segment=17 offset=0820 count=144\n' in log,'AUDIO / STARTUP BOUNDARY'
-    assert 'CORE REASON UNIMPLEMENTED / TRAP\n' in log and 'CORE EXCEPTION vector=0 pc=00000000\n' in log
+    assert 'CORE REASON UI / STARTUP CHECKPOINT\n' in log and 'CORE EXCEPTION vector=0 pc=00000000\n' in log
     assert 'INPUT RESTORE vector=1\n' in log
     actual=re.findall(r'^CODE \d+\+[0-9A-F]+ trap=[0-9A-F]+$',log,re.M)
     expected=[line.split(' selector=')[0] for line in (reference/'traps.txt').read_text().splitlines()[:144]]
     assert actual==expected,'AUDIO / STARTUP REGRESSION'
-    print('AUDIO STARTUP PASS: 144 original calls; Palette2CTab boundary; restored OS')
+    print('AUDIO STARTUP PASS: 144 original calls; Palette2CTab checkpoint; restored OS')
 
 if __name__=='__main__':
     if len(sys.argv)==4 and sys.argv[2]=='--startup':startup(Path(sys.argv[1]),Path(sys.argv[3]))

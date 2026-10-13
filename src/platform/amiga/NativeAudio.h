@@ -8,6 +8,7 @@ void field();
 void take();
 void restore();
 bool sync();
+bool servicePending();
 bool dispatch(uint32_t selector,uint32_t argument,uint32_t& result);
 bool callback(uint32_t& code,uint32_t& context);
 const char* error();

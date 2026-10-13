@@ -76,14 +76,14 @@ def main():
     # Original observer guard must reject a deliberately wrong expected byte.
     os.environ['POP2_AUDIO']='route'
     reference(control='bad-audio-guard');os.environ.pop('POP2_AUDIO')
-    build()
+    build(' -DPOP2_STARTUP_CHECKPOINT')
     run=launch('startup',True,AUDIO_PROBE='0',AUDIO_STARTUP='1',AUDIO_REFERENCE=str(route),GDBSCRIPT=str(ROOT/'amiga/core.gdb'))
     startup(run,route)
     ignored=subprocess.check_output(['git','status','--ignored','--short'],text=True)
     assert all('!! '+p+'/' in ignored for p in ('tmp','ref','build'))
     tracked=subprocess.check_output(['git','ls-files'],text=True).splitlines()
     assert not any(p.startswith(('tmp/','ref/','build/','amiga/obj/','amiga/out/','amiga/.run')) for p in tracked)
-    result={'result':'AUDIO GATE PASS','scope':'Paired CPU service replay and Paula DMA; native startup remains at Palette2CTab.',
+    result={'result':'AUDIO GATE PASS','scope':'Paired CPU service replay and Paula DMA; explicit 144-call startup regression checkpoint.',
             'references':[str(p.relative_to(ROOT)) for p in (route,cutscene,fixture)],'native':{k:str(v.relative_to(ROOT)) for k,v in native.items()},'evidence_controls':controls,'runtime_controls':6}
     (logs/'report.json').write_text(json.dumps(result,indent=2)+'\n');print('AUDIO GATE PASS:',logs.relative_to(ROOT))
 if __name__=='__main__':main()

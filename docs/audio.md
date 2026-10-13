@@ -6,11 +6,14 @@ owned entry uses the original C calling convention and remains callable after
 `DetachResource`. The original application/resource fork is unchanged. Attempting
 to execute a changed entry or fetch the original `MDRV` is a named stop.
 
-The ordinary audio build still stops at `Palette2CTab` after 144 original startup
-calls. Audio acceptance is a CPU-executed service replay on the fixed PAL 68020,
+The ordinary audio build includes the complete native startup services. The
+separate [integration gate](native-integration.md) reaches the first playable room.
+Audio acceptance here remains CPU-executed service replay on the fixed PAL 68020,
 paired with original Macintosh title, gameplay, natural death and uninterrupted
-opening-cutscene events. It is not end-to-end native gameplay or a timing or
-performance claim. Item 11's game pacing, Time Manager and VBL tasks remain open.
+opening-cutscene events. Its startup regression deliberately stops at a test-only
+144-call checkpoint before `Palette2CTab`; that service is implemented in the
+ordinary build. These audio fixtures do not establish timing or performance.
+Item 11's game pacing and scheduler fidelity remain open.
 
 ## Inputs and reuse
 

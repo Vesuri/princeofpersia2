@@ -1,6 +1,6 @@
-#ifndef POP2_RECT_BOUNDS_H
-#define POP2_RECT_BOUNDS_H
-#ifndef POP2_PLATFORM_AMIGA
+#ifndef AMIGAXDEV_RECT_BOUNDS_H
+#define AMIGAXDEV_RECT_BOUNDS_H
+#ifndef __mc68000__
 #include <stdint.h>
 #endif
 namespace RectBounds {
@@ -33,6 +33,19 @@ inline bool intersect(uint8_t* out,const uint8_t* a,const uint8_t* b,bool& nonem
         out[2*i]=uint8_t(value>>8);out[2*i+1]=uint8_t(value);
     }
     return true;
+}
+
+// OffsetRect / InsetRect, shared from the native Macintosh runtime.
+// Components deliberately wrap at 16 bits, including inverted rectangles.
+inline void writeWord(uint8_t* p,uint16_t value) {p[0]=uint8_t(value>>8);p[1]=uint8_t(value);}
+template<uint16_t (*Read)(const uint8_t*),void (*Write)(uint8_t*,uint16_t)>
+inline void adjust(uint8_t* rect,uint16_t dh,uint16_t dv,uint16_t operation) {
+    Write(rect,Read(rect)+dv);Write(rect+2,Read(rect+2)+dh);
+    Write(rect+4,Read(rect+4)+(operation==0xa8a9 ? -dv : dv));
+    Write(rect+6,Read(rect+6)+(operation==0xa8a9 ? -dh : dh));
+}
+inline void adjust(uint8_t* rect,uint16_t dh,uint16_t dv,uint16_t operation) {
+    adjust<word,writeWord>(rect,dh,dv,operation);
 }
 
 }

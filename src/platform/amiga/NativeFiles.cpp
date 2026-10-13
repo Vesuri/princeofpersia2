@@ -251,7 +251,14 @@ bool prepare() {
         for(unsigned k=0;k<32;++k) {source.hash[0][k]=catalogBytes[at+4+k];source.hash[1][k]=catalogBytes[at+40+k];}
         at+=104;
     }
-    return at==(uint32_t)length && discover();
+    if(at!=(uint32_t)length || !discover())return false;
+    // Verify immutable inputs before original startup can start music or timers.
+    // Reuse the same verifier and mutable-options rule as first-use opens.
+    for(auto& source:sources)if(source.id)for(unsigned fork=0;fork<2;++fork){
+        Verification request={source.id,fork!=0};
+        if(verifyOperation(&request))return false;
+    }
+    return true;
 }
 int32_t openFork(int16_t volume,uint32_t directory,const char* name,bool resource,uint8_t permission,int16_t& ref) {
     uint32_t id=0;ref=0;int32_t error=files.resolve(volume,directory,name,id,true);

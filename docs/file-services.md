@@ -158,7 +158,7 @@ references, and follows the observed GetFInfo-to-SetFInfo date dependency. It do
 not copy unused stack bytes or volatile original timestamps into the fixture.
 The interpreter invokes Macintosh traps; the original implements Mohawk archive
 interpretation. These service tests do not execute the full native opening scene,
-which still requires further display services, audio and timing integration.
+which is established separately by the [native integration gate](native-integration.md).
 The [input/UI gate](input-ui.md) supplies bounded service and original-routine probes.
 
 `tools/check_resource_census.py` compares the runtime C++ reader with the independent
@@ -178,3 +178,11 @@ same write against `MIDISnd.dat`; it must reach `PBWrite`, stop with
 fork/metadata hashes unchanged. The successful options write is its positive
 control. Run `tools/check_native_settings.py SAVE ORIGINAL_FILES ORIGINAL_CORE`
 to reproduce these controls independently.
+
+Before original startup, the native file layer verifies the complete installed
+catalog, metadata and both forks: 97 successful hashes covering 16,107,176 bytes
+for a fresh installation. Changed options retain the existing 16-byte data and
+valid AFI1 metadata exceptions; their immutable resource fork remains pinned.
+This moves verification ahead of music and timer startup. The settings regression
+checks the complete hash count and byte total, subtracting only changed options
+data and metadata on restart.

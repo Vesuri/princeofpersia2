@@ -3,11 +3,14 @@
 #include <proto/dos.h>
 #include <exec/memory.h>
 #include "CoreRuntime.h"
+#include "mac/BigEndianMemory.h"
+#include "mac/CodeRangeCache.h"
 #include "NativeFiles.h"
 #include "NativeDisplay.h"
 #include "NativeResources.h"
 #ifdef POP2_AUDIO
 #include "NativeAudio.h"
+#include "PaulaAudio.h"
 #ifdef POP2_AUDIO_PROBE
 #include "../../../build/audio/AudioReplay.h"
 #endif
@@ -23,6 +26,7 @@
 #include "mac/OriginalApplication.h"
 #include "mac/SHA256.h"
 #include "mac/Identity.h"
+#include "mac/FixedMath.h"
 #include "../../../build/core/Inputs.h"
 #ifdef POP2_DISPLAY
 #include "../../../build/display/VideoTransfer.h"
@@ -36,6 +40,17 @@
 extern DosLibrary* DOSBase;
 extern "C" {
 void pop2_call_mac(void*,void*,void*);
+void pop2_timer_callback();
+#ifdef POP2_INTEGRATION_PROBE
+void pop2_integration_seed(void*,void*);void pop2_integration_title();
+uint32_t g_integrationOpeningReturn=0,g_integrationTitleTarget=0,g_integrationRoomReturn=0,g_integrationDeathTarget=0,g_integrationDeathReturn=0,g_integrationDeathKind=0;
+volatile uint32_t g_integrationStage=0,g_integrationRightAt=0;
+volatile uint32_t g_integrationTitlePhase=0,g_integrationTitleCue=0;
+void pop2_integration_opening();void pop2_integration_room();void pop2_integration_death();void pop2_integration_death_return();
+extern volatile uint32_t g_integrationPulseRaw,g_integrationPulseStart,g_integrationPulseEnd;
+__attribute__((noinline)) void pop2IntegrationStage(){__asm__ volatile("nop" ::: "memory");}
+#endif
+uint32_t g_timerCallbackCode=0,g_timerCallbackTask=0,g_timerCallbackActive=0,g_timerCallbacks=0;
 void pop2_audio_callback();void pop2_audio_lookup();void pop2_audio_invoke();void pop2_audio_fixture_end();
 uint32_t g_audioCallbackCode=0,g_audioCallbackContext=0;
 void pop2_audio_test_callback();
@@ -99,15 +114,17 @@ constexpr uint32_t traceCapacity=128;
 #endif
 uint32_t g_coreHostSP=0,g_coreTrace[traceCapacity][3]={},g_coreCount=0,g_coreA5=0,g_coreBelow=0;
 uint32_t g_coreSegments[24][2]={},g_coreInitial=0,g_coreStopTrap=0,g_coreStopSegment=0,g_coreStopOffset=0;
-uint32_t g_coreZoneBytes=3*1024*1024,g_coreHeapOK=0,g_coreVectorRestored=0;
+uint32_t g_coreZoneBytes=3*1024*1024,g_coreHeapOK=0,g_coreVectorRestored=0,g_coreCodeAudit=0;
 const char* g_coreReason="CORE / NOT STARTED";
+volatile uint32_t g_coreLoadedSegment=0;
+__attribute__((noinline)) void pop2CoreSegmentLoaded(){__asm__ volatile("nop" ::: "memory");}
 __attribute__((noinline)) void pop2CoreStopped() { __asm__ volatile("nop" ::: "memory"); }
 }
 namespace {
-uint16_t w(const uint8_t* p) { return uint16_t(p[0])<<8|p[1]; }
-uint32_t l(const uint8_t* p) { return uint32_t(w(p))<<16|w(p+2); }
-void sw(uint8_t* p,uint16_t v) { p[0]=v>>8;p[1]=v; }
-void sl(uint8_t* p,uint32_t v) { sw(p,v>>16);sw(p+2,v); }
+uint16_t w(const uint8_t* p) { return BigEndianMemory::read16(p); }
+uint32_t l(const uint8_t* p) { return BigEndianMemory::read32(p); }
+void sw(uint8_t* p,uint16_t v) { BigEndianMemory::write16(p,v); }
+void sl(uint8_t* p,uint32_t v) { BigEndianMemory::write32(p,v); }
 void copy(uint8_t* d,const uint8_t* s,uint32_t n) {
     // Keep byte destinations explicit: the m68k compiler can combine the
     // advancing source and indexed destination into a shifted MOVE.B.
@@ -143,6 +160,78 @@ bool validMemory(uint32_t at,uint32_t n) {
     return (at>=(uint32_t)stack && at-(uint32_t)stack<=65536 && n<=65536-(at-(uint32_t)stack)) ||
         (at>=(uint32_t)world && at-(uint32_t)world<=worldSize && n<=worldSize-(at-(uint32_t)world)) ||
         (at>=(uint32_t)arena && at-(uint32_t)arena<=g_coreZoneBytes && n<=g_coreZoneBytes-(at-(uint32_t)arena));
+}
+bool fail(const char* why);
+// Time Manager deadlines use PAL fields and beam position; callbacks run only
+// from the user-mode service return, with A1 pointing at the original TMTask.
+struct TimerStamp { uint32_t field,micro; };
+struct TimerTask { uint8_t* task;TimerStamp due;bool active; };
+TimerTask timers[32]={};
+unsigned timerCount=0;
+uint32_t soundVolume=0x006e006e;
+uint8_t addressMode=0;
+struct VBLTask { uint8_t* task;uint32_t tick; };
+VBLTask vblTasks[8]={};
+TimerStamp timerNow() {
+    uint32_t before,after;uint16_t hi,lo,check;
+    do { before=g_scaffoldFields;hi=*vposrPointer;lo=*vhposrPointer;
+         check=*vposrPointer;after=g_scaffoldFields;
+    } while(before!=after || ((hi^check)&1));
+    uint32_t line=((hi&1)<<8)|(lo>>8);
+    uint32_t us=line*64+((lo&255)*64)/227;
+    return {after,us<20000?us:19999};
+}
+bool timerDue(TimerStamp now,TimerStamp due) {
+    int32_t fields=now.field-due.field;
+    return fields>0 || (!fields && now.micro>=due.micro);
+}
+bool timerService(uint16_t trap,uint32_t* regs) {
+    uint8_t* task=(uint8_t*)regs[8];
+    if(!validMemory(regs[8],22))return fail("TIME / TASK EXTENT");
+    TimerTask* slot=nullptr;TimerTask* empty=nullptr;
+    for(unsigned i=0;i<timerCount;++i){
+        auto& t=timers[i];if(t.task==task){slot=&t;break;}
+        if(!t.task && !empty)empty=&t;
+    }
+    if(trap==0xa058) {
+        if(slot)return fail("TIME / DUPLICATE INSTALL");
+        if(!empty && timerCount<32)empty=&timers[timerCount++];
+        if(!empty)return fail("TIME / TASK CAPACITY");
+        *empty={task,{0,0},false};sl(task,0);sw(task+4,w(task+4)&0x1fff);
+    } else if(trap==0xa059) {
+        uint32_t remaining=0;
+        if(slot && slot->active){
+            TimerStamp now=timerNow();
+            if(!timerDue(now,slot->due)){
+                uint32_t fields=slot->due.field-now.field;
+                int32_t micro=slot->due.micro-now.micro;
+                if(micro<0){--fields;micro+=20000;}
+                if(fields<107374 || (fields==107374 && uint32_t(micro)<=3648))
+                    remaining=0-(fields*20000+micro);
+                else remaining=fields*20+(micro+999)/1000;
+            }
+        }
+        sl(task+10,remaining);sw(task+4,w(task+4)&0x7fff);
+        if(slot)*slot={};
+        while(timerCount && !timers[timerCount-1].task)--timerCount;
+    } else {
+        if(!slot)return fail("TIME / PRIME UNINSTALLED TASK");
+        // MEASURED System 7.5.5: priming an active task succeeds without
+        // replacing its deadline. The original MIDI callback does this twice.
+        if(slot->active){regs[0]=0;return true;}
+        TimerStamp now=timerNow();int32_t delay=regs[0];uint32_t magnitude=delay<0?0-regs[0]:regs[0];
+        uint32_t fields=delay<0?magnitude/20000:magnitude/20;
+        uint32_t micro=delay<0?magnitude%20000:(magnitude%20)*1000;
+        micro+=now.micro;if(micro>=20000){++fields;micro-=20000;}
+        slot->due={now.field+fields,micro};slot->active=true;
+        sw(task+4,w(task+4)|0x8000);
+    }
+    regs[0]=0;return true;
+}
+bool fixedService(uint16_t trap,uint8_t* args) {
+    if(!validMemory((uint32_t)args,12))return fail("FIXED / ARGUMENT EXTENT");
+    sl(args+8,trap==0xa84d?FixedMath::divide(int32_t(l(args+4)),int32_t(l(args))):FixedMath::multiply(int32_t(l(args+4)),int32_t(l(args))));
+    return true;
 }
 bool pascalPath(uint32_t address,char path[256]) {
     if(!validMemory(address,1))return false;uint8_t* p=(uint8_t*)address;
@@ -235,10 +324,20 @@ bool segment(int16_t id) {
         if(w(entry+2)==0x4ef9 && w(entry)==id)continue;
         if(w(entry+2)!=0x3f3c || w(entry+4)!=id || w(entry+6)!=0xa9f0 || w(entry)>=size-4)return fail("LOADSEG / JUMP ENTRY");
         uint32_t target=(uint32_t)code+4+w(entry);
+#ifdef POP2_INTEGRATION_PROBE
+        // Test-only call wrappers: the original routines still execute, with
+        // the same explicit seed argument as the Macintosh reference.
+        if(id==15 && target==(uint32_t)code+0x6fec){g_integrationTitleTarget=target;target=(uint32_t)pop2_integration_title;}
+        if(id==5 && target==(uint32_t)code+0x4afc){g_integrationDeathTarget=target;target=(uint32_t)pop2_integration_death;}
+#endif
         sw(entry,id);sw(entry+2,0x4ef9);sl(entry+4,target);
     }
     g_coreSegments[id][0]=(uint32_t)code;g_coreSegments[id][1]=size;
-    flushCode();return true;
+#ifdef POP2_INTEGRATION_PROBE
+    if(id==17){flushCode();pop2_integration_seed(code+0x6e42,a5);}
+
+#endif
+    flushCode();g_coreLoadedSegment=id;pop2CoreSegmentLoaded();return true;
 }
 bool auditCode() {
     for(unsigned id=1;id<24;++id)if(g_coreSegments[id][0]) {
@@ -253,11 +352,9 @@ bool auditCode() {
     }
     return true;
 }
+CodeRangeCache codeRanges;
 bool location(uint32_t pc,uint32_t& seg,uint32_t& offset) {
-    for(unsigned i=1;i<24;++i)if(pc>=g_coreSegments[i][0] && g_coreSegments[i][1]>=2 && pc-g_coreSegments[i][0]<=g_coreSegments[i][1]-2) {
-        seg=i;offset=pc-g_coreSegments[i][0];return true;
-    }
-    return false;
+    return codeRanges.find(g_coreSegments,24,pc,seg,offset);
 }
 uint32_t stop(uint8_t* frame,uint8_t* usp,const char* why,uint16_t trap,uint32_t seg,uint32_t off) {
     didStop=true;g_coreReason=why;g_coreStopTrap=trap;g_coreStopSegment=seg;g_coreStopOffset=off;
@@ -287,6 +384,23 @@ bool prepare() {
     if(!arena || !world || !stack || !initial)return fail("CORE / MEMORY");
     if(!heap.init(arena,g_coreZoneBytes))return fail("CORE / APPLICATION ZONE");
     a5=world+spec.below;low=a5+8192;g_coreA5=(uint32_t)a5;g_coreBelow=spec.below;g_coreInitial=(uint32_t)initial;
+    sl(low+0x130,(uint32_t)arena+g_coreZoneBytes);sl(low+0x118,(uint32_t)arena);sl(low+0x2aa,(uint32_t)arena);
+    auto launchParameters=heap.newHandle(4,true);
+    if(!launchParameters)return fail("CORE / LAUNCH PARAMETERS");
+    sl(low+0xaec,(uint32_t)launchParameters); // appOpen, zero Finder documents.
+    // Public drive/VCB queue and unit-table records for the one native volume.
+    // The game reads these directly to classify fixed, writable storage.
+    uint8_t* drive=heap.newPtr(24,true);uint8_t* vcb=heap.newPtr(178,true);
+    auto dce=heap.newHandle(40,true);uint8_t* driver=heap.newPtr(32,true);
+    uint8_t* units=heap.newPtr(4,true);
+    if(!drive || !vcb || !dce || !driver || !units)return fail("CORE / VOLUME RECORDS");
+    sl(drive,0x00080100);sw(drive+8,1);sw(drive+10,1);sw(drive+12,0xffff);
+    sl(low+0x30a,(uint32_t)drive+4);sl(low+0x30e,(uint32_t)drive+4);
+    sl(low+0x358,(uint32_t)vcb);sl(low+0x35c,(uint32_t)vcb);sw(vcb+78,0xffff);
+    sl(low+0x1000,(uint32_t)low+0x308);sl(low+0x1004,(uint32_t)low+0x356);
+    sl(*dce,(uint32_t)driver);sw(*dce+4,0x2000);sw(*dce+24,0xffff);
+    const char* driverName=".Native";driver[18]=7;for(unsigned i=0;i<7;++i)driver[19+i]=driverName[i];
+    sl(units,(uint32_t)dce);sl(low+0x11c,(uint32_t)units);
     low[0xa5e]=0xff;sl(low+0x904,(uint32_t)a5);sl(low+0x908,(uint32_t)world);
     sw(low+0x900,NativeResources::current());sw(low+0xa5a,NativeResources::current());
     sw(low+0x28e,0x3fff);low[0x12f]=3;sw(low+0x15a,0x0755);
@@ -295,7 +409,7 @@ bool prepare() {
 #ifdef POP2_DISPLAY
     if(!readFile("video-transfer.bin",videoTransfer,videoTransferSize,256,videoTransferSHA256))return false;
     if(videoTransferSize!=256)return fail("DISPLAY / VIDEO TRANSFER INPUT");
-    if(!NativeDisplay::prepare(heap,low,validMemory,[](uint32_t type,int16_t id,const uint8_t*& bytes,uint32_t& size) {OriginalApplication::Resource r;if(!app.resource(type,id,r))return false;bytes=r.bytes;size=r.size;return true;}))return fail(NativeDisplay::error());
+    if(!NativeDisplay::prepare(heap,low,validMemory,[](uint32_t type,int16_t id,const uint8_t*& bytes,uint32_t& size) {Resource* r=get(type,id);if(!r || !load(*r))return false;bytes=*r->handle;size=heap.handleSize(r->handle);return true;}))return fail(NativeDisplay::error());
 #endif
 #ifdef POP2_UI
     if(!NativeUI::prepare(heap,low,validMemory,[](uint32_t type,int16_t id,const uint8_t*& bytes,uint32_t& size){Resource* r=get(type,id);if(!r || !load(*r))return false;bytes=*r->handle;size=heap.handleSize(r->handle);return true;}))return fail(NativeUI::error());
@@ -508,6 +622,9 @@ void execute() {
         if(!didStop){NativeDisplay::wait();pop2UIFixtureComplete();fail("UI / FIXTURE COMPLETE");}
     }
 #endif
+#ifdef POP2_INTEGRATION_PROBE
+    g_coreCodeAudit=auditCode();
+#endif
     suspendVectors();g_coreVectorRestored=1;
     for(unsigned i=0;i<11;++i)if(vectorTable[vectorIndices[i]]!=savedVectors[i])g_coreVectorRestored=0;
     g_coreHeapOK=heap.check();
@@ -519,7 +636,7 @@ void execute() {
 #ifdef POP2_BAD_CODE_WRITE
         ((uint8_t*)g_coreSegments[2][0])[4]^=1;
 #endif
-        auditCode();
+        g_coreCodeAudit=auditCode();
     }
 }
 void release() {
@@ -536,13 +653,54 @@ void release() {
     initial=stack=world=arena=plan=file=0;
 }
 }
+#ifdef POP2_INTEGRATION_PROBE
+static void integrationPress(uint32_t raw,uint32_t waitTicks){
+    g_integrationPulseRaw=128;g_integrationPulseStart=NativeInput::ticks()+waitTicks+2;
+    g_integrationPulseEnd=g_integrationPulseStart+4;g_integrationPulseRaw=raw;
+}
+extern "C" void pop2IntegrationOpeningHook(){
+    NativeDisplay::wait();
+#ifdef POP2_INTEGRATION_ESCAPE
+    integrationPress(0x45,0);
+#endif
+}
+extern "C" void pop2IntegrationRoomHook(){
+    g_integrationPulseRaw=128;NativeInput::flush(0xffff,0);NativeDisplay::wait();
+    g_integrationRightAt=NativeInput::ticks()+120;g_integrationStage=3;pop2IntegrationStage();
+}
+extern "C" void pop2IntegrationDeathHook(uint8_t* originalSP){
+    if(g_integrationStage==3 && w(originalSP+4)==3 && !g_integrationDeathReturn){
+        g_integrationDeathKind=w(originalSP+4);g_integrationDeathReturn=l(originalSP);
+        sl(originalSP,(uint32_t)pop2_integration_death_return);
+    }
+}
+extern "C" void pop2IntegrationDeathReturned(){
+    NativeDisplay::wait();g_integrationStage=4;pop2IntegrationStage();
+}
+extern "C" void pop2IntegrationTitleHook(uint8_t* originalSP){
+    uint16_t phase=w(originalSP+4);
+    g_integrationTitlePhase=phase;g_integrationTitleCue=w(a5-0x1f6e);
+    if(phase==2 && g_integrationStage==0){
+        g_integrationPulseRaw=128;g_integrationStage=1;pop2IntegrationStage();
+    }
+    // CODE 15+70ca/70cc changes cue 101 to 114 while selecting the logo.
+    // At the next callback the original frame has returned. Its frame number
+    // depends on service cost, so schedule test input from the reached cue.
+    // The result checker still compares the captured reference pixels.
+    if(phase>=3 && w(a5-0x1f6e)==0x72 && g_integrationStage==1){
+        integrationPress(0x40,120);g_integrationStage=2;pop2IntegrationStage();
+    }
+}
+#endif
 extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
     uint32_t pc=l(frame+2),seg=0,off=0;
     if(usp<stack || usp>stack+65536-4)return stop(frame,usp,"STACK / TRAP ARGUMENT EXTENT",0,seg,off);
     bool codeCaller=location(pc,seg,off);
     bool audioCaller=false;
 #ifdef POP2_AUDIO
-    for(unsigned i=0;i<resourceCount;++i){auto& r=resources[i];
+    // Loaded original CODE and the separately allocated Jnth service veneer
+    // have disjoint ownership. Only unresolved callers need the veneer lookup.
+    if(!codeCaller)for(unsigned i=0;i<resourceCount;++i){auto& r=resources[i];
         if(r.type==0x4a6e7468 && r.id==11 && r.identity==0xfffffff0UL && r.handle && *r.handle && pc==(uint32_t)*r.handle){
             if(heap.handleSize(r.handle)!=4 || l(*r.handle)!=0xaffc4e75)return stop(frame,usp,"AUDIO / JNTH BYTES",0,seg,off);
             audioCaller=true;break;
@@ -562,13 +720,37 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
     if(!codeCaller && !tableCaller && !fixtureCaller && !cachedCaller && !audioCaller && pc!=(uint32_t)pop2_old_loadseg && pc!=(uint32_t)pop2_old_exit)
         return stop(frame,usp,"TRAP / UNKNOWN CALLER",0,seg,off);
     uint16_t trap=w((uint8_t*)pc);
+#ifdef POP2_INTEGRATION_PROBE
+    if(g_integrationStage==4)return stop(frame,usp,"INTEGRATION / ROUTE COMPLETE",trap,seg,off);
+    // Match the reference opening-text return, before issuing its one Escape.
+    // The drawing/unlock callee returns to CODE 15+0404/0410; the parent
+    // frame identifies TEXT 6978/1. Unlock can return without calling a service.
+    if(!g_integrationOpeningReturn && g_coreSegments[15][0] && seg==17 &&
+       (off==0x4ff4 || off==0x4dac || off==0x4dbc)){
+        uint32_t at=regs[14];
+        for(unsigned depth=0;depth<16 && validMemory(at,8);++depth){
+            uint32_t parent=l((uint8_t*)at);
+            if((l((uint8_t*)at+4)==g_coreSegments[15][0]+0x410 ||
+                l((uint8_t*)at+4)==g_coreSegments[15][0]+0x404) && validMemory(parent,12) &&
+               w((uint8_t*)parent+8)==0x6978 && w((uint8_t*)parent+10)==1){
+                g_integrationOpeningReturn=l((uint8_t*)at+4);
+                sl((uint8_t*)at+4,(uint32_t)pop2_integration_opening);break;
+            }
+            if(parent<=at)break;at=parent;
+        }
+    }
+    if(seg==17 && off==0x313e && g_integrationStage<3 && !g_integrationRoomReturn &&
+       validMemory(regs[14],8) && l((uint8_t*)regs[14]+4)==g_coreSegments[2][0]+0x6054 && uint16_t(regs[4])==0xfffe){
+        g_integrationRoomReturn=l((uint8_t*)regs[14]+4);
+        sl((uint8_t*)regs[14]+4,(uint32_t)pop2_integration_room);
+    }
+#endif
     if((trap&0x0800) && !fixtureCaller && usp>stack+65536-10)
         return stop(frame,usp,"STACK / TOOLBOX ARGUMENT EXTENT",trap,seg,off);
     bool builtin=cachedCaller || pc==(uint32_t)pop2_old_loadseg || pc==(uint32_t)pop2_old_exit;
     if(builtin)trap=w((uint8_t*)pc+2);
     if(codeCaller) {
-        if(g_coreCount==traceCapacity)return stop(frame,usp,"TRACE / CAPACITY",trap,seg,off);
-        uint32_t* row=g_coreTrace[g_coreCount++];row[0]=seg;row[1]=off;row[2]=trap;
+        uint32_t* row=g_coreTrace[(g_coreCount++)%traceCapacity];row[0]=seg;row[1]=off;row[2]=trap;
     } else if(!builtin && !fixtureCaller && !audioCaller && !(pc>=(uint32_t)a5+app.world().jumpOffset && pc<(uint32_t)a5+app.world().jumpOffset+app.world().jumpBytes && trap==0xa9f0))
         return stop(frame,usp,"TRAP / UNKNOWN CALLER",trap,seg,off);
     if(cachedCaller){
@@ -608,6 +790,11 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
         if(os){uint16_t sr=w(frame)&~15;uint16_t result=regs[0];if(!result)sr|=4;if(result&0x8000)sr|=8;sw(frame,sr);}
         return (uint32_t)(usp+consumed);
     }
+#endif
+#if defined(POP2_UI_PROBE) || defined(POP2_STARTUP_CHECKPOINT)
+    // Preserve the bounded earlier service fixtures after adding Palette2CTab.
+    if(trap==0xaaa0 && seg==17 && off==0x820)
+        return stop(frame,usp,"UI / STARTUP CHECKPOINT",trap,seg,off);
 #endif
     if(NativeDisplay::handles(trap)) {
         if(!NativeDisplay::dispatch(trap,regs,usp,consumed))return stop(frame,usp,NativeDisplay::error(),trap,seg,off);
@@ -650,6 +837,62 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
         return (uint32_t)usp;
     }
     switch(trap) {
+    case 0xa84d:case 0xa868:
+        if(!fixedService(trap,usp))goto failed;
+        consumed=8;break;
+    case 0xa800: {
+        if(regs[0]==0x000c0008){sl(usp,0x03208000);regs[0]=0x0008000c;}
+        else if(regs[0]==0x022c0018){
+            if(!validMemory(l(usp),4)){fail("SOUND / VOLUME OUTPUT");goto failed;}
+            sl((uint8_t*)l(usp),soundVolume);sw(usp+4,0);consumed=4;regs[0]=0;
+        } else if(regs[0]==0x02300018){
+            soundVolume=l(usp);
+            if((soundVolume&65535)>256 || (soundVolume>>16)>256){fail("SOUND / VOLUME RANGE");goto failed;}
+#ifdef POP2_AUDIO
+            PaulaAudio::masterVolume(soundVolume);
+#endif
+            sw(usp+4,0);consumed=4;regs[0]=0;
+        } else {fail("SOUND / DISPATCH SELECTOR");goto failed;}
+        break;
+    }
+    case 0xa51e:regs[8]=(uint32_t)heap.newPtr(regs[0],true);error=heap.error();regs[0]=(int32_t)error;break;
+    case 0xa033:case 0xa034: {
+        if(!validMemory(regs[8],14)){fail("VBL / TASK EXTENT");goto failed;}
+        VBLTask* found=nullptr;VBLTask* empty=nullptr;
+        for(auto& t:vblTasks){if((uint32_t)t.task==regs[8])found=&t;if(!t.task && !empty)empty=&t;}
+        if(trap==0xa033){
+            if(found || !empty || w((uint8_t*)regs[8]+4)!=1 || w((uint8_t*)regs[8]+12)){fail("VBL / INSTALL CONTRACT");goto failed;}
+            *empty={(uint8_t*)regs[8],g_scaffoldFields*6/5};
+        }else if(found)*found={};
+        regs[0]=0;break;
+    }
+    case 0xa9b4: // SystemTask: callbacks are delivered by the common service return.
+        regs[0]=(uint32_t)a5;break;
+    case 0xa05c:
+        if((regs[0]!=2 && regs[0]!=3) || !validMemory(regs[8],regs[9])){fail("MEMORY DISPATCH / LOCK RANGE");goto failed;}
+        regs[0]=0;break; // LockMemory / UnlockMemory: native allocations are resident and physically stable.
+    case 0xa05d:
+        if((regs[0]&255)>1){fail("MMU / ADDRESS MODE");goto failed;}
+        {uint8_t requested=regs[0];regs[0]=addressMode;addressMode=requested;low[0xcb2]=requested;}break; // Native pointers remain full addresses.
+    case 0xa85d: { // BitTst numbers bits from the most significant bit.
+        uint32_t bit=l(usp),address=l(usp+4)+(int32_t(bit)>>3);
+        if(!validMemory(address,1)){fail("BITTEST / BYTE EXTENT");goto failed;}
+        usp[8]=(*(uint8_t*)address&(0x80>>(bit&7)))?1:0;
+        consumed=8;regs[0]=uint16_t(~bit);regs[1]=bit>>3;break;
+    }
+    case 0xa9c6: { // Secs2Date uses D0 seconds since 1904 and A0 DateTimeRec.
+        if(!validMemory(regs[8],14)){fail("DATE / RECORD EXTENT");goto failed;}
+        uint8_t* out=(uint8_t*)regs[8];uint32_t days=regs[0]/86400,seconds=regs[0]%86400;
+        uint16_t weekday=(days+5)%7+1,year=1904,month=1;
+        auto leap=[](uint16_t y){return !(y%4) && ((y%100) || !(y%400));};
+        while(days>=uint32_t(leap(year)?366:365)){days-=leap(year)?366:365;++year;}
+        const uint8_t lengths[]={31,28,31,30,31,30,31,31,30,31,30,31};
+        while(days>=uint32_t(lengths[month-1]+(month==2 && leap(year)))){days-=lengths[month-1]+(month==2 && leap(year));++month;}
+        sw(out,year);sw(out+2,month);sw(out+4,days+1);sw(out+6,seconds/3600);
+        sw(out+8,(seconds/60)%60);sw(out+10,seconds%60);sw(out+12,weekday);break;
+    }
+    case 0xa058:case 0xa059:case 0xa05a:
+        if(!timerService(trap,regs))goto failed;break;
     case 0xaa52: {
         if((uint16_t)regs[0]!=1 || !validMemory((uint32_t)usp,16)) {fail("FILES / FSSPEC SELECTOR OR ARGUMENTS");goto failed;}
         char path[256];if(!pascalPath(l(usp+4),path) || !validMemory(l(usp),70)) {fail("FILES / FSSPEC EXTENT");goto failed;}
@@ -696,8 +939,8 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
         if(!r && !resourceError)goto failed;
         sl(usp+6,r ? (uint32_t)r->handle : 0);regs[0]=0;
         if(!r) {consumed=6;break;}
-        if(g_coreResourceCount==32) { fail("RESOURCE / TRACE CAPACITY");goto failed; }
-        { uint32_t* row=g_coreResources[g_coreResourceCount++];row[0]=r->type;row[1]=(uint16_t)r->id;row[2]=(uint32_t)r->handle; }
+        if(g_coreResourceCount<32){ uint32_t* row=g_coreResources[g_coreResourceCount];row[0]=r->type;row[1]=(uint16_t)r->id;row[2]=(uint32_t)r->handle; }
+        ++g_coreResourceCount;
         consumed=6;break;
     }
     case 0xa9a5: case 0xa9a6: case 0xa9a2: case 0xa992: case 0xa9a3: {
@@ -714,6 +957,61 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
         }
         consumed=4;break;
     }
+    case 0xa02e: {
+        uint32_t n=regs[0],from=regs[8],to=regs[9];
+        if(!validMemory(from,n)||!validMemory(to,n)){fail("MEMORY / BLOCKMOVE EXTENT");goto failed;}
+        if(to>from && to-from<n)for(uint32_t i=n;i;--i)((uint8_t*)to)[i-1]=((const uint8_t*)from)[i-1];
+        else copy((uint8_t*)to,(const uint8_t*)from,n);
+        regs[0]=0;break;
+    }
+    case 0xa31e:regs[8]=(uint32_t)heap.newPtr(regs[0],true);error=heap.error();regs[0]=(int32_t)error;break;
+    case 0xa021:
+        if(!validMemory(regs[8],1)){fail("HEAP / POINTER SIZE OWNER");goto failed;}
+        regs[0]=heap.ptrSize((uint8_t*)regs[8]);
+        if(heap.error()){
+            auto handle=heap.recoverHandle((uint8_t*)regs[8]);
+            if(!handle){fail("HEAP / POINTER SIZE BLOCK");goto failed;}
+            regs[0]=heap.handleSize(handle);
+        }
+        break;
+    case 0xa01f:error=heap.disposePtr((uint8_t*)regs[8]);regs[0]=(int32_t)error;break;
+    case 0xa023: {
+        auto h=(MacHeap::Handle)regs[8];error=heap.disposeHandle(h);regs[0]=(int32_t)error;
+        if(!error){Resource* r=byHandle(h);if(r)r->handle=nullptr;}break;
+    }
+    case 0xa049:case 0xa04a: {
+        auto h=(MacHeap::Handle)regs[8];
+        if(trap==0xa049 && heap.isFreeHandleSlot(h)) {
+            // MEASURED original demo cleanup: HPurge on a disposed master
+            // returns memWZErr in D0/MemError, without modifying the free slot.
+            regs[0]=int32_t(MacHeap::memWZErr);sw(low+0x220,MacHeap::memWZErr);
+            sw(frame,(w(frame)&~15)|8);return (uint32_t)usp;
+        }
+        if(!heap.isHandle(h)){fail("HEAP / PURGE HANDLE OWNER");goto failed;}
+        error=heap.setState(h,trap==0xa049?heap.state(h)|0x40:heap.state(h)&~0x40);regs[0]=(int32_t)error;break;
+    }
+    case 0xa128:regs[8]=(uint32_t)heap.recoverHandle((uint8_t*)regs[8]);error=heap.error();regs[0]=(int32_t)error;break;
+    case 0xa11a:regs[8]=(uint32_t)arena;regs[0]=0;break;
+    case 0xa01b:if(regs[8]!=(uint32_t)arena){fail("HEAP / UNKNOWN ZONE");goto failed;}regs[0]=0;break;
+    case 0xa055:regs[0]&=0x00ffffff;break;
+    case 0xa01c:regs[0]=heap.freeBytes();break;
+    case 0xa11d:regs[0]=heap.compact();regs[8]=0;break;
+    case 0xa162:regs[0]=heap.freeBytes();regs[8]=heap.largestBlock();break;
+    case 0xa036:error=heap.moreMasters();regs[0]=(int32_t)error;break;
+    case 0xa069:case 0xa06a: {
+        auto h=(MacHeap::Handle)regs[8];if(!heap.isHandle(h)){fail("HEAP / STATE HANDLE OWNER");goto failed;}
+        if(trap==0xa069){regs[0]=heap.state(h);error=heap.error();}
+        else {error=heap.setState(h,uint8_t(regs[0]));regs[0]=(int32_t)error;}
+        break;
+    }
+    case 0xa02a:case 0xa024: {
+        auto h=(MacHeap::Handle)regs[8];if(!heap.isHandle(h)){fail("HEAP / UNKNOWN HANDLE");goto failed;}
+        error=trap==0xa02a?heap.setState(h,heap.state(h)&~0x80):heap.setHandleSize(h,regs[0]);
+        regs[0]=(int32_t)error;break;
+    }
+#ifdef POP2_INPUT
+    case 0xa975:sl(usp,NativeInput::ticks());regs[0]=0;break;
+#endif
     case 0xa040: // ResrvMem: reserve contiguous space in the current zone.
         error=heap.largestBlock()>=regs[0] ? 0 : MacHeap::memFullErr;regs[0]=(int32_t)error;break;
     case 0xa025: {
@@ -740,7 +1038,8 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
         uint16_t target=regs[0];uint8_t** patch=target==0xa9f0?&patchedLoad:target==0xa9f4?&patchedExit:0;
         if(!patch) { fail("TRAP TABLE / UNKNOWN ENTRY");goto failed; }
         if(trap==0xa047) {
-            if(!heap.owns((void*)regs[8])) { fail("TRAP TABLE / UNKNOWN PATCH TARGET");goto failed; }
+            bool exitEntry=seg==19 && off==0x033c && target==0xa9f4 && regs[8]==(uint32_t)a5+0x13fa;
+            if(!heap.owns((void*)regs[8]) && !exitEntry) { fail("TRAP TABLE / UNKNOWN PATCH TARGET");goto failed; }
             *patch=(uint8_t*)regs[8];
         }
         else regs[8]=(uint32_t)(*patch?*patch:target==0xa9f0?(uint8_t*)pop2_old_loadseg:(uint8_t*)pop2_old_exit);
@@ -772,6 +1071,7 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
     case 0xa86e:return stop(frame,usp,"UNIMPLEMENTED / InitGraf",trap,seg,off);
     default:return stop(frame,usp,"UNIMPLEMENTED / TRAP",trap,seg,off);
     }
+    if(os && trap!=0xa058 && trap!=0xa059 && trap!=0xa05a)sw(low+0x220,heap.error());
     if(error) { fail("CORE / MEMORY SERVICE ERROR");goto failed; }
     if(os) {
         // Macintosh OS traps return TST.W D0 flags; Toolbox preserves CCR.
@@ -784,7 +1084,47 @@ failed:return stop(frame,usp,g_coreReason,trap,seg,off);
 // The assembly trampoline parks registers on the Mac stack and calls here in
 // user mode on a separate service stack. Rebuild only the original return image;
 // consumed Pascal arguments may make source and destination overlap.
+// Like Alone in the Dark's specialized trap entries, this selects existing
+// services without copying a complete register image through the general router.
+// It is limited to an already active user-mode callback. Any pending audio work
+// takes the ordinary route; timer/VBL callbacks cannot nest in either route.
+static uint32_t callbackService(uint32_t* parked) {
+#if defined(POP2_AUDIO) && defined(POP2_INPUT)
+    if(!g_timerCallbackActive || NativeAudio::servicePending())return 0;
+    uint32_t pc=g_coreServicePC;
+    if(!validMemory(pc,2))return 0;
+    uint16_t trap=w((uint8_t*)pc);
+    if(trap!=0xa058 && trap!=0xa059 && trap!=0xa05a && trap!=0xa868 && trap!=0xa84d && trap!=0xa975)return 0;
+    uint32_t seg=0,off=0;if(!location(pc,seg,off))return 0;
+    uint8_t* usp=(uint8_t*)parked+66;
+    if(usp<stack || usp>stack+65536-4)return 0;
+    uint32_t* row=g_coreTrace[(g_coreCount++)%traceCapacity];row[0]=seg;row[1]=off;row[2]=trap;
+    uint8_t frame[8]={};sw(frame,g_coreServiceSR);sl(frame+2,pc+2);
+    uint32_t consumed=0;bool ok=true;
+    g_coreServiceActive=1;
+    switch(trap) {
+    case 0xa058:case 0xa059:case 0xa05a:ok=timerService(trap,parked);break;
+    case 0xa868:case 0xa84d:ok=fixedService(trap,usp);consumed=ok?8:0;break;
+    case 0xa975:sl(usp,NativeInput::ticks());parked[0]=0;break;
+    }
+    g_coreServiceActive=0;
+    if(!(trap&0x0800)) {
+        // The selected OS services here are Time Manager calls, not heap calls.
+        // Preserve MemError across callbacks, including a preceding HPurge error.
+        uint16_t sr=w(frame)&~15,result=parked[0];
+        if(!result)sr|=4;if(result&0x8000)sr|=8;sw(frame,sr);
+    }
+    if(!ok)stop(frame,usp,g_coreReason,trap,seg,off);
+    uint8_t* image=(uint8_t*)parked+consumed;
+    if(consumed)__builtin_memmove(image,parked,60);
+    sw(image+60,w(frame));sl(image+62,l(frame+2));
+    return (uint32_t)image;
+#else
+    return 0;
+#endif
+}
 extern "C" uint32_t pop2UserDispatch(uint32_t* parked) {
+    if(uint32_t fast=callbackService(parked))return fast;
     uint8_t frame[8]={};sw(frame,g_coreServiceSR);sl(frame+2,g_coreServicePC);
     uint32_t regs[15];for(unsigned i=0;i<15;++i)regs[i]=parked[i];
     uint8_t* usp=(uint8_t*)parked+66;
@@ -807,6 +1147,45 @@ extern "C" uint32_t pop2UserDispatch(uint32_t* parked) {
                 g_audioCallbackCode=callback;g_audioCallbackContext=context;
                 resumed-=4;sl(resumed,l(frame+2));sl(frame+2,(uint32_t)pop2_audio_callback);
             }
+        }
+    }
+#endif
+    if(!didStop && !g_timerCallbackActive && l(frame+2)!=(uint32_t)pop2_audio_callback){
+        TimerStamp now=timerNow();
+        for(auto& t:timers)if(t.task && t.active && timerDue(now,t.due)){
+            t.active=false;sw(t.task+4,w(t.task+4)&0x7fff);sl(t.task+10,0);
+            uint32_t callback=l(t.task+6),cs=0,co=0;
+            if(!callback)continue;
+            bool jump=callback>=(uint32_t)a5+app.world().jumpOffset+2 && callback<(uint32_t)a5+app.world().jumpOffset+app.world().jumpBytes && ((callback-(uint32_t)a5-app.world().jumpOffset)&7)==2;
+            if((!location(callback,cs,co) && !jump) || resumed<stack+128)
+                resumed=(uint8_t*)stop(frame,resumed,"TIME / CALLBACK OWNER",0,0,0);
+            else {
+                g_timerCallbackCode=callback;g_timerCallbackTask=(uint32_t)t.task;
+                g_timerCallbackActive=1;++g_timerCallbacks;
+                resumed-=4;sl(resumed,l(frame+2));sl(frame+2,(uint32_t)pop2_timer_callback);
+            }
+            break;
+        }
+    }
+#ifdef POP2_INPUT
+    if(!didStop && !g_timerCallbackActive && l(frame+2)!=(uint32_t)pop2_audio_callback){
+        uint32_t tick=NativeInput::ticks();
+        for(auto& t:vblTasks)if(t.task){
+            uint32_t elapsed=tick-t.tick;t.tick=tick;int16_t count=w(t.task+10);
+            if(count<=0 || !elapsed)continue;
+            if(elapsed<uint32_t(count)){sw(t.task+10,count-elapsed);continue;}
+            sw(t.task+10,0);uint32_t callback=l(t.task+6),cs=0,co=0;
+            bool dynamic=validMemory(callback,12) && w((uint8_t*)callback)==0x6104 && l((uint8_t*)callback+6)==0x225f2251 && w((uint8_t*)callback+10)==0x4ed1;
+            uint32_t entry=dynamic?l((uint8_t*)callback+2):callback;
+            bool jump=entry>=(uint32_t)a5+app.world().jumpOffset+2 && entry<(uint32_t)a5+app.world().jumpOffset+app.world().jumpBytes && ((entry-(uint32_t)a5-app.world().jumpOffset)&7)==2;
+            if((!location(entry,cs,co) && !jump) || resumed<stack+128)
+                resumed=(uint8_t*)stop(frame,resumed,"VBL / CALLBACK OWNER",0,0,0);
+            else {
+                flushCode();g_timerCallbackCode=callback;g_timerCallbackTask=(uint32_t)t.task;
+                g_timerCallbackActive=1;++g_timerCallbacks;
+                resumed-=4;sl(resumed,l(frame+2));sl(frame+2,(uint32_t)pop2_timer_callback);
+            }
+            break;
         }
     }
 #endif

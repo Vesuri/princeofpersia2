@@ -5,7 +5,7 @@ from pathlib import Path
 import re
 import struct
 from report_files import report
-from extract_original_data import ROOT, DESTINATION, verify_output
+from extract_original_data import ROOT, DESTINATION, verify_output, pins
 from check_core_result import check
 
 
@@ -28,7 +28,17 @@ def verify(directory,reference,settings=None):
     if log.count(write_marker)!=1:raise ValueError('NATIVE FILE / WRITE COMPLETION')
     if (directory/'file-probe.bin').read_bytes()!=expected:raise ValueError('NATIVE FILE / READ BYTES')
     counts=re.findall(r'^FILE VERIFY files=(\d+) bytes=(\d+)$',log,re.M)
-    if len(counts)!=1 or int(counts[0][0])!=(33 if settings=="restart" else 35):raise ValueError('NATIVE FILE / INPUT VERIFICATION')
+    # Startup now hashes the complete installed catalog before timers begin.
+    # Rebooted options have changed data and AFI1 metadata; those two mutable
+    # files are accepted by the persistence contract, not counted as hash matches.
+    originals=pins(ROOT/'manifest/runtime-data.sha256')
+    expected_files=1+len(originals)
+    expected_bytes=(directory/'dh1/file-catalog.bin').stat().st_size+sum((DESTINATION/name).stat().st_size for name in originals)
+    if settings=='restart':
+        expected_files-=2
+        expected_bytes-=sum((DESTINATION/('Data/Prince2.opt'+suffix)).stat().st_size for suffix in ('','.finfo'))
+    if len(counts)!=1 or tuple(map(int,counts[0]))!=(expected_files,expected_bytes):
+        raise ValueError('NATIVE FILE / COMPLETE INPUT VERIFICATION')
     if not re.search(r'^FCB PROBE open=0 query=0 close=0$',log,re.M):
         raise ValueError('NATIVE FILE / FCB COMPLETION')
     rows=report(reference)

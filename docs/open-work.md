@@ -4,7 +4,9 @@ In playbook order. Each item's acceptance gate passes before the next item's wor
 committed, except where an item says it runs in parallel.
 
 11. **Timing.** 60 Hz ticks from PAL fields, Time Manager and VBL tasks at safe
-    user-mode points, completed frames paced at vertical blank.
+    user-mode points, completed frames paced at vertical blank. Inspect and reuse
+    Alone in the Dark's queued VBL passes through the shared workflow; replace the
+    local elapsed-tick collapse and consolidate reusable scheduler logic.
     Acceptance: game-step cadence matches the reference on the fixed 68020 and on
     fast CPU configurations.
 12. **Gameplay validation.** Fixed-seed, state-paired routes through all levels and

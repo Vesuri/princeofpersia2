@@ -928,7 +928,7 @@ segment,offset,name,evidence,notes
 17,0x4FD2,BuildSOffWorld_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 17,0x5020,CopyBits_Publication1,MEASURED,Original A-line site in verified opening trace
 17,0x502E,DrawSOffWorldToWindow_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
-17,0x508A,CopyBits_Publication2,DERIVED,Second original CopyBits wrapper; static evidence
+17,0x508A,CopyBits_Publication2,MEASURED,All 65 original offscreen title copies; unlocked source or destination; paired complete pixels and PixMap states
 17,0x5098,DrawOffToOff_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 17,0x51F8,InvertOffWorld_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 17,0x5414,SaveRect_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point

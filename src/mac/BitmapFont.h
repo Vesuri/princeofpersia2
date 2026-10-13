@@ -1,6 +1,6 @@
-#ifndef POP2_BITMAP_FONT_H
-#define POP2_BITMAP_FONT_H
-#ifndef POP2_PLATFORM_AMIGA
+#ifndef AMIGAXDEV_BITMAP_FONT_H
+#define AMIGAXDEV_BITMAP_FONT_H
+#ifndef __mc68000__
 #include <stdint.h>
 #endif
 // Restricted classic FOND/NFNT reader for the embedded compatibility resources.
@@ -46,6 +46,63 @@ public:
         }
         data_=p;first_=family.first;last_=family.last;locations_=locations;widths_=widths;rowBytes_=rowWords*2;height_=height;advance_=width;return true;
     }
+    // Exact FOND size/style association; no font substitution or synthesis.
+    static bool association(const uint8_t* p,uint32_t bytes,int16_t id,
+                            uint16_t size,uint16_t style,Family& out) {
+        if(!p || bytes<54 || int16_t(word(p+2))!=id || word(p+50)!=2)return false;
+        uint32_t count=uint32_t(word(p+52))+1;
+        if(count>(bytes-54)/6 || word(p+4)>word(p+6) || word(p+6)>255)return false;
+        bool found=false;
+        for(uint32_t i=0;i<count;++i){
+            const uint8_t* a=p+54+6*i;
+            if(word(a)==size && word(a+2)==style){
+                if(found || !word(a+4) || word(a+4)>32767)return false;
+                out={word(p+4),word(p+6),size,int16_t(word(a+4)),bool(word(p)&0x8000)};found=true;
+            }
+        }
+        return found;
+    }
+    // One-bit NFNT, including missing glyphs, bearings and image-height tables.
+    // Integer advances use the offset/width table (QuickDraw's default mode).
+    bool openBitmap(const uint8_t* p,uint32_t bytes) {
+        data_=0;
+        if(!p || bytes<26)return false;
+        uint16_t type=word(p),first=word(p+2),last=word(p+4);
+        if((type&~0xa003)!=0x1000 || first>last || last>255 || int16_t(word(p+10))>0)return false;
+        uint32_t count=uint32_t(last)-first+2,height=word(p+14),rows=word(p+24);
+        if(!height || height>255 || !rows || rows>4096 || !word(p+6) || word(p+6)>255 ||
+           uint32_t(word(p+18))+word(p+20)!=height)return false;
+        uint32_t locations=26+rows*2*height,widths=16+uint32_t(word(p+16))*2;
+        if(widths!=locations+(count+1)*2 || widths>bytes || (count+1)*2>bytes-widths)return false;
+        uint32_t end=widths+(count+1)*2;
+        if(type&2)end+=(count+1)*2;
+        if(type&1)end+=(count+1)*2;
+        if(end!=bytes || word(p+widths+count*2)!=0xffff || word(p+widths+(count-1)*2)==0xffff)return false;
+        for(uint32_t i=0;i<count;++i){
+            uint16_t left=word(p+locations+2*i),right=word(p+locations+2*i+2),ow=word(p+widths+2*i);
+            if(left>right || right>rows*16 || right-left>word(p+12))return false;
+            if(ow!=0xffff && (ow&255)>word(p+6))return false;
+        }
+        data_=p;first_=first;last_=last;locations_=locations;widths_=widths;
+        rowBytes_=rows*2;height_=height;advance_=word(p+6);return true;
+    }
+    uint16_t glyphCharacter(uint16_t character) const {
+        if(!data_ || character<first_ || character>last_ ||
+           word(data_+widths_+2*(character-first_))==0xffff)return last_+1;
+        return character;
+    }
+    uint16_t integerWidth(uint16_t character) const {return charWidth(glyphCharacter(character));}
+    int16_t leftBearing(uint16_t character) const {
+        if(!data_)return 0;
+        uint16_t mapped=glyphCharacter(character),index=mapped<=last_?mapped-first_:last_-first_+1;
+        return int16_t(word(data_+8))+int16_t(word(data_+widths_+2*index)>>8);
+    }
+    uint16_t imageWidth(uint16_t character) const {
+        if(!data_)return 0;
+        uint16_t mapped=glyphCharacter(character),index=mapped<=last_?mapped-first_:last_-first_+1;
+        return word(data_+locations_+2*index+2)-word(data_+locations_+2*index);
+    }
+    bool ink(uint16_t character,uint16_t x,uint16_t y) const {return pixel(glyphCharacter(character),x,y);}
     uint16_t advance() const { return advance_; }
     uint16_t ascent() const { return data_ ? word(data_+18) : 0; }
     uint16_t descent() const { return data_ ? word(data_+20) : 0; }

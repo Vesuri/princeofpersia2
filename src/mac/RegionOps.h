@@ -1,5 +1,5 @@
-#ifndef POP2_REGION_OPS_H
-#define POP2_REGION_OPS_H
+#ifndef AMIGAXDEV_REGION_OPS_H
+#define AMIGAXDEV_REGION_OPS_H
 #include "RegionRows.h"
 namespace RegionOps {
 // Callers own staging storage, kept off the native supervisor stack. Failed
@@ -39,7 +39,11 @@ struct Writer {
         WindowGeometry::word(out+8,uint16_t(right));size=used;return true;
     }
 };
-enum Operation { Xor, Difference, Intersection };
+enum Operation { Xor, Difference, Intersection
+#ifdef AMIGAXDEV_REGION_UNION
+    , Union
+#endif
+};
 inline bool spans(const RegionRows::Edges& a,const RegionRows::Edges& b,
                   Operation op,RegionRows::Edges& out) {
     out.count=0;uint16_t i=0,j=0;bool inA=false,inB=false,previous=false;
@@ -47,7 +51,11 @@ inline bool spans(const RegionRows::Edges& a,const RegionRows::Edges& b,
         int16_t x=j==b.count || (i<a.count && a.x[i]<b.x[j]) ? a.x[i] : b.x[j];
         if(i<a.count && a.x[i]==x) {inA=!inA;++i;}
         if(j<b.count && b.x[j]==x) {inB=!inB;++j;}
+#ifdef AMIGAXDEV_REGION_UNION
+        bool next=op==Xor ? inA!=inB : op==Difference ? inA && !inB : op==Union ? inA || inB : inA && inB;
+#else
         bool next=op==Xor ? inA!=inB : op==Difference ? inA && !inB : inA && inB;
+#endif
         if(next!=previous) {
             if(out.count==16)return false;
             out.x[out.count++]=x;previous=next;

@@ -90,12 +90,12 @@ def startup(run,reference_run):
  log=(run/'gdb-out.log').read_text();restored(run,log)
  assert 'INPUT RESTORE vector=1\n' in log,'INPUT / CIA VECTOR RESTORE'
  assert 'CORE STOP trap=aaa0 segment=17 offset=0820 count=144\n' in log,'UI / STARTUP STOP'
- assert 'CORE REASON UNIMPLEMENTED / TRAP\n' in log,'UI / STARTUP REASON'
+ assert 'CORE REASON UI / STARTUP CHECKPOINT\n' in log,'UI / STARTUP REASON'
  assert 'CORE EXCEPTION vector=0 pc=00000000\n' in log
  native=re.findall(r'^CODE \d+\+[0-9A-F]+ trap=[0-9A-F]+$',log,re.M)
  original=[line.split(' selector=')[0] for line in (reference_run/'traps.txt').read_text().splitlines()[:144]]
  assert native==original,'UI / ORIGINAL STARTUP PREFIX'
- print('UI STARTUP PASS: 144 original calls; named Palette2CTab boundary; restored OS')
+ print('UI STARTUP PASS: 144 original calls; explicit Palette2CTab checkpoint; restored OS')
 
 if __name__=='__main__':
  import argparse

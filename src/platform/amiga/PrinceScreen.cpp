@@ -77,11 +77,20 @@ bool PrinceScreen::publish(const uint8_t* chunky,const Planar8::Rect& viewport,
     uint16_t back=front_^1;
     for(unsigned i=0;i<syncCount_;++i)if(Planar8::syncNeeded(sync_[i],work,n)) {
         auto r=sync_[i];
-        for(int y=r.top;y<r.bottom;++y)for(unsigned plane=0;plane<8;++plane)
-            for(int x=r.left/8;x<r.right/8;++x) {
-                uint32_t at=uint32_t(y)*Planar8::rowBytes+plane*Planar8::planeRow+x;
-                pixels_[back][at]=pixels_[front_][at];
-            }
+        // Alone in the Dark's pointer-free synchronization path, using the
+        // shared blitter service. No buffer swap occurs until pending_ is set.
+        const uint16_t widthBytes=uint16_t(r.right-r.left)/8;
+        AmigaHardware::setDMAChannels(DMAF_BLITTER,true);
+        for(int16_t y=r.top;y<r.bottom;) {
+            const uint16_t lines=r.bottom-y>127?127:r.bottom-y;
+            const uint32_t offset=uint32_t(y)*Planar8::rowBytes+r.left/8;
+            AmigaHardware::blitterCopy((uint16_t*)(pixels_[front_]+offset),
+                (uint16_t*)(pixels_[back]+offset),widthBytes/2,lines*8,
+                Planar8::planeRow-widthBytes,Planar8::planeRow-widthBytes,
+                0,0xffff,0xffff,0xffff);
+            AmigaHardware::blitterDrain();
+            y+=lines;
+        }
     }
     for(unsigned i=0;i<n;++i) {
         auto r=work[i];

@@ -71,8 +71,9 @@ calls to the same dispatcher for window setup, palette realization/animation and
 CopyBits. It loads the original captures into a locked offscreen GWorld, copies
 them into the logical client and publishes them. Thus the scene gate tests
 **display-service replay and presentation**, not execution of the original game
-renderer on Amiga. The [UI build](input-ui.md) extends startup to Palette2CTab;
-original native gameplay still requires further display, audio and timing services. The reference harness does not bypass copy protection for this route.
+renderer on Amiga. The separate [integration gate](native-integration.md) runs
+the original renderer through native startup and the first room. The display
+reference harness does not bypass copy protection for its route.
 
 ## AGA publication
 

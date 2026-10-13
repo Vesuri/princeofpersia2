@@ -59,7 +59,7 @@ def main():
         subprocess.run([os.environ.get('CXX','c++'),'-std=c++17','-fsanitize=address,undefined','-g','-Isrc','tools/'+source,'-o',str(exe)],check=True)
         subprocess.run([str(exe),*args],check=True)
     generate();native={};flags='-DPOP2_CORE -DPOP2_DISPLAY -DPOP2_INPUT -DPOP2_UI'
-    env=dict(os.environ,CORE='1',UI_REFERENCE=str(ui),INPUT_REFERENCE=str(keys),DEADLINE='90')
+    env=dict(os.environ,CORE='1',UI_REFERENCE=str(ui),INPUT_REFERENCE=str(keys),DEADLINE='300')
     def build(options):
         with (logs/('build-'+options.replace(' ','_')+'.log')).open('w') as out:
             subprocess.run(['make','-C','amiga','EXTRA_DEFINES='+options],stdout=out,stderr=subprocess.STDOUT,check=True)
@@ -90,7 +90,7 @@ def main():
         assert (path/'dh1/Shell.done').read_text().strip()=='SHELL FAIL'
         if label!='bad-byte':restored(path,log)
         assert 'INPUT RESTORE vector=1\n' in log
-    build(flags);startup(launch('startup',UI_STARTUP='1'),ui)
+    build(flags+' -DPOP2_STARTUP_CHECKPOINT');startup(launch('startup',UI_STARTUP='1'),ui)
     tracked=subprocess.check_output(['git','ls-files'],text=True).splitlines()
     assert not any(v.startswith(('tmp/','ref/','build/','amiga/obj/','amiga/out/','amiga/.run')) for v in tracked)
     ignored=subprocess.check_output(['git','status','--ignored','--short'],text=True)

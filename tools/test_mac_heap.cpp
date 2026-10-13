@@ -97,6 +97,7 @@ int main() {
     CHECK(h.setHandleSize(b,24)==0);CHECK(patternIs(*b,24,0x45));CHECK(h.emptyHandle(b)==0);CHECK(*b==nullptr);
     CHECK(h.reallocateHandle(b,1000)==0);CHECK(h.state(b)==0);CHECK(h.handleSize(b)==1000);
     CHECK(h.disposeHandle(b)==0);CHECK(h.disposePtr(pin)==0);CHECK(h.freeBytes()==original);CHECK(h.check());
+    CHECK(h.disposeHandle(nullptr)==0);CHECK(h.error()==0);CHECK(h.freeBytes()==original);CHECK(h.check());
     // Failed reallocation retains the pointer, contents and state.
     a=h.newHandle(400,true);pattern(*a,400,0x37);before=*a;CHECK(h.setState(a,0x60)==0);
     CHECK(h.reallocateHandle(a,0xffffffff)==MacHeap::memFullErr);

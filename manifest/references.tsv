@@ -5,3 +5,16 @@ Alone in the Dark	935aed56a0ec6f7cf5965969c2ea2d85d74637e6	Macintosh runtime reu
 AmigaXDev	cbec18036ea0ccda2fbdbff0e6f4eedb1463a63b	canonical dA JoRMaS framework scaffold
 Kalms C2P	d8ecf79a3325615305dd800ae7704b518e0d9dda	public-domain eight-plane converter via Alone in the Dark
 AmigaXDev	be5bac453efaa23f571009b2bfc9e0f4f35ffcae	shared FS-UAE launcher and monitor helper
+AmigaXDev	d7b10ab82cc3f9e289b117cbabf4542b9ac6903b	canonical pinned RectBounds helper shared with Alone in the Dark
+Alone in the Dark	d425ac4f14026f6236eba8899cee8252e565615c	canonical RectBounds adoption with byte-identical native executable
+AmigaXDev	52914dfda8082f3caf79c7c0d30373e55b6d41e5	shared bitmap font parsing and clipped NFNT text rendering
+Alone in the Dark	e7650692671520f050eb324a2f0e7226aa3532a6	shared bitmap font adoption with byte-identical native executable
+AmigaXDev	6c923a3c5ff7826e77cec94c3b5dc2bbd01be594	canonical indexed copy/fill, GWorld, geometry and region helpers with opt-in union
+Alone in the Dark	1959252dee80af36b9c466fd9a16b844acbde327	shared graphics helper adoption with byte-identical native executable
+AmigaXDev	0afd238f9d2134e6b681d40467c72137367a7d2b	shared 68020 big-endian memory access from Alone in the Dark
+Alone in the Dark	f59a239a59bd75a6a34b3d3533ff8a8b7ab27f8b	shared native memory-access adoption with byte-identical executable
+AmigaXDev	2cafed997b71db4a5eeec213a06e114af07e9a1e	shared validated original-code range cache
+AmigaXDev	d74c86dbddbd5bca4b2c732b6e3fe3b416729e66	canonical phase-preserving PCM DMA conversion
+Alone in the Dark	3896601252a5c0f810fa51e82ef77cd71d5333d8	shared PCM converter adoption with byte-identical executable
+AmigaXDev	199b1a1d7e5355afa2b6ba6aa2370d361f04bb98	Share mutable resource directory with indexed lookup
+Alone in the Dark	cbac057b2be1b37acde2baec5817bd03baa68576	Use canonical shared resource directory without changing runtime

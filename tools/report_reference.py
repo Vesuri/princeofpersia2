@@ -14,12 +14,16 @@ def require(condition, message):
         raise ValueError('REFERENCE / '+message)
 
 
-def analyze(log):
+def analyze(log, *, demo=False):
     require('FAIL REFERENCE' not in log and '[LUA ERROR]' not in log, 'SESSION ERROR')
     require(log.count('MILESTONE opening-text-1')==1, 'MILESTONE COUNT')
     require(log.count('REFERENCE_CAPTURED opening-text-1')==1, 'CAPTURE COMPLETION')
     require('DISPLAY_CONFIRMED 640x480x8 mdc48' in log, 'DISPLAY PROOF')
-    require(log.count('SEED old=0000 fixed=1234')==1 and log.count('SEED_RESULT value=00001234')==1, 'SEED PROOF')
+    require(log.count('SEED old=0000 fixed=1234')==1 and
+            log.count('SEED_RESULT value=00001234')==(2 if demo else 1), 'SEED PROOF')
+    if demo:
+        require(log.count('SEED old=0001 fixed=1234')==1 and
+                log.count('AUDIO_DEMO_COMPLETE\n')==1, 'DEMO COMPLETION')
     require('PACK_CHECK flags=0000/0001' in log and 'PACKING_ENTER' not in log, 'PACKING BRANCH')
     require('COPY_ROUTE nis=0007' in log and 'COPY_ENTER' not in log, 'COPY PROTECTION BRANCH')
     maps=[(int(s),int(b,16),int(n)) for s,b,n in re.findall(r'^MAP seg=(\d+) base=([0-9A-F]+) size=(\d+)$',log,re.M)]
@@ -82,12 +86,12 @@ def png(rgb):
 
 
 def report(directory,profile="opening"):
-    require(profile in ("opening","file-restart","display","ui"),"RESULT PROFILE")
-    trace,facts=analyze((directory/'session.log').read_text())
+    require(profile in ("opening","file-restart","display","ui","integration","demo"),"RESULT PROFILE")
+    trace,facts=analyze((directory/'session.log').read_text(),demo=profile=='demo')
     frame=(directory/'opening.ppm').read_bytes()
     require(frame.startswith(b'P6\n640 480\n255\n') and len(frame)==921615,'CAPTURE FORMAT')
     outputs={'opening.ppm':frame,'traps.txt':trace}
-    expected=pins(ROOT/('manifest/reference-results.sha256' if profile in ('opening','display','ui') else 'manifest/reference-file-restart.sha256'))
+    expected=pins(ROOT/('manifest/reference-results.sha256' if profile in ('opening','display','ui','integration','demo') else 'manifest/reference-file-restart.sha256'))
     # Preserve useful diagnostic output even when the pinned comparison fails.
     (directory/'traps.txt').write_bytes(trace)
     (directory/'opening.png').write_bytes(png(frame[15:]))
@@ -109,8 +113,16 @@ def report(directory,profile="opening"):
             for phase in ('before','after'):
                 for kind,size in (('stack',64),('low',4096)):
                     require((directory/f'ui-{call}-{phase}-{kind}.bin').stat().st_size==size,'UI CAPTURE EXTENT')
+    if profile=='integration':
+        calls=re.findall(r'^INTEGRATION_CALL id=(\d+) ',(directory/'session.log').read_text(),re.M)
+        returns=re.findall(r'^INTEGRATION_REGS after id=(\d+) ',(directory/'session.log').read_text(),re.M)
+        require(bool(calls) and calls==returns and calls==[str(i) for i in range(1,len(calls)+1)],'INTEGRATION PAIRED CALLS')
+        require((directory/'session.log').read_text().count(f'INTEGRATION_COMPLETE calls={len(calls)}')==1,'INTEGRATION COMPLETION')
+        for call in calls:
+            for phase in ('before','after'):
+                require((directory/f'integration-{call}-{phase}-stack.bin').stat().st_size==64,'INTEGRATION STACK EXTENT')
     for name,data in outputs.items():
-        if profile in ('display','ui') and name=='traps.txt':continue # observed waits depend on observer pauses
+        if profile in ('display','ui','integration') and name=='traps.txt':continue # observed waits depend on observer pauses
         require(name in expected and hashlib.sha256(data).hexdigest()==expected[name],'RESULT HASH '+name)
     print('REFERENCE PASS:',directory.relative_to(ROOT),facts['milestone'])
     return facts

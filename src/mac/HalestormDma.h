@@ -34,12 +34,7 @@ inline const char* describe(const HalestormInputs::Sample& sample,uint32_t step,
     if(l.attackBytes>131070 || l.reloadBytes>131070 || l.allocated>131072)return "AUDIO / MUSIC DMA EXTENT";
     return nullptr;
 }
-inline void convert(const Plan& plan,uint8_t* output) {
-    const auto& l=plan.layout;uint32_t pos=0;
-    for(uint32_t i=0;i<l.allocated;++i){
-        if(!l.loopEnd && i>=l.reloadOffset){output[i]=0;continue;}
-        if(l.loopEnd && pos>=l.loopEnd)pos=l.loopStart+(pos-l.loopEnd)%(l.loopEnd-l.loopStart);
-        output[i]=pos<l.size ? l.pcm[pos]^0x80 : 0;pos+=plan.stride;
-    }
-}
+using Dma=Plan;
+#include "PcmDma.inc"
+
 }

@@ -13,6 +13,9 @@ extern "C" {extern volatile uint32_t g_inputVectorRestored;}
 #ifdef POP2_UI_PROBE
 extern "C" {extern volatile uint32_t g_uiOverlay,g_uiOverlayCount;extern volatile uint8_t g_uiProbeReplyRaw;}
 #endif
+#ifdef POP2_INTEGRATION_PROBE
+extern "C" {extern volatile uint32_t g_integrationStage,g_integrationRightAt;volatile uint32_t g_integrationEscReads=0,g_integrationRightReads=0,g_integrationSpaceEvents=0,g_integrationKeys[4]={};volatile uint32_t g_integrationPulseRaw=128,g_integrationPulseStart=0,g_integrationPulseEnd=0;}
+#endif
 namespace NativeInput {
 namespace {
 Library* cia;Interrupt handler;Interrupt* previous;
@@ -67,6 +70,19 @@ void field(uint32_t ticks) {
      replied=g_uiOverlayCount;held=g_uiProbeReplyRaw;enqueue(held,true);
  }
 #endif
+#ifdef POP2_INTEGRATION_PROBE
+ static uint32_t observed[4]={};
+ for(unsigned group=0;group<4;++group){
+  uint32_t keys=g_integrationKeys[group],pulse=g_integrationPulseRaw;
+  if(pulse<128 && pulse/32==group && int32_t(ticks-g_integrationPulseStart)>=0 && int32_t(g_integrationPulseEnd-ticks)>0)keys|=1UL<<(pulse%32);
+#ifndef POP2_INTEGRATION_NO_RIGHT
+  if(g_integrationStage==3 && int32_t(ticks-g_integrationRightAt)>=0 && group==2)keys|=1UL<<(0x4e%32);
+#endif
+  uint32_t changed=keys^observed[group];
+  for(unsigned bit=0;bit<32;++bit)if(changed&(1UL<<bit))enqueue(group*32+bit,(keys&(1UL<<bit))!=0);
+  observed[group]=keys;
+ }
+#endif
  if(rawOverflow){reason="INPUT / RAW QUEUE OVERFLOW";return;}
  while(tail!=head) {
   uint8_t edge=rawQueue[tail];tail=(tail+1)&127;
@@ -85,8 +101,21 @@ void field(uint32_t ticks) {
   if(!state.edge(key.virtualKey,held,character,ticks)){reason="INPUT / EVENT QUEUE OVERFLOW";return;}
  }
 }
-void keyMap(uint8_t* output){Disable();state.keyMap(output);Enable();}
-bool event(uint16_t mask,bool remove,uint32_t ticks,InputState::Event& output){Disable();bool found=state.event(mask,remove,ticks,output);Enable();return found;}
+void keyMap(uint8_t* output){
+ Disable();state.keyMap(output);
+#ifdef POP2_INTEGRATION_PROBE
+ if(g_integrationStage==3 && (output[15]&0x10))++g_integrationRightReads;
+ if(output[6]&0x20)++g_integrationEscReads;
+#endif
+ Enable();
+}
+bool event(uint16_t mask,bool remove,uint32_t ticks,InputState::Event& output){
+ Disable();bool found=state.event(mask,remove,ticks,output);
+#ifdef POP2_INTEGRATION_PROBE
+ if(g_integrationStage==2 && found && remove && output.what==3 && (output.message&65535)==0x3120)++g_integrationSpaceEvents;
+#endif
+ Enable();return found;
+}
 void flush(uint16_t which,uint16_t stop){Disable();state.flush(which,stop);Enable();}
 const char* error(){return reason;}
 void inject(uint8_t raw,bool down){Disable();if(raw<128)enqueue(raw,down);else reason="INPUT / INJECT KEY RANGE";Enable();}

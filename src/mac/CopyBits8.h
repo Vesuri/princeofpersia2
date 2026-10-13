@@ -1,5 +1,5 @@
-#ifndef POP2_COPY_BITS8_H
-#define POP2_COPY_BITS8_H
+#ifndef AMIGAXDEV_COPY_BITS8_H
+#define AMIGAXDEV_COPY_BITS8_H
 #include "RectBounds.h"
 #include "RegionRows.h"
 namespace CopyBits8 {
@@ -8,7 +8,7 @@ inline int32_t coord(const uint8_t* r,unsigned i) { return int16_t(RectBounds::w
 // byte alignment without violating aliasing rules; the target is 68020+.
 inline void copySpan(const uint8_t* in,uint8_t* out,uint32_t count) {
     while(count>=16) {
-#ifdef POP2_PLATFORM_AMIGA
+#ifdef __mc68000__
         __asm__ volatile("move.l (%0)+,(%1)+\n\tmove.l (%0)+,(%1)+\n\t"
                          "move.l (%0)+,(%1)+\n\tmove.l (%0)+,(%1)+"
                          : "+a"(in), "+a"(out) : : "cc", "memory");
@@ -21,7 +21,7 @@ inline void copySpan(const uint8_t* in,uint8_t* out,uint32_t count) {
         count-=16;
     }
     while(count>=4) {
-#ifdef POP2_PLATFORM_AMIGA
+#ifdef __mc68000__
         // GCC expands an alignment-one integer load/store into byte shifts.
         // The 68020+ supports this longword transfer at every byte alignment.
         __asm__ volatile("move.l (%0)+,(%1)+" : "+a"(in), "+a"(out) : : "cc", "memory");

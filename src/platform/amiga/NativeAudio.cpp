@@ -63,6 +63,7 @@ void release(){PaulaAudio::release();}
 void take(){fieldsClock=observedClock=0;fraction=0;PaulaAudio::take();if(PaulaAudio::error())failure=PaulaAudio::error();}
 void restore(){PaulaAudio::restore();}
 void field(){fraction+=6;fieldsClock+=fraction/5;fraction%=5;}
+bool servicePending(){return failure || callbackRead!=callbackWrite || fieldsClock!=observedClock;}
 bool sync(){
     if(failure)return false;if(replaying)return true;
     uint32_t now=fieldsClock,elapsed=now-observedClock;observedClock=now;

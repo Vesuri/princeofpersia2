@@ -9,7 +9,7 @@ VASM ?= $(HOME)/.local/vasmm68k_mot
 FW = ../src/platform/amiga/framework
 OUT = out/PrinceOfPersia2
 COMMON = -g -m68020 -mtune=68020 -msoft-float -O2 -nostdlib -ffunction-sections -fdata-sections -fno-tree-loop-distribution -MMD -MP
-CXXFLAGS = $(COMMON) -std=gnu++17 -fno-rtti -fno-exceptions -fno-use-cxa-atexit -fcheck-new -fpermissive -Wno-write-strings -DPOP2_PLATFORM_AMIGA $(EXTRA_DEFINES) -include $(FW)/SASCCompat.h -I$(FW) -I$(FW)/compat-include -I../src
+CXXFLAGS = $(COMMON) -std=gnu++17 -fno-rtti -fno-exceptions -fno-use-cxa-atexit -fcheck-new -fpermissive -Wno-write-strings -DPOP2_PLATFORM_AMIGA -DAMIGAXDEV_RESOURCE_DIRECTORY_INDEXED -DAMIGAXDEV_RESOURCE_DIRECTORY_MAP_LIMIT $(EXTRA_DEFINES) -include $(FW)/SASCCompat.h -I$(FW) -I$(FW)/compat-include -I../src
 FW_NAMES = AmigaHardware Bitmap CopperList Palette Palette24Bit Sprite Util
 CXX_SRC = ../src/main.cpp ../src/platform/amiga/PlatformAmiga.cpp ../src/platform/amiga/PrinceScreen.cpp ../src/platform/amiga/GCCRuntime.cpp ../src/platform/amiga/CoreRuntime.cpp ../src/platform/amiga/NativeAudio.cpp ../src/platform/amiga/PaulaAudio.cpp ../src/platform/amiga/NativeUI.cpp ../src/platform/amiga/NativeInput.cpp ../src/platform/amiga/NativeFiles.cpp ../src/platform/amiga/NativeDisplay.cpp ../src/platform/amiga/NativeResources.cpp $(addprefix $(FW)/,$(addsuffix .cpp,$(FW_NAMES))) $(wildcard ../src/mac/*.cpp)
 ASM_NAMES = AmigaHardwareAssembler BitmapAssembler CopperListAssembler UtilAssembler
@@ -21,7 +21,10 @@ OBJS += obj/MacEntry.o
 verify: verify-core
 verify-core:
 	@python3 ../tools/core_inputs.py --verify
-PROBES += g_coreTrace g_coreCount g_coreA5 g_coreBelow g_coreSegments g_coreInitial g_coreStopTrap g_coreStopSegment g_coreStopOffset g_coreZoneBytes g_coreHeapOK g_coreVectorRestored g_coreReason
+PROBES += g_coreCodeAudit g_coreTrace g_coreCount g_coreA5 g_coreBelow g_coreSegments g_coreInitial g_coreStopTrap g_coreStopSegment g_coreStopOffset g_coreZoneBytes g_coreHeapOK g_coreVectorRestored g_coreReason
+ifneq (,$(filter -DPOP2_INTEGRATION_PROBE,$(EXTRA_DEFINES)))
+PROBES += g_integrationRightReads g_integrationEscReads g_integrationSpaceEvents
+endif
 obj/CoreRuntime.o: ../build/core/Inputs.h
 ifneq (,$(filter -DPOP2_AUDIO,$(EXTRA_DEFINES)))
 obj/CoreRuntime.o: ../build/audio/AudioInputs.h
@@ -62,7 +65,7 @@ endif
 obj/DisplayC2P.o: ../src/platform/amiga/DisplayC2P.s ../src/platform/amiga/kalms/c2p1x1_8_c5_gen.s
 	$(VASM) -m68020 -Felf -quiet -x -no-opt -nowarn=62 "$<" -o "$@"
 obj/MacEntry.o: ../src/platform/amiga/MacEntry.s
-	$(AS) -mcpu=68020 -g --register-prefix-optional "$<" -o "$@"
+	$(AS) -mcpu=68020 -g --register-prefix-optional $(if $(filter -DPOP2_INTEGRATION_PROBE,$(EXTRA_DEFINES)),--defsym POP2_INTEGRATION_PROBE=1) "$<" -o "$@"
 COMMA := ,
 vpath %.cpp ../src ../src/mac ../src/platform/amiga $(FW)
 .PHONY: all verify FORCE audit
@@ -98,3 +101,8 @@ audit: $(OUT).exe
 	@python3 ../tools/check_scaffold_link.py $(OUT).elf obj/all.o $(PROBES)
 	@python3 ../tools/build_receipt.py write '$(EXTRA_DEFINES)'
 -include $(wildcard obj/*.d)
+
+.PHONY: shared-runtime-check
+shared-runtime-check:
+	@cd .. && shasum -a 256 -c manifest/shared-runtime.sha256
+$(OBJS): | shared-runtime-check

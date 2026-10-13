@@ -11,6 +11,7 @@ uint32_t g_audioSavedADK=0,g_audioActualADK=0;
 // Register sequencing adapted from the pinned Alone in the Dark MacLoader.
 namespace {
 uint8_t* buffers[4]={};uint16_t ceiling[4]={65535,65535,65535,65535};
+uint16_t master[2]={256,256},volumes[4]={};
 bool owned=false;const char* failure=nullptr;
 uint16_t savedADK=0;
 volatile uint16_t* reg(uint32_t address){return (volatile uint16_t*)address;}
@@ -33,7 +34,10 @@ bool prepare(){
 }
 void release(){for(auto& p:buffers){if(p)FreeMem(p,131072);p=nullptr;}}
 uint8_t* buffer(unsigned channel){return channel<4?buffers[channel]:nullptr;}
-void volume(unsigned channel,uint16_t value){if(owned && channel<4 && value<=64)*reg(0xdff0a8+16*channel)=value;}
+void volume(unsigned channel,uint16_t value){
+    if(channel<4 && value<=64){volumes[channel]=value;if(owned)*reg(0xdff0a8+16*channel)=(value*master[channel==0 || channel==3?0:1]+128)/256;}
+}
+void masterVolume(uint32_t stereo){master[0]=stereo&65535;master[1]=stereo>>16;for(unsigned c=0;c<4;++c)volume(c,volumes[c]);}
 void stop(unsigned channel){
     if(!owned || channel>3)return;
     *reg(0xdff0a8+16*channel)=0;disable(channel);
@@ -54,7 +58,7 @@ bool start(unsigned channel,const PaulaSample::Layout& l,uint16_t period,uint16_
        || period<124 || volume>64){failure="AUDIO / DMA CONTRACT";return false;}
     disable(channel);uint32_t base=0xdff0a0+16*channel;
     *(volatile uint32_t*)base=(uint32_t)buffers[channel];*reg(base+4)=l.attackBytes/2;
-    *reg(base+6)=period;ceiling[channel]=period;*reg(base+8)=volume;
+    *reg(base+6)=period;ceiling[channel]=period;PaulaAudio::volume(channel,volume);
     *reg(0xdff096)=0x8200|(1u<<channel);waitLines(2);
     *(volatile uint32_t*)base=(uint32_t)(buffers[channel]+l.reloadOffset);*reg(base+4)=l.reloadBytes/2;
 #ifdef POP2_AUDIO_PROBE

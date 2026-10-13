@@ -1,5 +1,5 @@
-#ifndef POP2_REGION_ROWS_H
-#define POP2_REGION_ROWS_H
+#ifndef AMIGAXDEV_REGION_ROWS_H
+#define AMIGAXDEV_REGION_ROWS_H
 #include "WindowGeometry.h"
 namespace RegionRows {
 inline int16_t get(const uint8_t* p) {return int16_t(uint16_t(p[0])<<8|p[1]);}
@@ -53,7 +53,7 @@ struct ValidationCache {
     Entry entries[slots]{};
     uint16_t next=0;
     static bool same(const uint8_t* a,const uint8_t* b,uint16_t size) {
-#ifdef POP2_PLATFORM_AMIGA
+#ifdef __mc68000__
         struct __attribute__((packed,may_alias)) Word { uint32_t value; };
         while(size>=4) {
             uint32_t av,bv;

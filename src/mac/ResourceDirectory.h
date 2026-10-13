@@ -1,5 +1,5 @@
-#ifndef POP2_RESOURCE_DIRECTORY_H
-#define POP2_RESOURCE_DIRECTORY_H
+#ifndef AMIGAXDEV_RESOURCE_DIRECTORY_H
+#define AMIGAXDEV_RESOURCE_DIRECTORY_H
 #include "ResourceWriter.h"
 // Mutable metadata only. Caller-owned payload sources must remain readable until
 // replaced, rebased or closed; the directory never owns file handles or bodies.
@@ -45,6 +45,13 @@ private:
     struct Fork { bool active=false,writable=false,dirty=false;int16_t ref=0;uint32_t opened=0;uint8_t* map=0; };
     struct Record { uint32_t identity=0;uint16_t fork=0;Entry entry={};uint8_t* name=0; };
     Fork forks_[maximumForks];Record records_[maximumResources];uint32_t nextIdentity_=1;
+#ifdef AMIGAXDEV_RESOURCE_DIRECTORY_INDEXED
+    // Vette's sorted lookup, with identities breaking ties for duplicate keys.
+    mutable uint16_t lookup_[maximumResources],lookupCount_=0;
+    mutable bool lookupValid_=false;
+    bool lookupBefore(uint16_t a,uint16_t b) const;
+    void prepareLookup() const;
+#endif
     uint16_t order(int16_t fork,uint16_t* indices) const;
     int16_t forkIndex(int16_t ref) const;
     int16_t recordIndex(uint32_t identity) const;

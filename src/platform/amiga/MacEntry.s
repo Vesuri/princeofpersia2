@@ -730,6 +730,22 @@ pop2_ui_fixture_end:
 
 	.text
 	.even
+	.globl pop2_timer_callback
+pop2_timer_callback:
+	movem.l d0-d7/a0-a6,-(sp)
+	move.w ccr,-(sp)
+	move.l g_timerCallbackTask,a1
+	move.l g_timerCallbackTask,a0
+	move.l g_timerCallbackCode,-(sp)
+	pea 1f
+	move.l 4(sp),-(sp)
+	rts
+1:
+	addq.l #4,sp
+	clr.l g_timerCallbackActive
+	move.w (sp)+,ccr
+	movem.l (sp)+,d0-d7/a0-a6
+	rts
 	.globl pop2_audio_callback
 pop2_audio_callback:
 	movem.l d0-d7/a0-a6,-(sp)
@@ -775,3 +791,69 @@ pop2_audio_test_callback:
 	rts
 	.globl pop2_audio_fixture_end
 pop2_audio_fixture_end:
+
+	.ifdef POP2_INTEGRATION_PROBE
+	.section .text.integration_probe,"ax"
+	.even
+	.globl pop2_integration_seed
+pop2_integration_seed:
+	movem.l d2-d7/a2-a6,-(sp)
+	move.l 48(sp),a0
+	move.l 52(sp),a5
+	move.w #0x1234,-(sp)
+	jsr (a0)
+	addq.l #2,sp
+	movem.l (sp)+,d2-d7/a2-a6
+	rts
+	.globl pop2_integration_title
+pop2_integration_title:
+	movem.l d0-d7/a0-a6,-(sp)
+	move.w ccr,-(sp)
+	pea 62(sp)
+	jsr pop2IntegrationTitleHook
+	addq.l #4,sp
+	move.w (sp)+,ccr
+	movem.l (sp)+,d0-d7/a0-a6
+	move.l g_integrationTitleTarget,-(sp)
+	rts
+
+	.globl pop2_integration_opening
+pop2_integration_opening:
+	movem.l d0-d7/a0-a6,-(sp)
+	move.w ccr,-(sp)
+	jsr pop2IntegrationOpeningHook
+	move.w (sp)+,ccr
+	movem.l (sp)+,d0-d7/a0-a6
+	move.l g_integrationOpeningReturn,-(sp)
+	rts
+	.globl pop2_integration_room
+pop2_integration_room:
+	movem.l d0-d7/a0-a6,-(sp)
+	move.w ccr,-(sp)
+	jsr pop2IntegrationRoomHook
+	move.w (sp)+,ccr
+	movem.l (sp)+,d0-d7/a0-a6
+	move.l g_integrationRoomReturn,-(sp)
+	rts
+	.globl pop2_integration_death
+pop2_integration_death:
+	movem.l d0-d7/a0-a6,-(sp)
+	move.w ccr,-(sp)
+	pea 62(sp)
+	jsr pop2IntegrationDeathHook
+	addq.l #4,sp
+	move.w (sp)+,ccr
+	movem.l (sp)+,d0-d7/a0-a6
+	move.l g_integrationDeathTarget,-(sp)
+	rts
+	.globl pop2_integration_death_return
+pop2_integration_death_return:
+	movem.l d0-d7/a0-a6,-(sp)
+	move.w ccr,-(sp)
+	jsr pop2IntegrationDeathReturned
+	move.w (sp)+,ccr
+	movem.l (sp)+,d0-d7/a0-a6
+	move.l g_integrationDeathReturn,-(sp)
+	rts
+
+	.endif

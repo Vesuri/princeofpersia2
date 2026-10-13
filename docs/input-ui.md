@@ -1,16 +1,18 @@
 # Input and port-owned UI
 
-`make ui` enables the VBI keyboard bridge and port-owned UI. Original startup
-executes 144 calls matching the Macintosh reference, through menu initialization
-and window setup, then stops at unsupported `Palette2CTab` (CODE 17+$0820,
-trap $AAA0). This is a bounded runtime, not a playable game. The audio build adds the separately validated [native driver](audio.md); game timing
-remains open. The UI gate does not claim end-to-end gameplay.
+`make ui` enables the VBI keyboard bridge and port-owned UI. The UI gate verifies
+144 startup calls matching the Macintosh reference through menu initialization
+and window setup, then stops at an explicit test-only checkpoint before
+`Palette2CTab` (CODE 17+$0820, trap $AAA0). That service is implemented in the
+ordinary build. The UI configuration omits the [native audio driver](audio.md).
+The separate [integration gate](native-integration.md) executes startup through
+the first playable room; the UI service fixtures alone do not prove gameplay.
 
 `make ui-check` repeats original input and UI fixtures, checks native execution
 and AGA output, and exercises rejection controls. Reports are in ignored
 `tmp/ui-gate-*/report.json`. `--references UI UI_REPEAT INPUT INPUT_REPEAT` on
 `tools/check_ui.py` reuses completed original captures. The gate leaves the
-ordinary `make ui` configuration built. Original archives, reference frames,
+startup-checkpoint configuration built. Original archives, reference frames,
 measured records and patched CODE bytes are never tracked.
 
 ## Input contract

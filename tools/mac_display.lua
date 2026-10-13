@@ -8,7 +8,7 @@ local thePort
 local bindings={}
 local traps={0xa86e,0xa912,0xaa2a,0xaa29,0xaa46,0xa873,0xa874,0xa8ec,
  0xa915,0xa916,0xa91b,0xab1d,0xaa90,0xaa91,0xaa92,0xaa94,0xaa95,0xaa96,0xaa99,0xaa9a,
- 0xaa9b,0xaa9c,0xaa9d,0xaa9e,0xaaa2,0xaa03,0xaa14,0xaa15}
+ 0xaaa0,0xaa9b,0xaa9c,0xaa9d,0xaa9e,0xaaa2,0xaa03,0xaa14,0xaa15}
 local selected={};for _,t in ipairs(traps)do selected[t]=true end
 local function u(a)return mem:readv_u32(a)end
 local function ptr(a)return u(a)&0xffffff end
@@ -71,6 +71,10 @@ local function state(phase,p)
   map(phase..'-window-map',ptr(ptr(p.window+2)))
  end
  if thePort and ptr(thePort)~=0 then dump(phase..'-port',ptr(thePort),108)end
+ if p.trap==0xaaa0 then
+  local h=p.args[1]&0xffffff;local body=ptr(h)
+  dump(phase..'-converted-colors',body,8+8*(mem:readv_u16(body+6)+1))
+ end
  if p.trap==0xaa9c then dump(phase..'-entry-rgb',p.args[1]&0xffffff,6)end
  if p.trap==0xaa9a then
   dump(phase..'-animation',p.colors,8+8*(p.source+p.count))
@@ -127,6 +131,7 @@ function M.poll()
  if trap==0xa915 or trap==0xa916 then p.window=p.args[1]&0xffffff end
  if trap==0xa91b then p.window=u(p.stack+6)&0xffffff end
  if trap==0xa86e then thePort=p.args[1]&0xffffff end
+ if trap==0xaaa0 then p.palette=u(p.stack+4)end
  if trap==0xaa9c or trap==0xaa9e then p.palette=u(p.stack+6)end
  if trap==0xaa95 then p.window=u(p.stack+6)&0xffffff;p.palette=u(p.stack+2);bindings[u(p.stack+6)&0xffffff]=p.palette end
  if trap==0xaa9a then

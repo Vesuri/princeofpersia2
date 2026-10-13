@@ -2,14 +2,12 @@
 
 Macintosh-to-Amiga port following Vette! and Alone in the Dark. The owner has set the
 target and approach in `docs/design.md`; work proceeds through `docs/open-work.md` in
-order. Inspection, extraction, a verified Macintosh opening-cutscene reference and its static/live map exist.
-The Amiga core executes verified original startup through the named InitGraf stop.
-File/resource services have separate paired probes and save/restart checks.
-The display build passes InitGraf and stops at InitFonts; paired display services and
-title/first-room presentation replay exist. The UI build reaches Palette2CTab after
-144 original calls; paired VBI input and owned UI/seam probes exist. The audio
-build supplies Jnth 11 with paired original audio-service and Paula DMA probes.
-Timing and later game services remain open.
+order. Inspection, extraction, a verified Macintosh reference and a static/live map exist.
+Core, file/resource, display, UI and audio service gates exist. The native startup
+integration gate reaches the first playable room with matching reference pixels
+and state and verified gameplay input. Earlier service fixtures use explicit
+checkpoints and do not independently establish gameplay. Timing and later
+validation remain open.
 
 ## Rules
 
@@ -31,6 +29,9 @@ Timing and later game services remain open.
   and `~/.local/share/amiga` are the allowed conventions.
 - Pin inputs by SHA-256 or commit in `manifest/` and verify before use. Preserve
   original inputs. Setup never deletes: move differing files to `.replaced/`.
+- Before implementing or fixing a service, inspect Vette! and Alone in the Dark
+  first. Reuse existing implementations and share reusable code between the ports
+  through the shared workflow; do not create independent copies of common logic.
 - Shared files edited in place must be brought back through AmigaXDev's
   `make pull-shared`, never overwritten. Do not change other projects with dirty trees.
 - Shell scripts must work with macOS `/bin/bash` 3.2.

@@ -9,7 +9,7 @@ compiler=os.environ.get('CXX','c++')
 sources=sorted(str(p) for p in Path('src/mac').glob('*.cpp'))
 for test in sorted(Path('tools').glob('test_*.cpp')):
     exe=out/test.stem
-    subprocess.run([compiler,'-std=c++17','-O2','-include','cstdint','-Isrc',str(test),*sources,'-o',str(exe)],check=True)
+    subprocess.run([compiler,'-std=c++17','-O2','-DAMIGAXDEV_RESOURCE_DIRECTORY_INDEXED','-DAMIGAXDEV_RESOURCE_DIRECTORY_MAP_LIMIT','-include','cstdint','-Isrc',str(test),*sources,'-o',str(exe)],check=True)
     if test.stem in {'test_fillrect8','test_line8'}:
         rect=struct.pack('>hhhh',0,0,480,640)
         shape=struct.pack('>hhhh',20,30,25,36)

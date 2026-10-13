@@ -4,7 +4,15 @@
 #include "mac/GWorld8.h"
 #include "mac/Palette8.h"
 #include "mac/CopyBits8.h"
+#include "mac/FillRect8.h"
+#include "mac/RegionCopy.h"
+#define AMIGAXDEV_REGION_UNION 1
+#include "mac/RegionOps.h"
+#include "mac/RectBounds.h"
+#include "mac/BitmapFont.h"
+#include "mac/BitmapText8.h"
 #include "mac/AnimatePalette8.h"
+extern "C" {uint32_t g_integrationScreen=0,g_integrationColors=0;}
 namespace NativeDisplay {
 namespace {
 using H=MacHeap::Handle;
@@ -13,6 +21,7 @@ H device,map,colors;uint32_t currentDevice;
 const char* reason="DISPLAY / NOT INITIALIZED";
 struct World {uint8_t* port;H pm,pixels,vis,clip,vars,patterns[3];bool locked,isScreen;H palette;bool active;};
 World worlds[16]={};
+uint8_t regionWorkspace[32766];
 PrinceScreen* output;const uint8_t* transfer;
 Planar8::Rect dirty[64];uint16_t dirtyCount=0;bool paletteDirty=false;
 struct Palette {H body,privateData;};Palette palettes[8]={};
@@ -36,17 +45,19 @@ void dispose(World& v) {
 World* create(const uint8_t* bounds,bool screen=false) {
     GWorld8::Rect r={int16_t(w(bounds)),int16_t(w(bounds+2)),int16_t(w(bounds+4)),int16_t(w(bounds+6))};
     int32_t width=int32_t(r.right)-r.left,height=int32_t(r.bottom)-r.top;
-    // MEASURED noNewDevice requests: 512x384 and 510x87, sharing the main CLUT.
-    // Other allocation forms stay loud until the original contract is captured.
-    if(r.top || r.left || !((width==512 && height==384)||(width==510 && height==87)))return nullptr;
+    // MEASURED noNewDevice requests share the main CLUT and a 528-byte stride:
+    // main buffer 512x384, opening text 510x87, title buffer 510x384.
+    if(r.top || r.left || !(((width==512 || width==510) && height==384)||(width==510 && height==87))) {
+        fail("DISPLAY / NEWGWORLD BOUNDS");return nullptr;
+    }
     World* v=nullptr;for(auto& candidate:worlds)if(!candidate.port) {v=&candidate;break;}
-    if(!v)return nullptr;
+    if(!v){fail("DISPLAY / GWORLD CAPACITY");return nullptr;}
     v->port=heap->newPtr(screen?156:108,true);
-    if(!v->port)return nullptr;
+    if(!v->port){fail("DISPLAY / NEWGWORLD MEMORY");return nullptr;}
     v->pm=heap->newHandle(50,true);if(!screen)v->pixels=heap->newHandle(528*height,false);
     v->vis=heap->newHandle(10,true);v->clip=heap->newHandle(10,true);v->vars=heap->newHandle(46,true);
     for(unsigned i=0;i<3;++i)v->patterns[i]=heap->newHandle(28,true);
-    if(!v->pm || (!screen && !v->pixels) || !v->vis || !v->clip || !v->vars || !v->patterns[0] || !v->patterns[1] || !v->patterns[2]) {dispose(*v);return nullptr;}
+    if(!v->pm || (!screen && !v->pixels) || !v->vis || !v->clip || !v->vars || !v->patterns[0] || !v->patterns[1] || !v->patterns[2]) {dispose(*v);fail("DISPLAY / NEWGWORLD MEMORY");return nullptr;}
     GWorld8::Layout layout={528,uint32_t(528*height)};
     GWorld8::pixmap(*v->pm,(uint32_t)v->pixels,(uint32_t)colors,r,layout);
     sw(*v->vis,10);GWorld8::rect(*v->vis+2,r);
@@ -104,6 +115,8 @@ bool initWindowManager() {
     uint8_t bounds[8];GWorld8::rect(bounds,{0,0,384,512});
     World* v=create(bounds,true);if(!v)return fail("UI / WINDOW MANAGER MEMORY");
     GWorld8::rect(v->port+16,{0,0,480,640});
+    H desktop=heap->newHandle(10,true);if(!desktop)return fail("UI / DESKTOP REGION MEMORY");
+    sw(*desktop,10);GWorld8::rect(*desktop+2,{20,0,480,640});sl(low+0xbaa,(uint32_t)desktop);
     sl(thePort,(uint32_t)v->port);return true;
 }
 bool showOverlay(const uint8_t* image) {
@@ -123,6 +136,7 @@ bool hideOverlay() {
 void attach(PrinceScreen* screen,const uint8_t* lookup) {output=screen;transfer=lookup;}
 void wait() {if(output)output->wait();}
 bool publish() {
+    g_integrationScreen=(uint32_t)pixels;g_integrationColors=(uint32_t)colors;
     if(!output || (!dirtyCount && !paletteDirty))return true;
     if(!transfer)return fail("DISPLAY / VIDEO TRANSFER MISSING");
     World* window=nullptr;for(auto& v:worlds)if(v.port && v.isScreen && v.port[110]) {
@@ -139,10 +153,160 @@ bool publish() {
     dirtyCount=0;paletteDirty=false;return true;
 }
 bool handles(uint16_t trap) {
-    return trap==0xa91f || trap==0xa924 || trap==0xaa46 || trap==0xaa91 || trap==0xaa9c || trap==0xaa9e || trap==0xaa95 || trap==0xaa94 || trap==0xaa9a || trap==0xaa14 || trap==0xaa15 || trap==0xa915 || trap==0xa916 || trap==0xa91b || trap==0xa877 || trap==0xa878 || trap==0xa8ec || trap==0xa86e || trap==0xaa2a || trap==0xab1d || trap==0xa873 || trap==0xa874;
+    return trap==0xa88b || trap==0xa88d || trap==0xa88c || trap==0xa893 || trap==0xa884 || trap==0xa8a8 || trap==0xa8a9 || trap==0xa8ab || trap==0xa8ae || trap==0xa8aa || trap==0xa861 || trap==0xa8d8 || trap==0xa8d9 || trap==0xa8df || trap==0xa8e5 || trap==0xa879 || trap==0xa87a || trap==0xa90d || trap==0xa90a || trap==0xa887 || trap==0xa888 || trap==0xa88a || trap==0xa8a2 || trap==0xa87b || trap==0xa8a7 || trap==0xa91c || trap==0xa889 || trap==0xa89e || trap==0xa863 || trap==0xa8a3 || trap==0xaaa0 || trap==0xa91f || trap==0xa924 || trap==0xaa46 || trap==0xaa91 || trap==0xaa9c || trap==0xaa9e || trap==0xaa95 || trap==0xaa94 || trap==0xaa9a || trap==0xaa14 || trap==0xaa15 || trap==0xa915 || trap==0xa916 || trap==0xa91b || trap==0xa877 || trap==0xa878 || trap==0xa8ec || trap==0xa86e || trap==0xaa2a || trap==0xab1d || trap==0xa873 || trap==0xa874;
 }
 bool dispatch(uint16_t trap,uint32_t* regs,uint8_t* args,uint32_t& consumed) {
     if(!heap || !valid || !pointer((uint32_t)args,trap==0xab1d && uint16_t(regs[0])==0 ? 24 : (trap==0xab1d ? 8 : 4)))return fail("DISPLAY / ARGUMENT EXTENT");
+    if(trap==0xa893){
+        World* v=thePort?byPort(l(thePort)):nullptr;
+        if(!v || !pointer((uint32_t)args,4))return fail("TEXT / MOVETO PORT");
+        sw(v->port+48,w(args));sw(v->port+50,w(args+2));sw(v->port+14,0x8000);consumed=4;return true;
+    }
+    if(trap==0xa88b || trap==0xa88d || trap==0xa88c || trap==0xa884){
+        World* v=thePort?byPort(l(thePort)):nullptr;
+        if(!v || !resource || l(v->port+76))return fail("TEXT / FONT SELECTION");
+        const uint8_t* bytes;uint32_t size;BitmapFont::Family family;BitmapFont font;
+        if(!resource(0x464f4e44,int16_t(w(v->port+68)),bytes,size) ||
+           !BitmapFont::association(bytes,size,int16_t(w(v->port+68)),w(v->port+74),v->port[70],family) ||
+           !resource(0x4e464e54,family.bitmap,bytes,size) || !font.openBitmap(bytes,size))return fail("TEXT / FONT RESOURCE");
+        if(trap==0xa88b){
+            uint8_t* out=pointer(l(args),8);if(!out)return fail("TEXT / FONTINFO OUTPUT");
+            sw(out,font.ascent());sw(out+2,font.descent());sw(out+4,font.advance());sw(out+6,font.leading());consumed=4;return true;
+        }
+        if(trap==0xa88d){sw(args+2,font.integerWidth(w(args)));consumed=2;return true;}
+        const uint8_t* text=pointer(l(args),1);if(!text || !pointer(l(args),uint32_t(text[0])+1))return fail("TEXT / STRING EXTENT");
+        if(trap==0xa88c){
+            if(!pointer((uint32_t)args,6))return fail("TEXT / STRINGWIDTH RESULT");
+            uint32_t width=0;for(unsigned i=0;i<text[0];++i)width+=font.integerWidth(text[i+1]);
+            if(width>32767)return fail("TEXT / STRINGWIDTH OVERFLOW");sw(args+4,width);consumed=4;return true;
+        }
+        if(w(v->port+72)!=1 || w(v->port+66) || w(*v->clip)!=10 || w(*v->vis)!=10 ||
+           l(v->port+80)>255 || (!v->isScreen && !v->locked))return fail("TEXT / DRAWSTRING FORM");
+        int16_t pen=int16_t(w(v->port+50));uint8_t dirtyText[8];
+        if(!BitmapText8::draw(v->isScreen?pixels:*v->pixels,v->isScreen?640*480:heap->handleSize(v->pixels),
+            w(*v->pm+4)&0x3fff,*v->pm+6,v->port+16,*v->vis+2,*v->clip+2,font,text+1,text[0],
+            int16_t(w(v->port+48)),pen,uint8_t(l(v->port+80)),dirtyText))return fail("TEXT / DRAWSTRING EXTENT");
+        sw(v->port+50,uint16_t(pen));if(v->isScreen)changed(*v,dirtyText);consumed=4;return true;
+    }
+    if(trap==0xa8a8 || trap==0xa8a9){
+        if(!pointer((uint32_t)args,8))return fail("DISPLAY / RECT ADJUST ARGUMENTS");
+        uint8_t* rect=pointer(l(args+4),8);if(!rect)return fail("DISPLAY / RECT ADJUST EXTENT");
+        RectBounds::adjust(rect,w(args+2),w(args),trap);consumed=8;return true;
+    }
+    if(trap==0xa8ab){
+        if(!pointer((uint32_t)args,12) || !RectBounds::unite(pointer(l(args),8),pointer(l(args+8),8),pointer(l(args+4),8)))return fail("DISPLAY / UNIONRECT EXTENT");
+        consumed=12;return true;
+    }
+    if(trap==0xa8ae){
+        if(!pointer((uint32_t)args,6))return fail("DISPLAY / EMPTYRECT ARGUMENTS");
+        const uint8_t* rect=pointer(l(args),8);if(!rect)return fail("DISPLAY / EMPTYRECT EXTENT");
+        args[4]=(int16_t(w(rect))>=int16_t(w(rect+4)) || int16_t(w(rect+2))>=int16_t(w(rect+6)))?1:0;
+        consumed=4;return true;
+    }
+    if(trap==0xa8aa){
+        if(!pointer((uint32_t)args,14))return fail("DISPLAY / SECTRECT ARGUMENTS");
+        bool nonempty=false;
+        if(!RectBounds::intersect(pointer(l(args),8),pointer(l(args+8),8),pointer(l(args+4),8),nonempty))return fail("DISPLAY / SECTRECT EXTENT");
+        args[12]=nonempty?1:0;consumed=12;return true;
+    }
+    if(trap==0xa861){
+        if(!thePort)return fail("DISPLAY / RANDOM BEFORE INITGRAF");
+        uint32_t seed=l(thePort-126),product=16807UL*uint16_t(seed);
+        uint32_t folded=16807UL*(seed>>16)+(product>>16);
+        seed=((folded&0x7fff)<<16)+((folded>>15)&65535)+(product&65535);
+        sl(thePort-126,seed);sw(args,uint16_t(seed)==0x8000?0:seed);return true;
+    }
+    if(trap==0xa8d8){
+        H h=heap->newHandle(10,true);if(!h)return fail("REGION / NEW MEMORY");
+        sw(*h,10);sl(args,(uint32_t)h);regs[0]=0;regs[8]=(uint32_t)*h+10;return true;
+    }
+    if(trap==0xa8d9){
+        H h=(H)l(args);if(!heap->isHandle(h) || heap->disposeHandle(h))return fail("REGION / DISPOSE OWNER");
+        consumed=4;regs[0]=0;return true;
+    }
+    if(trap==0xa8df){
+        if(!pointer((uint32_t)args,8))return fail("REGION / RECT ARGUMENTS");
+        const uint8_t* r=pointer(l(args),8);H h=(H)l(args+4);uint8_t bounds[8];
+        if(!r || !heap->isHandle(h))return fail("REGION / RECT OWNER");
+        CopyBits8::copySpan(r,bounds,8);
+        if(heap->setHandleSize(h,10))return fail("REGION / RECT MEMORY");
+        if(int16_t(w(bounds))>=int16_t(w(bounds+4)) || int16_t(w(bounds+2))>=int16_t(w(bounds+6)))for(auto& b:bounds)b=0;
+        sw(*h,10);CopyBits8::copySpan(bounds,*h+2,8);regs[0]=0;consumed=8;return true;
+    }
+    if(trap==0xa8e5){
+        if(!pointer((uint32_t)args,12))return fail("REGION / UNION ARGUMENTS");
+        H out=(H)l(args),b=(H)l(args+4),a=(H)l(args+8);uint16_t size=0;
+        if(!heap->isHandle(out)||!heap->isHandle(a)||!heap->isHandle(b) || !*a || !*b || heap->handleSize(a)>32766 || heap->handleSize(b)>32766)return fail("REGION / UNION OWNER");
+        if(!RegionOps::combine(*a,heap->handleSize(a),*b,heap->handleSize(b),RegionOps::Union,regionWorkspace,sizeof regionWorkspace,size))return fail("REGION / UNION FORM");
+        if(heap->setHandleSize(out,size))return fail("REGION / UNION MEMORY");
+        CopyBits8::copySpan(regionWorkspace,*out,size);regs[0]=0;consumed=12;return true;
+    }
+    if(trap==0xa879 || trap==0xa87a){
+        World* v=thePort?byPort(l(thePort)):nullptr;H h=(H)l(args);uint16_t size=0;
+        if(!v || !heap->isHandle(h))return fail("REGION / CLIP OWNER");
+        H source=trap==0xa879?h:v->clip,destination=trap==0xa879?v->clip:h;
+        if(RegionCopy::copy(*heap,source,*heap,destination,size))return fail("REGION / CLIP COPY");
+        consumed=4;return true;
+    }
+    if(trap==0xa90d || trap==0xa90a){
+        if(!pointer((uint32_t)args,8))return fail("UI / BEHIND ARGUMENTS");
+        World* v=byPort(l(args+4));H region=(H)l(args);
+        if(!v || !v->isScreen || !heap->isHandle(region))return fail("UI / BEHIND OWNER");
+        // D8 removes desktop chrome and other Macintosh windows behind the client.
+        consumed=8;regs[0]=0;return true;
+    }
+    if(trap==0xa887 || trap==0xa888 || trap==0xa88a){
+        World* v=thePort?byPort(l(thePort)):nullptr;if(!v)return fail("DISPLAY / TEXT PORT");
+        if(trap==0xa888)v->port[70]=args[0];else sw(v->port+(trap==0xa887?68:74),w(args));
+        consumed=2;return true;
+    }
+    if(trap==0xa87b) {
+        World* v=thePort?byPort(l(thePort)):nullptr;const uint8_t* r=pointer(l(args),8);
+        if(!v || !r)return fail("DISPLAY / CLIPRECT OWNER");
+        uint8_t bounds[8];CopyBits8::copySpan(r,bounds,8);
+        if(heap->setHandleSize(v->clip,10))return fail("DISPLAY / CLIPRECT MEMORY");
+        if(int16_t(w(bounds))>=int16_t(w(bounds+4)) || int16_t(w(bounds+2))>=int16_t(w(bounds+6)))for(auto& b:bounds)b=0;
+        sw(*v->clip,10);CopyBits8::copySpan(bounds,*v->clip+2,8);consumed=4;return true;
+    }
+    if(trap==0xa8a7) {
+        if(!pointer((uint32_t)args,12))return fail("DISPLAY / SETRECT ARGUMENTS");
+        uint8_t* r=pointer(l(args+8),8);if(!r)return fail("DISPLAY / SETRECT OUTPUT");
+        uint16_t bottom=w(args),right=w(args+2),top=w(args+4),left=w(args+6);
+        GWorld8::rect(r,{int16_t(top),int16_t(left),int16_t(bottom),int16_t(right)});
+        regs[0]=uint32_t(top)<<16|left;regs[1]=uint32_t(bottom)<<16|right;
+        consumed=12;return true;
+    }
+    if(trap==0xa91c) {
+        if(!pointer((uint32_t)args,6))return fail("UI / HILITE WINDOW ARGUMENTS");
+        World* v=byPort(l(args+2));if(!v||!v->isScreen)return fail("UI / HILITE WINDOW OWNER");
+        v->port[111]=args[0]?255:0;consumed=6;regs[0]=0;return true;
+    }
+    if(trap==0xa889 || trap==0xa89e || trap==0xa863 || trap==0xa8a3 || trap==0xa8a2) {
+        World* v=thePort?byPort(l(thePort)):nullptr;if(!v)return fail("DISPLAY / CURRENT PORT");
+        if(trap==0xa889) {sw(v->port+72,w(args));consumed=2;return true;}
+        if(trap==0xa89e) {
+            sw(v->port+52,1);sw(v->port+54,1);sw(v->port+56,8);
+            uint8_t* pattern=*v->patterns[1];sw(pattern,0);
+            for(unsigned i=0;i<8;++i)pattern[16+i]=255;
+            regs[0]=0;return true;
+        }
+        if(trap==0xa863) {
+            if(l(args)!=33 && l(args)!=30)return fail("DISPLAY / BACKCOLOR FORM");
+            uint16_t rgb=l(args)==33?0:65535;
+            for(unsigned i=0;i<3;++i)sw(v->port+42+i*2,rgb);
+            sl(v->port+84,rgb?0:255);consumed=4;return true;
+        }
+        if(w(*v->clip)!=10 || w(*v->vis)!=10)return fail("DISPLAY / FILL COMPLEX REGION");
+        if(trap==0xa8a2){
+            if(w(v->port+56)!=8 || w(*v->patterns[1]))return fail("DISPLAY / PAINT PEN FORM");
+            for(unsigned i=0;i<8;++i)if((*v->patterns[1])[16+i]!=255)return fail("DISPLAY / PAINT PATTERN");
+        }
+        const uint8_t* rect=pointer(l(args),8);uint8_t drawn[8];
+        if(!rect || (!v->isScreen && !v->locked))return fail("DISPLAY / ERASE RECT OWNER");
+        if(!FillRect8::solid(v->isScreen?pixels:*v->pixels,v->isScreen?640*480:heap->handleSize(v->pixels),
+            w(*v->pm+4)&0x3fff,*v->pm+6,v->port+16,*v->vis+2,*v->clip+2,rect,uint8_t(l(v->port+(trap==0xa8a2?80:84))),drawn))return fail("DISPLAY / ERASE RECT FORM");
+        if(v->isScreen)changed(*v,drawn);consumed=4;regs[0]=0;return true;
+    }
     if(trap==0xa91f){
         if(!pointer((uint32_t)args,4))return fail("UI / SELECT WINDOW ARGUMENTS");
         World* v=byPort(l(args));if(!v||!v->isScreen)return fail("UI / SELECT WINDOW OWNER");
@@ -189,6 +353,19 @@ bool dispatch(uint16_t trap,uint32_t* regs,uint8_t* args,uint32_t& consumed) {
         }
         consumed=10;regs[0]=0;return true;
     }
+    if(trap==0xaaa0) {
+        if(!pointer((uint32_t)args,8))return fail("DISPLAY / PALETTE2CTAB ARGUMENTS");
+        Palette* p=palette((H)l(args+4));H destination=(H)l(args);
+        if(!p || !heap->isHandle(destination))return fail("DISPLAY / PALETTE2CTAB OWNER");
+        if(heap->setHandleSize(destination,2056))return fail("DISPLAY / PALETTE2CTAB MEMORY");
+        // MEASURED: zero seed/flags, sequential indices, exact RGB words.
+        sl(*destination,0);sw(*destination+4,0);sw(*destination+6,255);
+        for(unsigned i=0;i<256;++i) {
+            uint8_t* entry=*destination+8+i*8;sw(entry,i);
+            CopyBits8::copySpan(*p->body+16+i*16,entry+2,6);
+        }
+        regs[0]=0;consumed=8;return true;
+    }
     if(trap==0xaa95) {
         if(!pointer((uint32_t)args,10) || args[0]!=1)return fail("DISPLAY / SETPALETTE FORM");
         World* v=byPort(l(args+6));Palette* p=palette((H)l(args+2));
@@ -213,18 +390,24 @@ bool dispatch(uint16_t trap,uint32_t* regs,uint8_t* args,uint32_t& consumed) {
         }
         if(trap==0xa915 && !v->port[110]) {
             v->port[110]=1;v->port[111]=255;
+            bool visible;RectBounds::intersect(*v->vis+2,v->port+16,*v->pm+6,visible);
             int16_t top=-int16_t(w(*v->pm+6)),left=-int16_t(w(*v->pm+8));
             for(unsigned y=0;y<384;++y)for(unsigned x=0;x<512;++x)pixels[uint32_t(y+top)*640+x+left]=uint8_t(l(v->port+84));
             changed(*v,v->port+16);
         }
-        if(trap==0xa916) {v->port[110]=v->port[111]=0;}
+        if(trap==0xa916) {v->port[110]=v->port[111]=0;for(unsigned i=0;i<8;++i)(*v->vis)[i+2]=0;}
         if(trap!=0xa916 && v->port[110] && !activate(*v))return fail("DISPLAY / ACTIVATE PALETTE");
         consumed=4;return true;
     }
     if(trap==0xa877 || trap==0xa878 || trap==0xaa14 || trap==0xaa15) {
         World* v=thePort?byPort(l(thePort)):nullptr;if(!v)return fail("DISPLAY / CURRENT PORT");
         if(trap==0xa877) {if(!position(*v,int16_t(w(args+2)),int16_t(w(args))))return fail("DISPLAY / MOVEPORTTO FORM");}
-        else if(trap==0xa878) {if(w(args) || w(args+2) || w(v->port+16) || w(v->port+18))return fail("DISPLAY / SETORIGIN FORM");}
+        else if(trap==0xa878) {
+            int16_t dy=int16_t(w(args))-int16_t(w(v->port+16));
+            int16_t dx=int16_t(w(args+2))-int16_t(w(v->port+18));
+            uint8_t* bounds[]={v->port+16,*v->pm+6,*v->vis+2};
+            for(auto r:bounds)for(unsigned i=0;i<4;++i)sw(r+i*2,uint16_t(w(r+i*2)+(i&1?dx:dy)));
+        }
         else {
             uint8_t* rgb=pointer(l(args),6);if(!rgb)return fail("DISPLAY / PORT RGB");
             uint16_t index;
@@ -246,14 +429,24 @@ bool dispatch(uint16_t trap,uint32_t* regs,uint8_t* args,uint32_t& consumed) {
             if(l(args+14)==(uint32_t)*v.pm || l(args+14)==(uint32_t)v.port+2)destination=&v;
         }
         const uint8_t* from=pointer(l(args+10),8);const uint8_t* to=pointer(l(args+6),8);
-        if(!source || !destination || !from || !to || source==destination || (!source->isScreen && !source->locked) || (!destination->isScreen && !destination->locked))return fail("DISPLAY / COPYBITS OWNERSHIP");
-        if(!thePort || l(thePort)!=(uint32_t)destination->port)return fail("DISPLAY / COPYBITS CURRENT PORT");
+        if(!source || !destination)return fail("DISPLAY / COPYBITS BITMAP OWNER");
+        if(!from || !to)return fail("DISPLAY / COPYBITS RECT EXTENT");
+        if(source==destination)return fail("DISPLAY / COPYBITS OVERLAP");
+        World* current=thePort?byPort(l(thePort)):nullptr;
+        if(!current)return fail("DISPLAY / COPYBITS CURRENT PORT");
+        const bool currentDestination=current==destination;
+        const uint8_t* bounds=*destination->pm+6;
         if(int32_t(int16_t(w(from+4)))-int16_t(w(from))!=int32_t(int16_t(w(to+4)))-int16_t(w(to)) ||
            int32_t(int16_t(w(from+6)))-int16_t(w(from+2))!=int32_t(int16_t(w(to+6)))-int16_t(w(to+2)))return fail("DISPLAY / COPYBITS SCALING");
+        // MEASURED title copies both read and write unlocked GWorlds without
+        // changing PixMap lock state. Owned heap pixels remain stable.
+        // CopyBits applies port clipping only when its destination is the
+        // current port bitmap; the title copy keeps the window current.
         uint8_t drawn[8];
         if(!CopyBits8::copy(source->isScreen?pixels:*source->pixels,source->isScreen?640*480:heap->handleSize(source->pixels),w(*source->pm+4)&0x3fff,*source->pm+6,
             destination->isScreen?pixels:*destination->pixels,destination->isScreen?640*480:heap->handleSize(destination->pixels),w(*destination->pm+4)&0x3fff,*destination->pm+6,
-            from,to,destination->port+16,*destination->vis+2,*destination->clip+2,drawn))return fail("DISPLAY / COPYBITS FORM");
+            from,to,currentDestination?destination->port+16:bounds,
+            currentDestination?*destination->vis+2:bounds,currentDestination?*destination->clip+2:bounds,drawn))return fail("DISPLAY / COPYBITS FORM");
         if(destination->isScreen)changed(*destination,drawn);
         consumed=22;return true;
     }
@@ -285,7 +478,7 @@ bool dispatch(uint16_t trap,uint32_t* regs,uint8_t* args,uint32_t& consumed) {
         uint8_t* output=pointer(l(args+18),4);uint8_t* bounds=pointer(l(args+12),8);
         if(!output || !bounds || l(args)!=2 || l(args+4)!=(uint32_t)device || l(args+8) || w(args+16)!=8)
             return fail("DISPLAY / NEWGWORLD FORM");
-        World* v=create(bounds);if(!v)return fail("DISPLAY / NEWGWORLD ALLOCATION");
+        World* v=create(bounds);if(!v)return false;
         sl(output,(uint32_t)v->port);sw(args+22,0);regs[0]=0;consumed=22;return true;
     }
     if(selector==5 || selector==6) {

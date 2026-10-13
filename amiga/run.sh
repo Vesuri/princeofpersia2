@@ -24,6 +24,8 @@ AMIGA_SETUP=a1200-fast
 NTSC=0 DEBUG=1 SOUND="${SOUND:-0}" WINDOW="${WINDOW:-none}" WARP="${WARP:-1}"
 DEADLINE="${DEADLINE:-60}"
 [[ "$DEADLINE" =~ ^[1-9][0-9]*$ ]] || exit 2
+SNAPSHOT_AFTER="${SNAPSHOT_AFTER:-0}"
+[[ "$SNAPSHOT_AFTER" =~ ^[0-9]+$ ]] || exit 2
 DH0="$RUN/dh0"; DH1="$RUN/dh1"
 mkdir -p "$DH0/s" "$DH0/c" "$DH1" "$RUN/state" "$RUN/logs" "$RUN/gdbhome"
 cp out/PrinceOfPersia2.exe "$DH1/PrinceOfPersia2"
@@ -64,14 +66,25 @@ lsof -nP -iTCP:"$DEBUG_PORT" -sTCP:LISTEN >/dev/null 2>&1 || { echo 'SCAFFOLD / 
 printf 'set pagination off\nset confirm off\nset remotetimeout 20\ntarget remote 127.0.0.1:%s\n' "$DEBUG_PORT" > "$RUN/connect.gdb"
 env HOME="$PWD/$RUN/gdbhome" XDG_CACHE_HOME="$PWD/$RUN/gdbhome" m68k-amiga-elf-gdb --batch -q -l 10 -x "$RUN/connect.gdb" -x "${SCRIPT:-scaffold.gdb}" "$RUN/PrinceOfPersia2.elf" > "$RUN/gdb-out.log" 2>&1 &
 GDB_PID=$!
-for ((i=0;i<DEADLINE;i++)); do kill -0 "$GDB_PID" 2>/dev/null || break; sleep 1; done
+for ((i=0;i<DEADLINE;i++)); do
+ kill -0 "$GDB_PID" 2>/dev/null || break
+ # Diagnostic observers report a stopped CPU; this is never a completion gate.
+ if [ "$SNAPSHOT_AFTER" -gt 0 ] && [ "$i" -eq "$SNAPSHOT_AFTER" ]; then kill -INT "$GDB_PID"; fi
+ sleep 1
+done
 if kill -0 "$GDB_PID" 2>/dev/null; then echo 'SCAFFOLD / PROBE TIMEOUT'; exit 124; fi
 status=0;wait "$GDB_PID" || status=$?;GDB_PID=
 cat "$RUN/gdb-out.log"
 [ "$status" = 0 ] || exit "$status"
 for ((i=0;i<20;i++)); do [ -f "$DH1/Shell.done" ] && break; sleep 1; done
 if [ "${CORE:-0}" = 1 ]; then
-  if [ "${AUDIO_PROBE:-0}" = 1 ]; then
+  if [ "${INTEGRATION:-0}" = 1 ]; then
+    if [ "${INTEGRATION_NO_RIGHT:-0}" = 1 ]; then
+      python3 ../tools/check_integration_result.py "$RUN" "$INTEGRATION_REFERENCE" "$INTEGRATION_TITLE_REFERENCE" --no-right
+    else
+      python3 ../tools/check_integration_result.py "$RUN" "$INTEGRATION_REFERENCE" "$INTEGRATION_TITLE_REFERENCE"
+    fi
+  elif [ "${AUDIO_PROBE:-0}" = 1 ]; then
     python3 ../tools/check_audio_result.py "$RUN"
   elif [ "${AUDIO_STARTUP:-0}" = 1 ]; then
     python3 ../tools/check_audio_result.py "$RUN" --startup "$AUDIO_REFERENCE"

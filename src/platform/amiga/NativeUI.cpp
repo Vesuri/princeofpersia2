@@ -14,7 +14,7 @@ namespace NativeUI {
 namespace {
 using H=MacHeap::Handle;
 MacHeap* heap;uint8_t* low;NativeDisplay::Valid valid;NativeDisplay::Resource resource;
-H menus[4],bar;bool initialized;uint16_t services;const char* reason;
+H menus[4],bar,cursor;bool initialized;uint16_t services;const char* reason;
 uint16_t w(const uint8_t* p){return uint16_t(p[0])<<8|p[1];}
 uint32_t l(const uint8_t* p){return uint32_t(w(p))<<16|w(p+2);}
 void sw(uint8_t* p,uint16_t v){p[0]=v>>8;p[1]=v;}
@@ -80,13 +80,13 @@ bool replacement(uint16_t selector,uint32_t* regs,uint8_t* args){
 }
 const char* error(){return reason;}
 bool prepare(MacHeap& owner,uint8_t* shadow,NativeDisplay::Valid validator,NativeDisplay::Resource reader){
- heap=&owner;low=shadow;valid=validator;resource=reader;bar=nullptr;initialized=false;services=0;
+ heap=&owner;low=shadow;valid=validator;resource=reader;bar=cursor=nullptr;initialized=false;services=0;
  for(auto& h:menus)h=nullptr;sw(low+0x144,0xffef);reason="UI / READY";return true;
 }
 bool handles(uint16_t t){
  switch(t){case 0xa8fe:case 0xa912:case 0xa930:case 0xa9cc:case 0xa97b:case 0xa850:case 0xa852:case 0xa853:
- case 0xa856:case 0xa063:case 0xa032:case 0xa9c0:case 0xa93c:case 0xa949:case 0xa94d:case 0xa937:
- case 0xa976:case 0xa970:case 0xa971:case 0xa860:case 0xa938:case 0xa939:case 0xa93a:case 0xa944:case 0xa945:case 0xa946:case 0xa947:case 0xa93e:return true;default:return false;}
+ case 0xa851:case 0xa9b9:case 0xa856:case 0xa063:case 0xa032:case 0xa9c0:case 0xa93c:case 0xa949:case 0xa94d:case 0xa937:
+ case 0xa972:case 0xa974:case 0xa976:case 0xa970:case 0xa971:case 0xa860:case 0xa938:case 0xa939:case 0xa93a:case 0xa944:case 0xa945:case 0xa946:case 0xa947:case 0xa93e:return true;default:return false;}
 }
 bool dispatch(uint16_t t,uint32_t* regs,uint8_t* a,uint32_t& consumed){
  consumed=0;
@@ -101,6 +101,16 @@ bool dispatch(uint16_t t,uint32_t* regs,uint8_t* a,uint32_t& consumed){
   if(!valid((uint32_t)a,4)||l(a))return fail("UI / INITDIALOGS CALLBACK");
   services|=16;consumed=4;return true;
  case 0xa850:case 0xa852:case 0xa853:case 0xa856:return true;
+ // D8 removes the pointer. Retain the reached wait-cursor handle/copy ABI
+ // with an owned transparent cursor, so original setup and locking still run.
+ case 0xa9b9:
+  if(!valid((uint32_t)a,6)||w(a)!=4)return fail("UI / CURSOR ID");
+  if(!cursor){cursor=heap->newHandle(68,true);if(!cursor)return fail("UI / CURSOR ALLOCATION");}
+  if(!heap->isHandle(cursor)||heap->handleSize(cursor)!=68)return fail("UI / CURSOR OWNER");
+  sl(a+2,(uint32_t)cursor);sw(low+0xa60,0);consumed=2;regs[0]=0;return true;
+ case 0xa851:
+  if(!valid((uint32_t)a,4)||!valid(l(a),68))return fail("UI / CURSOR EXTENT");
+  consumed=4;return true;
  case 0xa063:regs[0]=0;return true; // The complete owned application zone is already reserved.
  case 0xa032:NativeInput::flush(uint16_t(regs[0]),regs[0]>>16);regs[0]=0;return true;
  case 0xa9c0:{
@@ -126,6 +136,21 @@ bool dispatch(uint16_t t,uint32_t* regs,uint8_t* a,uint32_t& consumed){
   consumed=8;return true; // D8: no desk accessories in the port's action list.
  case 0xa937:if(!initialized)return fail("UI / DRAW BEFORE INIT");return true;
  case 0xa938:if(!valid((uint32_t)a,2)||w(a))return fail("UI / HILITE MENU");consumed=2;return true;
+ // GetMouse follows the same input position as Event Manager, as in both
+ // reference ports. D8 removes the pointer; the owned input model stays fixed.
+ case 0xa972:{
+  if(!valid((uint32_t)a,4)||!valid(l(a),4))return fail("INPUT / GETMOUSE OUTPUT");
+  InputState::Event event;NativeInput::event(0,false,NativeInput::ticks(),event);
+  uint8_t* out=(uint8_t*)l(a);sw(out,event.v);sw(out+2,event.h);
+  consumed=4;return true;
+ }
+ // Button uses the same mouse-up state as Event Manager and GetMouse.
+ // Both reference ports return a Boolean in the caller's two-byte slot.
+ case 0xa974:{
+  if(!valid((uint32_t)a,2))return fail("INPUT / BUTTON OUTPUT");
+  InputState::Event event;NativeInput::event(0,false,NativeInput::ticks(),event);
+  a[0]=(event.modifiers&0x80)?0:1;a[1]=0;return true;
+ }
  case 0xa976:
   if(!valid((uint32_t)a,4)||!valid(l(a),16))return fail("INPUT / GETKEYS OUTPUT");
   NativeInput::keyMap((uint8_t*)l(a));consumed=4;return true;

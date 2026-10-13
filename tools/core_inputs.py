@@ -6,6 +6,34 @@ from static_map import build, ROOT, DESTINATION
 from extract_original_data import pins
 import trap_census as census
 
+# DERIVED: immediate low-memory pointers followed by indirect reads/writes.
+# Coordinates are original CODE resource offsets, not original byte tables.
+POINTER_SITES={
+ 2:(0x23ca,0x23ea,0x23f6,0x3b02,0x3b0a,0x3b8a,0x3ba6,0x4e64,0x4e6c),
+ 17:(0x4e70,0x4efa),
+ 21:(0x1488,0x3974,0x3b54,0x3b72,0x3ba2,0x3bc0,0x40ee,0x416c,
+     0x42ca,0x44d8,0x4688,0x4aae,0x516c,0x545c,0x5a68,0x6058,0x64d6,0x6842),
+}
+def pointer_rows():
+    rows=[]
+    for segment,offsets in POINTER_SITES.items():
+        for offset in offsets:
+            original=census.CODE[segment][offset:offset+6]
+            op,address=struct.unpack('>HI',original)
+            assert op&0xf1ff==0x207c and address in (0xab0,0xab4,0x9ee,0xbaa,0x130,0x2aa,0x220,0x11c)
+            # 68020 full-format LEA, index suppressed, word base displacement.
+            # MOVEA and LEA both preserve CCR; both instructions occupy 6 bytes.
+            patched=struct.pack('>HHH',0x41f5|(op&0xe00),0x0160,0x2000+address)
+            rows.append(struct.pack('>HHI',segment,6,offset)+original.ljust(12,b'\0')+patched.ljust(12,b'\0'))
+    for offset,address,slot in ((0x13a0,0x308,0x1000),(0x105c,0x356,0x1004)):
+        original=census.CODE[21][offset:offset+6]
+        assert struct.unpack('>HI',original)==(0x203c,address)
+        # An A5-shadow cell holds the relocated address. MOVE.L plus NOP
+        # preserves the six-byte extent and MOVE's condition-code behavior.
+        patched=struct.pack('>HHH',0x202d,0x2000+slot,0x4e71)
+        rows.append(struct.pack('>HHI',21,6,offset)+original.ljust(12,b'\0')+patched.ljust(12,b'\0'))
+    return rows
+
 def generate():
     mapping=build()
     rows=[]
@@ -30,6 +58,7 @@ def generate():
         decoded=list(decoder.disasm(patched,offset,count=1))
         assert len(decoded)==1 and decoded[0].size==len(original) and 'a5' in decoded[0].op_str
         rows.append(struct.pack('>HHI',segment,len(original),offset)+original.ljust(12,b'\0')+patched.ljust(12,b'\0'))
+    rows.extend(pointer_rows())
     out=ROOT/'build/core';out.mkdir(parents=True,exist_ok=True)
     plan=struct.pack('>I',len(rows))+b''.join(rows)
     assert hashlib.sha256(plan).hexdigest()==pins(ROOT/'manifest/core-inputs.sha256')['relocations.bin'], 'RELOCATION PLAN PIN'

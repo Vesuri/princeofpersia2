@@ -56,7 +56,7 @@ static-map-check: ghidra
 
 .PHONY: all host-tests amiga scaffold-check slave dist-scaffold
 all: host-tests
-host-tests:
+host-tests: shared-runtime-check
 	@. amiga/env.sh && python3 tools/host_tests.py
 amiga:
 	@. amiga/env.sh && $(MAKE) -C amiga
@@ -107,3 +107,14 @@ audio: audio-inputs
 .PHONY: audio-check
 audio-check: host-tests audio-inputs
 	@. amiga/env.sh && python3 tools/check_audio.py
+
+.PHONY: shared-runtime-check
+shared-runtime-check:
+	@shasum -a 256 -c manifest/shared-runtime.sha256
+
+.PHONY: integration-check integration-contracts-check
+integration-contracts-check: shared-runtime-check
+	@. amiga/env.sh && python3 tools/check_integration_contracts.py
+
+integration-check: host-tests audio-inputs integration-contracts-check
+	@. amiga/env.sh && python3 tools/check_integration.py

@@ -16,6 +16,7 @@ local fileRoutines=os.getenv('POP2_FILE_ROUTINES') and dofile('tools/mac_file_ro
 local uiRoutines=os.getenv('POP2_UI_ROUTINES') and dofile('tools/mac_ui_routines.lua') or nil
 local inputProbe=os.getenv('POP2_INPUT_PROBE') and dofile('tools/mac_input_probe.lua') or nil
 local audio=os.getenv('POP2_AUDIO') and dofile('tools/mac_audio.lua') or nil
+local integration=(os.getenv('POP2_INTEGRATION') or os.getenv('POP2_NEWGWORLD') or os.getenv('POP2_TITLE_COPY')) and dofile('tools/mac_integration.lua') or nil
 local inputStage=false
 local ui=os.getenv('POP2_UI') and dofile('tools/mac_ui.lua') or nil
 local display=os.getenv('POP2_DISPLAY') and dofile('tools/mac_display.lua') or nil
@@ -24,6 +25,11 @@ local checkpointProbe
 local videoTransfer=os.getenv('POP2_VIDEO_TRANSFER') and dofile('tools/mac_video_transfer.lua') or nil
 local displayRoute=os.getenv("POP2_DISPLAY_ROUTE")
 local routeStage,routeProbes,routePoints=nil,{},{}
+-- A separate renderer fixture pairs the observed native frame/cue inputs.
+-- It never supplies evidence for natural startup or gameplay.
+local titleState=tonumber(os.getenv('POP2_TITLE_STATE'))
+local titleStateApplied=false
+if titleState then assert(titleState>=4 and titleState<=128 and titleState%1==0 and displayRoute and not audio,'TITLE STATE CONFIGURATION')end
 local mapped={}
 local function u(a)return mem:readv_u32(a)end
 local function ptr(a)return u(a)&0xffffff end
@@ -59,6 +65,7 @@ local function observe()
   if files then files.arm(meta,cond)end
   if mapper then mapper.arm(meta,cond)end
   if display then display.arm(meta,cond)end
+  if integration then integration.arm(meta,cond)end
   if ui then ui.arm(meta,cond)end
   -- Dynamic return probes capture even the first call immediately after LoadSeg.
   -- SP matches each return to its entry, including Gestalt nested by SysEnvirons.
@@ -81,6 +88,29 @@ local function observe()
     if mapper then mapper.map(seg,base)end
     if audio then audio.map(seg,base,guard,meta)end
     print(string.format('MAP seg=%d base=%08X size=%d',seg,base,#info.hex/2))
+    if os.getenv('POP2_ROUTE_TRACE') then
+     if seg==15 then
+      at(seg,base,0x15e,'logerror "ROUTE_NIS_RETURN kind=%04X result=%04X ticks=%08X\\n",w@(a6+8),d4&0xffff,d@0x16a')
+     elseif seg==2 then
+      at(seg,base,0x3be,'logerror "ROUTE_PLAYNIS_RETURN kind=%04X result=%04X ticks=%08X\\n",w@(a6+8),d4&0xffff,d@0x16a')
+     end
+    end
+    if os.getenv('POP2_HANDLE_TRACE') and seg==3 then
+     at(seg,base,0x5f9a,'logerror "PURGE_BEFORE handle=%08X body=%08X ticks=%08X\\n",a0,d@a0,d@0x16a')
+     at(seg,base,0x5f9c,'logerror "PURGE_AFTER handle=%08X d0=%08X memerr=%04X ticks=%08X\\n",a0,d0,w@0x220,d@0x16a')
+    end
+    if os.getenv('POP2_TIMER_TRACE') and seg==22 then
+     at(seg,base,0x6b90,'logerror "TIMER_INNER_BEFORE task=%08X d0=%08X type=%04X count=%08X wake=%08X ticks=%08X\\n",a0,d0,w@(a0+4),d@(a0+10),d@(a0+14),d@0x16a')
+     at(seg,base,0x6b92,'logerror "TIMER_INNER_AFTER task=%08X d0=%08X type=%04X count=%08X wake=%08X ticks=%08X\\n",a0,d0,w@(a0+4),d@(a0+10),d@(a0+14),d@0x16a')
+     at(seg,base,0x7028,'logerror "TIMER_OUTER_BEFORE task=%08X d0=%08X type=%04X count=%08X wake=%08X ticks=%08X\\n",a0,d0,w@(a0+4),d@(a0+10),d@(a0+14),d@0x16a')
+     at(seg,base,0x702a,'logerror "TIMER_OUTER_AFTER task=%08X d0=%08X type=%04X count=%08X wake=%08X ticks=%08X\\n",a0,d0,w@(a0+4),d@(a0+10),d@(a0+14),d@0x16a')
+     at(seg,base,0x7026,'logerror "MIDI_REPRIME interval=%08X measured=%08X next=%08X ticks=%08X cue=%04X\\n",d@(a3+0x1e),d4,d5,d@0x16a,w@(a5-0x1f6e)')
+    end
+    if os.getenv('POP2_TITLE_TRACE') and seg==15 then
+     at(seg,base,0x6ff2,'logerror "TITLE_CALL phase=%04X cue=%04X ticks=%08X\\n",w@(a6+8),w@(a5-0x1f6e),d@0x16a')
+     at(seg,base,0x70ca,'logerror "TITLE_LOGO cue=%04X ticks=%08X\\n",w@(a5-0x1f6e),d@0x16a')
+     at(seg,base,0x7164,'logerror "TITLE_RETURN phase=%04X cue=%04X result=%04X ticks=%08X\\n",w@(a6+8),w@(a5-0x1f6e),d3&0xffff,d@0x16a')
+    end
     if displayRoute and (seg==15 or seg==2) then
      local off=seg==15 and 0x6fec or 0x6056
      if seg==15 then
@@ -91,6 +121,10 @@ local function observe()
      guard(seg,base,off,4)
      routePoints[base+off]=seg==15 and 'title' or 'first-room'
      routeProbes[base+off]=cpu.debug:bpset(base+off,seg==2 and cond..' && (d4&0xffff)==0xfffe' or cond..' && w@(sp+4)==0x20 && w@(a5-0x1f6e)==0x72','logerror "DISPLAY_ROUTE_STOP\\n"')
+     if seg==15 and titleState then
+      cpu.debug:bpclear(routeProbes[base+off]);routePoints[base+off]='title-state'
+      routeProbes[base+off]=cpu.debug:bpset(base+off,cond..string.format(' && (w@(sp+4)==0x%X || w@(sp+4)==0x%X)',titleState-1,titleState),'logerror "TITLE_STATE_STOP\\n"')
+     end
     end
     if seg==17 then
      at(seg,base,0x6e42,'logerror "SEED old=%04X fixed=1234\\n",w@(sp+4);w@(sp+4)=0x1234',42)
@@ -144,6 +178,11 @@ emu.register_periodic(function()
   if not ok then fail(handled);return end
   if handled then return end
  end
+ if integration then
+  local ok,handled=pcall(integration.poll)
+  if not ok then fail(handled);return end
+  if handled then return end
+ end
  if display then
   local ok,handled=pcall(display.poll)
   if not ok then fail(handled);return end
@@ -172,10 +211,37 @@ emu.register_periodic(function()
  if displayRoute and dbg.execution_state=='stop' and routePoints[cpu.state.PC.value] then
   local pc=cpu.state.PC.value;local label=routePoints[pc]
   local ok,err=pcall(function()
+   if label=='title-state' then
+    local phase=mem:readv_u16(cpu.state.SP.value+4);local address=(cpu.state.A5.value&0xffffff)-0x1f6e
+    if phase==titleState-1 then
+     assert(not titleStateApplied and mem:readv_u16(address)==100,'TITLE STATE INITIAL CUE')
+     print(string.format('TITLE_STATE_INPUT frame=%d old=100 cue=101',phase))
+     mem:writev_u16(address,101);titleStateApplied=true;dbg.execution_state='run';return
+    end
+    assert(titleStateApplied and phase==titleState and mem:readv_u16(address)==114,'TITLE STATE LOGO RETURN')
+   end
    frame.rgb(run..'/'..label..'.ppm');frame.indexed(run..'/'..label..'.indices');frame.palette(run..'/'..label..'.rgb');frame.logical(run..'/'..label..'.clut')
+   if label=='first-room' then
+    local a5=cpu.state.A5.value&0xffffff
+    local f=assert(io.open(run..'/first-room-a5.bin','wb'))
+    for i=-22266,-1 do f:write(string.char(mem:readv_u8(a5+i)))end
+    f:close()
+    local context=ptr(a5-0x5014)
+    assert(context>=0x100000 and context+0x2200<0x800000,'FIRST ROOM CONTEXT')
+    f=assert(io.open(run..'/first-room-context.bin','wb'))
+    for i=0,0x21ff do f:write(string.char(mem:readv_u8(context+i)))end
+    f:close()
+    print(string.format('FIRST_ROOM_STATE a5=%08X context=%08X',a5,context))
+   end
+   if label=='title-state' then
+    print(string.format('TITLE_STATE_COMPLETE frame=%d cue=114',titleState))
+    cpu.debug:bpclear(routeProbes[pc]);routePoints[pc]=nil
+    finished=true;manager.machine:exit();dbg.execution_state='run';return
+   end
    print('DISPLAY_ROUTE_CAPTURED '..label)
    cpu.debug:bpclear(routeProbes[pc]);routePoints[pc]=nil;routeStage=label
    if label=='first-room' and not audio then
+    if integration then integration.finish()end
     if display then display.finish()end
     finished=true;manager.machine:exit()
    end
@@ -200,8 +266,16 @@ emu.register_periodic(function()
    frame.rgb(run..'/opening.ppm')
    manager.machine.video:snapshot()
    print('REFERENCE_CAPTURED opening-text-1')
+   if integration and os.getenv('POP2_FIXED_PROBE') then
+    cpu.debug:bpclear(checkpointProbe);checkpoint=nil;integration.startFixed();return
+   end
+   if integration and os.getenv('POP2_NULL_DISPOSE') then
+    cpu.debug:bpclear(checkpointProbe);checkpoint=nil;integration.startNil();return
+   end
+   if integration then integration.opening();if not displayRoute then integration.finish()end end
   end)
   if not ok then fail(err);return end
+  if os.getenv('POP2_NULL_DISPOSE') or os.getenv('POP2_FIXED_PROBE') then return end
   if os.getenv('POP2_AUDIO')=='fixture' then
    cpu.debug:bpclear(checkpointProbe);audio.startFixture(checkpoint);checkpoint=nil;return
   end
@@ -281,18 +355,22 @@ mac.run(function()
   end
   if displayRoute then
    assert(mac.wait_for('opening',function()return routeStage=='opening'end,18000),'DISPLAY OPENING')
-   if os.getenv('POP2_AUDIO')~='cutscene' then mac.press('Esc')end
+   if os.getenv('POP2_AUDIO')~='cutscene' and not os.getenv('POP2_NATURAL_OPENING') then mac.press('Esc')end
    assert(mac.wait_for('title-start',function()return routeStage=='title-start'end,18000),'DISPLAY TITLE START')
    if os.getenv('POP2_AUDIO')=='cutscene' then
     audio.finish();print('AUDIO_CUTSCENE_COMPLETE');finished=true;manager.machine:exit();return
    end
    assert(mac.wait_for('title',function()return routeStage=='title'end,18000),'DISPLAY TITLE')
    if audio then print('AUDIO_PHASE title');mac.wait(120)end
-   mac.press('Space')
+   if not os.getenv('POP2_DEMO_ROUTE') then mac.press('Space')end
    if audio then
     assert(mac.wait_for('first-room',function()return routeStage=='first-room'end,18000),'AUDIO GAMEPLAY')
     print('AUDIO_PHASE gameplay')
     mac.wait(120);mac.key_down('Right Arrow')
+    if os.getenv('POP2_DEMO_ROUTE') then
+     mac.wait(120);mac.key_up('Right Arrow');mac.wait(120)
+     audio.finish();print('AUDIO_DEMO_COMPLETE');finished=true;manager.machine:exit();return
+    end
     assert(mac.wait_for('death',audio.dead,3600),'AUDIO DEATH NOT REACHED')
     mac.key_up('Right Arrow');mac.wait(240)
     audio.finish();print('AUDIO_ROUTE_COMPLETE');finished=true;manager.machine:exit();return

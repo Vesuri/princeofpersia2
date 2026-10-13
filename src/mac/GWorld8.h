@@ -1,6 +1,6 @@
-#ifndef POP2_GWORLD8_H
-#define POP2_GWORLD8_H
-#ifndef POP2_PLATFORM_AMIGA
+#ifndef AMIGAXDEV_GWORLD8_H
+#define AMIGAXDEV_GWORLD8_H
+#ifndef __mc68000__
 #include <stdint.h>
 #endif
 namespace GWorld8 {
@@ -48,7 +48,7 @@ inline void port(uint8_t* p,uint32_t pm,uint32_t vars,uint32_t vis,uint32_t clip
     word(p+72,1);longword(p+80,255);
 }
 inline uint16_t readword(const uint8_t* p) {
-#ifdef POP2_PLATFORM_AMIGA
+#ifdef __mc68000__
     struct __attribute__((packed, may_alias)) Word { uint16_t value; };
     uint16_t value;
     __asm__("move.w %1,%0" : "=d"(value) : "m"(*(const Word*)p) : "cc");

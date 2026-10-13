@@ -342,6 +342,8 @@ MacHeap::Handle MacHeap::newHandle(uint32_t bytes,bool clear)
 }
 int16_t MacHeap::disposeHandle(Handle h)
 {
+    // MEASURED: System 7.5.5 DisposeHandle(nil) clears MemError and succeeds.
+    if(!h)return result(0);
     if(!isHandle(h))return result(nilHandleErr);
     if(*h) { uint32_t off=findPtr(*h,handleBlock);if(!off)return result(memWZErr);release(off); }
     *flags(h)=0;releaseMaster(h);return result(0);

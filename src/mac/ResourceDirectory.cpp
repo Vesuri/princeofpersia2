@@ -18,7 +18,11 @@ void ResourceDirectory::clear() { for(uint16_t i=0;i<maximumForks;++i)if(forks_[
 int32_t ResourceDirectory::close(int16_t ref) {
     int16_t f=forkIndex(ref);if(f<0)return -193;
     for(auto& r:records_)if(r.identity && r.fork==f) { delete[] r.name;r={}; }
-    delete[] forks_[f].map;forks_[f]={};return 0;
+    delete[] forks_[f].map;forks_[f]={};
+#ifdef AMIGAXDEV_RESOURCE_DIRECTORY_INDEXED
+    lookupValid_=false;
+#endif
+    return 0;
 }
 int32_t ResourceDirectory::parse(const ResourceForks::Source& source,uint8_t*& map,Entry*& entries,uint16_t& count) {
     map=0;entries=0;count=0;uint8_t header[16];ResourceMap::Layout layout;
@@ -47,6 +51,10 @@ int32_t ResourceDirectory::open(int16_t ref,const ResourceForks::Source& source,
     if(error) { delete[] map;delete[] entries;return error; }
     forks_[f]={true,writable,false,ref,nextIdentity_++,map};
     uint16_t n=0;for(auto& r:records_)if(!r.identity && n<count) { r={nextIdentity_++,(uint16_t)f,entries[n++],0}; }
+
+#ifdef AMIGAXDEV_RESOURCE_DIRECTORY_INDEXED
+    lookupValid_=false;
+#endif
     delete[] entries;return 0;
 }
 int32_t ResourceDirectory::create(int16_t ref) {
@@ -75,6 +83,38 @@ bool ResourceDirectory::at(int16_t ref,uint16_t ordinal,View& out) const {
     int16_t f=forkIndex(ref);if(f<0)return false;uint16_t indices[maximumResources];
     uint16_t n=order(f,indices);return ordinal<n && get(records_[indices[ordinal]].identity,out);
 }
+#ifdef AMIGAXDEV_RESOURCE_DIRECTORY_INDEXED
+bool ResourceDirectory::lookupBefore(uint16_t a,uint16_t b) const {
+    const auto& x=records_[a];const auto& y=records_[b];
+    if(x.fork!=y.fork)return x.fork<y.fork;
+    if(x.entry.type!=y.entry.type)return x.entry.type<y.entry.type;
+    if(x.entry.id!=y.entry.id)return x.entry.id<y.entry.id;
+    return x.identity<y.identity;
+}
+void ResourceDirectory::prepareLookup() const {
+    if(lookupValid_)return;
+    lookupCount_=0;
+    for(uint16_t i=0;i<maximumResources;++i)if(records_[i].identity) {
+        uint16_t at=lookupCount_++;
+        while(at && lookupBefore(i,lookup_[at-1])) {lookup_[at]=lookup_[at-1];--at;}
+        lookup_[at]=i;
+    }
+    lookupValid_=true;
+}
+bool ResourceDirectory::find(int16_t ref,uint32_t type,int16_t id,View& out) const {
+    int16_t f=forkIndex(ref);if(f<0)return false;
+    prepareLookup();uint16_t first=0,last=lookupCount_;
+    while(first<last) {
+        uint16_t middle=first+((last-first)>>1);const auto& r=records_[lookup_[middle]];
+        bool before=r.fork<f || (r.fork==f && (r.entry.type<type || (r.entry.type==type && r.entry.id<id)));
+        if(before)first=middle+1;else last=middle;
+    }
+    if(first==lookupCount_)return false;
+    const auto& r=records_[lookup_[first]];
+    if(r.fork!=f || r.entry.type!=type || r.entry.id!=id)return false;
+    out={r.identity,ref,r.entry};return true;
+}
+#else
 bool ResourceDirectory::find(int16_t ref,uint32_t type,int16_t id,View& out) const {
     int16_t f=forkIndex(ref);uint32_t first=0;
     // Slots are reused after removal; the earliest surviving insertion wins.
@@ -82,6 +122,7 @@ bool ResourceDirectory::find(int16_t ref,uint32_t type,int16_t id,View& out) con
         && (!first || r.identity<first))first=r.identity;
     return first && get(first,out);
 }
+#endif
 uint8_t* ResourceDirectory::copyName(const Entry& e) {
     if(!e.name)return 0;uint8_t* name=new uint8_t[e.nameLength ? e.nameLength : 1];
     if(name) { volatile uint8_t* destination=name;for(uint16_t i=0;i<e.nameLength;++i)destination[i]=e.name[i]; }return name;
@@ -89,7 +130,12 @@ uint8_t* ResourceDirectory::copyName(const Entry& e) {
 int32_t ResourceDirectory::mutation(int16_t f,int16_t replaced,const Entry* entry) const {
     if(!forks_[f].writable && entry)return -54;
     uint16_t n=count(forks_[f].ref)+(replaced<0 && entry ? 1 : 0)-(replaced>=0 && !entry ? 1 : 0);
-    if(n>ResourceMap::maximumResources)return -108;Entry* recipe=n ? new Entry[n] : 0;if(n && !recipe)return -108;
+#ifdef AMIGAXDEV_RESOURCE_DIRECTORY_MAP_LIMIT
+    if(n>ResourceMap::maximumResources)return -108;
+#else
+    if(n>maximumResources)return -108;
+#endif
+    Entry* recipe=n ? new Entry[n] : 0;if(n && !recipe)return -108;
     uint16_t indices[maximumResources],total=order(f,indices),at=0;
     for(uint16_t i=0;i<total;++i) {
         if(indices[i]==replaced) { if(entry)recipe[at++]=*entry; }
@@ -104,16 +150,28 @@ int32_t ResourceDirectory::add(int16_t ref,const Entry& entry,uint32_t& identity
     if(slot<0 || nextIdentity_==0xffffffffUL)return -108;
     int32_t error=mutation(f,-1,&entry);if(error)return error;
     uint8_t* name=copyName(entry);if(entry.name && !name)return -108;
-    Entry owned=entry;owned.name=name;identity=nextIdentity_++;records_[slot]={identity,(uint16_t)f,owned,name};forks_[f].dirty=true;return 0;
+    Entry owned=entry;owned.name=name;identity=nextIdentity_++;records_[slot]={identity,(uint16_t)f,owned,name};forks_[f].dirty=true;
+#ifdef AMIGAXDEV_RESOURCE_DIRECTORY_INDEXED
+    lookupValid_=false;
+#endif
+    return 0;
 }
 int32_t ResourceDirectory::replace(uint32_t id,const Entry& entry) {
     int16_t i=recordIndex(id);if(i<0)return -192;auto& r=records_[i];
     int32_t error=mutation(r.fork,i,&entry);if(error)return error;uint8_t* name=copyName(entry);if(entry.name && !name)return -108;
-    Entry owned=entry;owned.name=name;delete[] r.name;r.name=name;r.entry=owned;forks_[r.fork].dirty=true;return 0;
+    Entry owned=entry;owned.name=name;delete[] r.name;r.name=name;r.entry=owned;forks_[r.fork].dirty=true;
+#ifdef AMIGAXDEV_RESOURCE_DIRECTORY_INDEXED
+    lookupValid_=false;
+#endif
+    return 0;
 }
 int32_t ResourceDirectory::remove(uint32_t id) {
     int16_t i=recordIndex(id);if(i<0)return -192;auto& r=records_[i];int32_t error=mutation(r.fork,i,0);if(error)return error;
-    forks_[r.fork].dirty=true;delete[] r.name;r={};return 0;
+    forks_[r.fork].dirty=true;delete[] r.name;r={};
+#ifdef AMIGAXDEV_RESOURCE_DIRECTORY_INDEXED
+    lookupValid_=false;
+#endif
+    return 0;
 }
 int32_t ResourceDirectory::read(uint32_t id,uint32_t offset,uint8_t* out,uint32_t size) const {
     View v={};if(!get(id,v))return -192;if(offset>v.entry.size || size>v.entry.size-offset)return -50;

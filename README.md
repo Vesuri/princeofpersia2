@@ -7,9 +7,10 @@ showing the original 512×384 window.
 
 The release can be inspected and extracted reproducibly (see the source inventory).
 A pinned headless Macintosh reference reaches the opening cutscene, with a verified
-static/live map of that route. The Amiga UI build executes 144 matching original
-startup calls before its unsupported `Palette2CTab` boundary. Paired service, audio and
-presentation probes exist; end-to-end native gameplay remains unverified.
+static/live map of that route. Paired service, audio and presentation probes exist.
+Original native startup reaches the first playable room, with matching reference
+pixels and state and verified gameplay input. Timing and full-game validation
+remain open.
 
 ## Setup checks
 
@@ -65,7 +66,7 @@ display-service replay. See [display services](docs/display.md) for scope and li
 
 Run `make ui` for VBI input and port-owned menus/prompts, or `make ui-check` for
 paired original contracts, byte-verified protection/compression seams and native
-output/rejection checks. Startup reaches the named `Palette2CTab` boundary after
+output/rejection checks. The bounded service fixture stops at an explicit startup checkpoint after
 144 matching original calls. See [input and UI](docs/input-ui.md) for controls,
 coverage and the distinction between service fixtures and native gameplay.
 
@@ -73,3 +74,10 @@ Run `make audio` for the port-owned Halestorm driver or `make audio-check` for
 paired original title/gameplay/death/cutscene audio events and Paula DMA checks.
 See [audio](docs/audio.md) for measured voice priority, data provenance and the
 service-replay boundary. Audio uses Paula voices without software mixing.
+
+`make integration-contracts-check`
+reproduces the original fixed-point, font, GWorld and title-copy comparisons;
+`make integration-check` additionally runs the title-to-gameplay acceptance gate.
+See [native integration](docs/native-integration.md) for the verified route,
+shared services and current limits. `make audio` builds the ordinary executable
+with all startup services; the integration gate adds test-only input and probes.
