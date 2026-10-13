@@ -135,6 +135,7 @@ bool hideOverlay() {
 }
 void attach(PrinceScreen* screen,const uint8_t* lookup) {output=screen;transfer=lookup;}
 void wait() {if(output)output->wait();}
+void paceFrame() {if(output)output->paceFrame();}
 bool publish() {
     g_integrationScreen=(uint32_t)pixels;g_integrationColors=(uint32_t)colors;
     if(!output || (!dirtyCount && !paletteDirty))return true;
@@ -264,7 +265,11 @@ bool dispatch(uint16_t trap,uint32_t* regs,uint8_t* args,uint32_t& consumed) {
         World* v=thePort?byPort(l(thePort)):nullptr;const uint8_t* r=pointer(l(args),8);
         if(!v || !r)return fail("DISPLAY / CLIPRECT OWNER");
         uint8_t bounds[8];CopyBits8::copySpan(r,bounds,8);
-        if(heap->setHandleSize(v->clip,10))return fail("DISPLAY / CLIPRECT MEMORY");
+        // Both existing ports update the clip record in place. Preserve this
+        // port's exact handle-size contract without resizing an unchanged one:
+        // even a no-op resize otherwise coalesces the entire Macintosh heap.
+        if(heap->handleSize(v->clip)!=10 && heap->setHandleSize(v->clip,10))
+            return fail("DISPLAY / CLIPRECT MEMORY");
         if(int16_t(w(bounds))>=int16_t(w(bounds+4)) || int16_t(w(bounds+2))>=int16_t(w(bounds+6)))for(auto& b:bounds)b=0;
         sw(*v->clip,10);CopyBits8::copySpan(bounds,*v->clip+2,8);consumed=4;return true;
     }

@@ -4,6 +4,10 @@
 #include "PrinceScreen.h"
 #include "framework/AmigaHardware.h"
 extern "C" {
+#ifdef POP2_TIMING_PROBE
+extern volatile uint32_t g_timingPhase;
+volatile uint32_t g_c2pPasses=0,g_c2pRects=0,g_c2pPixels=0,g_c2pUnbatched=0;
+#endif
 void pop2KalmsC2PRect(const uint8_t*,uint8_t*,uint32_t,uint32_t);
 volatile uint32_t g_displayPlanes=0,g_displayCopper=0,g_displayFields=0,g_displayFrames=0;
 volatile uint16_t g_displayParity=0,g_displayLine=0,g_displayLate=0,g_displayLOF=0;
@@ -92,14 +96,27 @@ bool PrinceScreen::publish(const uint8_t* chunky,const Planar8::Rect& viewport,
             y+=lines;
         }
     }
+#ifdef POP2_TIMING_PROBE
+    if(n){++g_c2pPasses;g_c2pRects+=n;if(g_timingPhase!=0x1002)++g_c2pUnbatched;}
+#endif
     for(unsigned i=0;i<n;++i) {
         auto r=work[i];
+#ifdef POP2_TIMING_PROBE
+        g_c2pPixels+=uint32_t(r.right-r.left)*uint32_t(r.bottom-r.top);
+#endif
         pop2KalmsC2PRect(chunky+uint32_t(viewport.top+r.top)*640+viewport.left+r.left,
             pixels_[back]+uint32_t(r.top)*Planar8::rowBytes+r.left/8,r.right-r.left,r.bottom-r.top);
         sync_[i]=r;
     }
     syncCount_=n;viewport_=viewport;valid_=true;lists(back,rgb);
     __asm__ volatile("" ::: "memory");pending_=1;return true;
+}
+// Same completed-frame rule as Alone in the Dark: publication must finish,
+// and an unchanged scene must still cross a vertical blank before reuse.
+void PrinceScreen::paceFrame() {
+    extern volatile uint32_t g_scaffoldFields;
+    while(pending_ || g_scaffoldFields==lastFrameField_) {__asm__ volatile("nop" ::: "memory");}
+    lastFrameField_=g_scaffoldFields;
 }
 void PrinceScreen::release() {
     started_=false;

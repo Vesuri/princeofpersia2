@@ -734,6 +734,10 @@ pop2_ui_fixture_end:
 pop2_timer_callback:
 	movem.l d0-d7/a0-a6,-(sp)
 	move.w ccr,-(sp)
+2:
+	| Reuse the donor ports' user-mode callback drain loop. Each callback starts
+	| with the interrupted register image; queued passes cannot nest callbacks.
+	movem.l 2(sp),d0-d7/a0-a6
 	move.l g_timerCallbackTask,a1
 	move.l g_timerCallbackTask,a0
 	move.l g_timerCallbackCode,-(sp)
@@ -742,7 +746,10 @@ pop2_timer_callback:
 	rts
 1:
 	addq.l #4,sp
-	clr.l g_timerCallbackActive
+	jsr pop2TimerCallbackComplete
+	tst.l d0
+	bmi pop2_mac_exit
+	bne 2b
 	move.w (sp)+,ccr
 	movem.l (sp)+,d0-d7/a0-a6
 	rts
@@ -856,4 +863,187 @@ pop2_integration_death_return:
 	move.l g_integrationDeathReturn,-(sp)
 	rts
 
+	.endif
+
+	.ifdef POP2_TIMING_VBL_PROBE
+	.text
+	.globl pop2_timing_vbl_fixture,pop2_timing_vbl_callback,pop2_timing_vbl_end
+| Authored counterpart of mac_timing.lua: four countdowns, thirty ticks,
+| three callbacks then automatic removal, followed by explicit VRemove.
+| The callback deliberately damages registers to check deferred dispatch ABI.
+pop2_timing_vbl_fixture:
+	movem.l d2-d7/a2-a6,-(sp)
+	move.l #0x13579bdf,d2
+	move.l #0x2468ace0,a3
+	move.l g_timingVblRecords,a2
+	moveq #3,d7
+1:
+	move.l a2,a0
+	.word 0xa033
+	move.w d0,18(a2)
+	lea 32(a2),a2
+	dbra d7,1b
+	subq.l #4,sp
+	.word 0xa975
+	move.l (sp)+,d6
+2:
+	subq.l #4,sp
+	moveq #0,d0
+	.word 0xa975
+	bne 8f
+	cmp.l #0x13579bdf,d2
+	bne 8f
+	cmpa.l #0x2468ace0,a3
+	bne 8f
+	move.l (sp)+,d0
+	sub.l d6,d0
+	cmp.l #30,d0
+	blo 2b
+	move.l d0,g_timingVblElapsed
+	move.l g_timingVblRecords,a2
+	moveq #3,d7
+3:
+	move.w 10(a2),24(a2)
+	move.l a2,a0
+	.word 0xa034
+	move.w d0,26(a2)
+	lea 32(a2),a2
+	dbra d7,3b
+| Fifth task: install dormant, then defer all original callbacks for six
+| PAL fields. One safe point must drain separate virtual VBL passes.
+	move.l a2,a0
+	.word 0xa033
+	move.w d0,18(a2)
+	move.w #1,10(a2)
+	move.l g_scaffoldFields,d5
+5:
+	move.l g_scaffoldFields,d0
+	sub.l d5,d0
+	cmp.l #6,d0
+	blo 5b
+	move.l d0,g_timingVblDeferredFields
+	subq.l #4,sp
+	moveq #0,d0
+	.word 0xa975
+	bne 8f
+	cmp.l #0x13579bdf,d2
+	bne 8f
+	cmpa.l #0x2468ace0,a3
+	bne 8f
+	addq.l #4,sp
+	move.w 10(a2),24(a2)
+	move.l a2,a0
+	.word 0xa034
+	move.w d0,26(a2)
+	moveq #0,d0
+	.word 0xaffb
+8:
+	moveq #2,d0
+	.word 0xaffb
+pop2_timing_vbl_callback:
+	addq.w #1,16(a1)
+	subq.l #4,sp
+	.word 0xa975
+	move.l (sp)+,20(a1)
+	cmp.w #1,16(a1)
+	bne 6f
+	move.l 20(a1),28(a1)
+6:
+	cmp.w #3,16(a1)
+	bhs 4f
+	move.w #1,10(a1)
+4:
+	move.l #0xdeadbeef,d2
+	move.l #0xfeedface,a3
+	rts
+pop2_timing_vbl_end:
+	.endif
+
+	.ifdef POP2_TIMING_TM_PROBE
+	.text
+	.globl pop2_timing_tm_fixture,pop2_timing_tm_callback,pop2_timing_tm_end
+	.macro timing_tm_case offset,delay,second=0,cancel=0
+	move.l g_timingTmRecords,a2
+	lea \offset(a2),a2
+	move.l a2,a0
+	.word 0xa058
+	move.w d0,26(a2)
+	subq.l #4,sp
+	.word 0xa975
+	move.l (sp)+,32(a2)
+	move.l #\delay,d0
+	move.l a2,a0
+	.word 0xa05a
+	move.w d0,28(a2)
+	.if \second
+	move.l #\second,d0
+	move.l a2,a0
+	.word 0xa05a
+	move.w d0,56(a2)
+	.endif
+	.if \cancel
+	move.l a2,a0
+	.word 0xa059
+	move.w d0,30(a2)
+	.endif
+	move.l 32(a2),d6
+1:
+	subq.l #4,sp
+	moveq #0,d0
+	.word 0xa975
+	bne timing_tm_abi_failure
+	cmp.l #0x13579bdf,d2
+	bne timing_tm_abi_failure
+	cmpa.l #0x2468ace0,a3
+	bne timing_tm_abi_failure
+	move.l (sp)+,d0
+	sub.l d6,d0
+	cmp.l #20,d0
+	blo 1b
+	move.l 10(a2),40(a2)
+	move.w 4(a2),44(a2)
+	move.l a2,a0
+	.word 0xa059
+	move.w d0,58(a2)
+	.endm
+| Authored counterpart of mac_time_manager.lua. All waits use services so
+| original callbacks are dispatched at user-mode safe points.
+pop2_timing_tm_fixture:
+	movem.l d2-d7/a2-a6,-(sp)
+	move.l #0x13579bdf,d2
+	move.l #0x2468ace0,a3
+	timing_tm_case 0,40
+	timing_tm_case 64,-40000
+	timing_tm_case 128,80,1
+	timing_tm_case 192,20,100
+	timing_tm_case 256,200,0,1
+	timing_tm_case 320,0
+	timing_tm_case 384,20
+	moveq #0,d0
+	.word 0xaffa
+ timing_tm_abi_failure:
+	moveq #2,d0
+	.word 0xaffa
+pop2_timing_tm_callback:
+	addq.w #1,24(a1)
+	subq.l #4,sp
+	.word 0xa975
+	move.l (sp)+,36(a1)
+	move.w 4(a1),52(a1)
+	cmp.w #1,24(a1)
+	bne 2f
+	move.l 36(a1),48(a1)
+2:
+	tst.w 60(a1)
+	beq 3f
+	cmp.w #3,24(a1)
+	bhs 3f
+	move.l a1,a0
+	moveq #20,d0
+	.word 0xa05a
+3:
+	move.l #0xdeadbeef,d2
+	move.l #0xfeedface,a3
+	rts
+pop2_timing_tm_end:
 	.endif

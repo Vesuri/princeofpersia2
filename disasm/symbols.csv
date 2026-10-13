@@ -35,6 +35,8 @@ segment,offset,name,evidence,notes
 2,0x1786,SaveRebirthPtStatus_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x190A,SetRebirthPtInitials_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x1A36,CopyProtectionDialog,MEASURED,Original already-accepted execution fixture preserves menu updates and return
+2,0x1A40,PortProtectionAcceptanceSeam,DERIVED,D6 byte-guarded branch to original accepted continuation
+2,0x1B8C,ProtectionAcceptedContinuation,MEASURED,Original accepted fixture executes menu updates through epilogue
 2,0x1BCC,CopyProtectionDialog_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x1C5A,ComputeSymbolPt_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x1CA8,ComputeSymbolRect_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
@@ -69,7 +71,9 @@ segment,offset,name,evidence,notes
 2,0x39DA,SetGameMenuItemMark_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x3A84,CheckCursorVisibility_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x3AD2,CheckSoundChanges_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
+2,0x3AE8,PortNoMacMenuHide,DERIVED,D8 byte-guarded no-drawing replacement
 2,0x3B60,e2MAC_HideMenuBar_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
+2,0x3B76,PortNoMacMenuShow,DERIVED,D8 byte-guarded no-drawing replacement
 2,0x3BDA,e2MAC_ShowMenuBar_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x3C24,calcMenuRgn_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x3CE8,StartupPackingChoice,MEASURED,Reference records original option words before packing decision
@@ -106,6 +110,7 @@ segment,offset,name,evidence,notes
 2,0x6056,FirstRoomDisplayCheckpoint,MEASURED,Post-FirstFrame checkpoint with D4 low word FFFE
 2,0x6060,FirstFrame_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x60EE,DoCleanCut_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
+2,0x674C,FrameAdv,DERIVED,Original LINK entry ending at named RTS 0x68B2; gameplay frame timing boundary
 2,0x68B4,FrameAdv_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x696C,ResetFrameVars_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x6B38,QuickFloor_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
@@ -149,6 +154,7 @@ segment,offset,name,evidence,notes
 3,0x2BE0,DumpTable_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 3,0x306C,DrawBFItem_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 3,0x323E,DrawMidItem_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
+3,0x3330,DrawSceneObjects,DERIVED,SaveCurrentWorld and RestoreOriginalWorld bracket offscreen dirty-scene drawing; visible copies follow in CODE 3 at 0x44F0
 3,0x33B6,CheckAddDRect_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 3,0x345C,AddDRect_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 3,0x3480,DrawHalf,DERIVED,Original name record at 0x35B0; rectangular scene redraw at original scale
@@ -168,6 +174,7 @@ segment,offset,name,evidence,notes
 3,0x4434,DrawRestartMessage_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 3,0x447C,ClrLifeBar_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 3,0x44E2,ClrMessage_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
+3,0x44F0,CopyDirtyRectangles,DERIVED,Iterates original dirty rectangle count at A5-0x4834 and calls screen transfer through jump slot 0xC2
 3,0x4560,GetHorseShape_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 3,0x45F2,GetHorsePtInPlane_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 3,0x46EE,DrawHorse_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
@@ -646,6 +653,7 @@ segment,offset,name,evidence,notes
 11,0x2CCC,MDH_StopNote_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 11,0x2E3C,MDH_SetMIDIClock_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 11,0x3170,ChangeSystemVoices_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
+11,0x32AA,InstalledAudioDriverEntry,MEASURED,Pointer at A5 minus 0x0F24 installed immediately before this point; guarded audio observer
 11,0x3344,InitSoundMusicSystem_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 11,0x353A,AutoFadeHandler_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 11,0x35B6,HandleMusicVBLTask_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
@@ -870,6 +878,7 @@ segment,offset,name,evidence,notes
 17,0x201E,RectValid_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 17,0x21EA,ErrorHandler_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 17,0x2450,GameWindow_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
+17,0x245E,DrawAbout,MEASURED,Original About 600 returns after ordinary Return input
 17,0x24CA,DrawAbout_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 17,0x26BE,Sys6OrLater_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 17,0x26F8,RecheckSystem_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
@@ -910,6 +919,7 @@ segment,offset,name,evidence,notes
 17,0x448A,PackAllData_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 17,0x4560,PackDataAtStartUp,MEASURED,Original offer declined by normal mouse input returns false
 17,0x458C,PackDataAtStartUp_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
+17,0x463A,CheckPackDataFromGame,MEASURED,Original compression offer declined returns false
 17,0x464A,CheckPackDataFromGame_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 17,0x4722,DrawEmptyProgressBar_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 17,0x4808,DrawPackingProgress_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
@@ -971,6 +981,7 @@ segment,offset,name,evidence,notes
 17,0x6CCA,hGetDlog_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 17,0x6CEC,hGetTxt4_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 17,0x6D30,MakeShapeRect_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
+17,0x6D42,MainAlert,MEASURED,Original 401 404 405 406 prompt outcomes paired with port-owned replacements
 17,0x6D9E,MainAlert_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 17,0x6DCA,pstrcpy_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 17,0x6DF6,PoPFillRect_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
@@ -1080,11 +1091,3 @@ segment,offset,name,evidence,notes
 23,0x140A,ATMGlass_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 23,0x1470,DrawObjGlass_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 23,0x154A,TriggerGlass_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
-2,0x1A40,PortProtectionAcceptanceSeam,DERIVED,D6 byte-guarded branch to original accepted continuation
-2,0x1B8C,ProtectionAcceptedContinuation,MEASURED,Original accepted fixture executes menu updates through epilogue
-2,0x3AE8,PortNoMacMenuHide,DERIVED,D8 byte-guarded no-drawing replacement
-2,0x3B76,PortNoMacMenuShow,DERIVED,D8 byte-guarded no-drawing replacement
-17,0x245E,DrawAbout,MEASURED,Original About 600 returns after ordinary Return input
-17,0x463A,CheckPackDataFromGame,MEASURED,Original compression offer declined returns false
-17,0x6D42,MainAlert,MEASURED,Original 401 404 405 406 prompt outcomes paired with port-owned replacements
-11,0x32AA,InstalledAudioDriverEntry,MEASURED,Pointer at A5 minus 0x0F24 installed immediately before this point; guarded audio observer

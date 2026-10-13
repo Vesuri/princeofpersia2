@@ -11,12 +11,19 @@ def require(ok,why):
 def match(pattern,text):
     result=re.search(pattern,text,re.M);require(result is not None,'MISSING '+pattern);return result
 
-def restored(run,log):
-    m=match(r'^CORE RESTORE stage=3 error=0 vector=1 heap=1 zone=3145728 dma=(\d+)/(\d+) irq=(\d+)/(\d+) view=1 vbi=1$',log)
+def restored(run,log,setup="a1200-fast",*,heap_checked=True):
+    m=match(r'^CORE RESTORE stage=3 error=0 vector=1 heap='+('1' if heap_checked else '0')+r' zone=3145728 dma=(\d+)/(\d+) irq=(\d+)/(\d+) view=1 vbi=1$',log)
     require(m[1]==m[2] and m[3]==m[4],'RESTORED HARDWARE')
     require((run/'dh1/Shell.done').read_text().strip()=='SHELL FAIL','NAMED STOP MUST RETURN DOS FAIL')
     config=dict(line.split('=',1) for line in (run/'logs/debug.uae').read_text().splitlines() if '=' in line)
-    expected={'cpu_model':'68020','chipset':'aga','chipmem_size':'4','fastmem_size':'8','ntsc':'false','cpu_speed':'real','cachesize':'0','cpu_frequency':'14187580'}
+    expected={'cpu_model':'68020','chipset':'aga','chipmem_size':'4','fastmem_size':'8','ntsc':'false','cpu_speed':'real','cachesize':'0','cpu_frequency':'14187580','cpu_data_cache':'false'}
+    if setup=='a1200-030':
+        expected.update(cpu_model='68030',mmu_model='68030',cpu_frequency='50000000',cpu_cycle_exact='true',cpu_memory_cycle_exact='true',cpu_data_cache='true')
+    elif setup=='a1200-040':
+        expected.pop('cpu_frequency')
+        expected.update(cpu_model='68040',cpu_multiplier='8',mmu_model='68040',fpu_model='68040',cpu_cycle_exact='false',cpu_data_cache='true')
+    else:
+        require(setup=='a1200-fast','UNSUPPORTED MACHINE CHECK')
     require(all(config.get(k)==v for k,v in expected.items()),'EFFECTIVE MACHINE')
 
 def initialized(resources,directory,a5,code1,handles):

@@ -41,11 +41,11 @@ def reference_state(reference):
     return result
 
 
-def check(run, reference, title_reference, *, right_expected=True):
+def check(run, reference, title_reference, *, right_expected=True, setup="a1200-fast"):
     reference_state(reference)
     title = title_state_reference(title_reference, 16)
     log = (run/'gdb-out.log').read_text()
-    restored(run, log)
+    restored(run, log, setup)
     require('CORE REASON INTEGRATION / ROUTE COMPLETE\n' in log, 'ROUTE COMPLETION')
     require('CORE EXCEPTION vector=0 pc=00000000\n' in log, 'EXCEPTION')
     require('INTEGRATION AUDIT code=1 input=1\n' in log, 'CODE AND INPUT AUDITS')
@@ -92,5 +92,6 @@ if __name__ == '__main__':
     parser.add_argument('reference', type=Path)
     parser.add_argument('title_reference', type=Path, help='state-paired original title renderer fixture')
     parser.add_argument('--no-right', action='store_true', help='require the completed no-input control route')
+    parser.add_argument('--setup', choices=['a1200-fast','a1200-030','a1200-040'], default='a1200-fast')
     args = parser.parse_args()
-    check(args.run, args.reference, args.title_reference, right_expected=not args.no_right)
+    check(args.run, args.reference, args.title_reference, right_expected=not args.no_right, setup=args.setup)

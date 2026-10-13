@@ -87,3 +87,8 @@ reproduces the original fixed-point, font, GWorld and title-copy comparisons;
 See [native integration](docs/native-integration.md) for the verified route,
 shared services and current limits. `make audio` builds the ordinary executable
 with all startup services; the integration gate adds test-only input and probes.
+
+The current performance target is `a1200-030` with 8 MB Fast RAM. See
+[performance measurements](docs/performance.md) for the explicit profiling build,
+matched-workload checks and Kalms dirty-rectangle conversion at frame end.
+Profiling is separate from ordinary release and the correctness fixtures.

@@ -17,6 +17,7 @@ local uiRoutines=os.getenv('POP2_UI_ROUTINES') and dofile('tools/mac_ui_routines
 local inputProbe=os.getenv('POP2_INPUT_PROBE') and dofile('tools/mac_input_probe.lua') or nil
 local audio=os.getenv('POP2_AUDIO') and dofile('tools/mac_audio.lua') or nil
 local integration=(os.getenv('POP2_INTEGRATION') or os.getenv('POP2_NEWGWORLD') or os.getenv('POP2_TITLE_COPY')) and dofile('tools/mac_integration.lua') or nil
+local timing=os.getenv('POP2_TIMING_TM') and dofile('tools/mac_time_manager.lua') or os.getenv('POP2_TIMING_VBL') and dofile('tools/mac_timing.lua') or nil
 local inputStage=false
 local ui=os.getenv('POP2_UI') and dofile('tools/mac_ui.lua') or nil
 local display=os.getenv('POP2_DISPLAY') and dofile('tools/mac_display.lua') or nil
@@ -88,6 +89,20 @@ local function observe()
     if mapper then mapper.map(seg,base)end
     if audio then audio.map(seg,base,guard,meta)end
     print(string.format('MAP seg=%d base=%08X size=%d',seg,base,#info.hex/2))
+    -- Timing observations use guest ticks and original routine boundaries.
+    -- They neither alter deadlines nor inject game-state changes.
+    if os.getenv('POP2_TIMING_TRACE') then
+     if seg==2 then
+      at(seg,base,0x68b2,'logerror "TIMING_FRAME ticks=%08X result=%04X room=%04X state=%04X\\n",d@0x16a,d0&0xffff,w@(a5-0x4fc2),w@(a5-0x4fcc)',2)
+     elseif seg==3 then
+      at(seg,base,0x3330,'logerror "TIMING_DRAW_BEGIN ticks=%08X frame=%04X world=%02X\\n",d@0x16a,w@(a5-0x349a),b@(a5-0x521e)')
+      at(seg,base,0x338c,'logerror "TIMING_DRAW_END ticks=%08X frame=%04X world=%02X\\n",d@0x16a,w@(a5-0x349a),b@(a5-0x521e)',2)
+     elseif seg==17 then
+      at(seg,base,0x3172,'logerror "TIMING_SET ticks=%08X timer=%04X delay=%04X\\n",d@0x16a,w@(a6+8),w@(a6+0xc)')
+      at(seg,base,0x31a2,'logerror "TIMING_WAIT ticks=%08X timer=%04X interrupted=%04X\\n",d@0x16a,w@(a6+8),d3&0xffff')
+      at(seg,base,0x31da,'logerror "TIMING_WAIT_NOPOLL ticks=%08X timer=%04X\\n",d@0x16a,w@(a6+8)')
+     end
+    end
     if os.getenv('POP2_ROUTE_TRACE') then
      if seg==15 then
       at(seg,base,0x15e,'logerror "ROUTE_NIS_RETURN kind=%04X result=%04X ticks=%08X\\n",w@(a6+8),d4&0xffff,d@0x16a')
@@ -153,6 +168,11 @@ emu.register_frame_done(function()
 end)
 emu.register_periodic(function()
  if finished then return end
+ if timing then
+  local ok,handled=pcall(timing.poll)
+  if not ok then fail(handled);return end
+  if handled then return end
+ end
  if audio then
   local ok,handled=pcall(audio.poll)
   if not ok then fail(handled);return end
@@ -276,6 +296,11 @@ emu.register_periodic(function()
   end)
   if not ok then fail(err);return end
   if os.getenv('POP2_NULL_DISPOSE') or os.getenv('POP2_FIXED_PROBE') then return end
+  if timing then
+   cpu.debug:bpclear(checkpointProbe);checkpoint=nil
+   local ok,err=pcall(timing.start);if not ok then fail(err)end
+   return
+  end
   if os.getenv('POP2_AUDIO')=='fixture' then
    cpu.debug:bpclear(checkpointProbe);audio.startFixture(checkpoint);checkpoint=nil;return
   end

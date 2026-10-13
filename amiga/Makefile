@@ -1,12 +1,22 @@
 # Release by default. VERIFY=1 enables expensive runtime diagnostics.
 VERIFY ?= 0
+PROFILE ?= 0
+ifeq ($(filter 0 1,$(PROFILE)),)
+$(error PROFILE must be 0 or 1)
+endif
+ifeq ($(PROFILE),1)
+ifneq ($(VERIFY),0)
+$(error PROFILE=1 requires VERIFY=0 for measurements without expensive verification)
+endif
+endif
 ifeq ($(filter 0 1,$(VERIFY)),)
 $(error VERIFY must be 0 or 1)
 endif
 EXTRA_DEFINES ?= -DPOP2_CORE -DPOP2_DISPLAY -DPOP2_INPUT -DPOP2_UI -DPOP2_AUDIO
+PROFILE_ALLOWED = $(if $(filter 1,$(PROFILE)),-DPOP2_INTEGRATION_PROBE -DPOP2_TIMING_PROBE)
 ifeq ($(VERIFY),0)
-ifneq ($(filter-out -DPOP2_CORE -DPOP2_DISPLAY -DPOP2_INPUT -DPOP2_UI -DPOP2_AUDIO,$(filter -DPOP2_%,$(EXTRA_DEFINES))),)
-$(error Diagnostic POP2 defines require VERIFY=1)
+ifneq ($(filter-out $(PROFILE_ALLOWED) -DPOP2_CORE -DPOP2_DISPLAY -DPOP2_INPUT -DPOP2_UI -DPOP2_AUDIO,$(filter -DPOP2_%,$(EXTRA_DEFINES))),)
+$(error Diagnostic POP2 defines require VERIFY=1; PROFILE=1 permits only integration and timing measurement probes)
 endif
 endif
 VERIFY_DEFINES = $(if $(filter 1,$(VERIFY)),-DPOP2_VERIFY)
@@ -76,9 +86,22 @@ endif
 obj/DisplayC2P.o: ../src/platform/amiga/DisplayC2P.s ../src/platform/amiga/kalms/c2p1x1_8_c5_gen.s
 	$(VASM) -m68020 -Felf -quiet -x -no-opt -nowarn=62 "$<" -o "$@"
 obj/MacEntry.o: ../src/platform/amiga/MacEntry.s
-	$(AS) -mcpu=68020 -g --register-prefix-optional $(if $(filter -DPOP2_INTEGRATION_PROBE,$(EXTRA_DEFINES)),--defsym POP2_INTEGRATION_PROBE=1) "$<" -o "$@"
+	$(AS) -mcpu=68020 -g --register-prefix-optional $(if $(filter -DPOP2_TIMING_TM_PROBE,$(EXTRA_DEFINES)),--defsym POP2_TIMING_TM_PROBE=1) $(if $(filter -DPOP2_TIMING_VBL_PROBE,$(EXTRA_DEFINES)),--defsym POP2_TIMING_VBL_PROBE=1) $(if $(filter -DPOP2_INTEGRATION_PROBE,$(EXTRA_DEFINES)),--defsym POP2_INTEGRATION_PROBE=1) "$<" -o "$@"
+ifneq (,$(filter -DPOP2_TIMING_PROBE,$(EXTRA_DEFINES)))
+PROBES += g_profileFreeFast g_profileLargestFast g_profileFreeChip g_c2pPasses g_c2pRects g_c2pPixels g_c2pUnbatched g_timingCount g_timingRows g_timingPhase g_timingSamples g_timingSetCount g_timingSetRows
+endif
+ifneq (,$(filter -DPOP2_TIMING_VBL_PROBE,$(EXTRA_DEFINES)))
+PROBES += g_timingVblRecords g_timingVblResult g_timingVblElapsed g_timingVblUserCalls g_timingVblDeferredFields
+endif
+ifneq (,$(filter -DPOP2_TIMING_TM_PROBE,$(EXTRA_DEFINES)))
+PROBES += g_timingTmRecords g_timingTmResult g_timingTmUserCalls
+endif
 ifeq ($(VERIFY),0)
+ifeq ($(PROFILE),1)
+PROBES := $(filter-out g_coreTrace g_coreCount,$(PROBES))
+else
 PROBES :=
+endif
 endif
 COMMA := ,
 vpath %.cpp ../src ../src/mac ../src/platform/amiga $(FW)
@@ -112,7 +135,7 @@ $(OUT).exe: $(OUT).elf
 # Partial-link every compiled source without GC, so dormant missing bridges fail audit.
 audit: $(OUT).exe
 	$(LD) -r $(OBJS) -o obj/all.o
-	@POP2_VERIFY_BUILD=$(VERIFY) python3 ../tools/check_scaffold_link.py $(OUT).elf obj/all.o $(PROBES)
+	@POP2_PROFILE_BUILD=$(PROFILE) POP2_VERIFY_BUILD=$(VERIFY) python3 ../tools/check_scaffold_link.py $(OUT).elf obj/all.o $(PROBES)
 	@python3 ../tools/build_receipt.py write '$(strip $(EXTRA_DEFINES) $(VERIFY_DEFINES))'
 -include $(wildcard obj/*.d)
 

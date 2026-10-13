@@ -108,6 +108,14 @@ def run(name=None, control=None):
         log=(destination/'session.log').read_text()
         for marker in ('UI_ROUTINE_COMPLETE copy-accepted flags=', 'UI_ROUTINE_COMPLETE packing-declined result=0','UI_ROUTINE_COMPLETE packing-game-declined result=0','UI_ROUTINE_COMPLETE about','UI_ROUTINE_COMPLETE alert-401-yes result=1','UI_ROUTINE_COMPLETE alert-404-yes result=1','UI_ROUTINE_COMPLETE alert-405-yes result=1','UI_ROUTINE_COMPLETE alert-405-no result=2','UI_ROUTINE_COMPLETE alert-406-yes result=1','UI_ROUTINE_COMPLETE alert-406-no result=2'):
             if log.count(marker)!=1:raise ValueError('REFERENCE / UI ROUTINE INCOMPLETE')
+    if env.get('POP2_TIMING_TM'):
+        log=(destination/'session.log').read_text()
+        if log.count('TIMING_TM_COMPLETE cases=7')!=1 or 'FAIL REFERENCE' in log:
+            raise ValueError('REFERENCE / TIME MANAGER INCOMPLETE')
+    if env.get('POP2_TIMING_VBL'):
+        log=(destination/'session.log').read_text()
+        if log.count('TIMING_VBL_COMPLETE removal=1')!=1 or 'FAIL REFERENCE' in log:
+            raise ValueError('REFERENCE / TIMING VBL INCOMPLETE')
     if env.get('POP2_INPUT_PROBE'):
         import re
         log=(destination/'session.log').read_text()

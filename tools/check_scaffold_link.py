@@ -23,4 +23,4 @@ if os.environ.get('POP2_VERIFY_BUILD')=='0':
     names={line.split()[-1] for line in s.splitlines() if len(line.split())>=6}
     assert not any(re.match(r'_Z[0-9]+sha_(init|update|final)',name) for name in names),'release contains runtime SHA-256'
     assert not names.intersection({'g_coreTrace','g_coreCount','g_fileVerifiedFiles','g_fileVerifiedBytes','g_coreResources','g_coreResourceCount','g_fileVolume','g_fileVolumeQueries'}),'release contains verification counters/trace'
-    print('RELEASE AUDIT PASS: no runtime SHA-256, trap trace or hash counters')
+    print(('PROFILE' if os.environ.get('POP2_PROFILE_BUILD')=='1' else 'RELEASE')+' AUDIT PASS: no runtime SHA-256, trap trace or hash counters')

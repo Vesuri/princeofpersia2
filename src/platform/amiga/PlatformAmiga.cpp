@@ -15,10 +15,13 @@
 #endif
 #ifdef POP2_INPUT
 #include "NativeInput.h"
-static uint32_t inputTicks=0;
-static uint16_t inputPhase=0;
+#include "mac/VideoTicks.h"
+static volatile uint32_t inputTicks=0;
+static volatile uint16_t inputPhase=0;
 static void inputField() {
-    inputPhase+=6;inputTicks+=inputPhase/5;inputPhase%=5;
+    uint16_t phase=inputPhase;
+    uint16_t delta=VideoTicks::fieldDelta(true,phase);
+    inputPhase=phase;inputTicks+=delta;
     NativeInput::field(inputTicks);
 }
 #endif
@@ -49,6 +52,34 @@ volatile uint32_t g_scaffoldStage=0, g_scaffoldFields=0, g_scaffoldError=0;
 volatile uint16_t g_savedDMA=0,g_actualDMA=0,g_savedIRQ=0,g_actualIRQ=0,g_viewRestored=0,g_vectorRestored=0;
 __attribute__((noinline)) void pop2ScaffoldRestored() { __asm__ volatile("nop" ::: "memory"); }
 }
+#ifdef POP2_INPUT
+// Called at user-mode service points. Pair the field clock with a stable beam
+// and pending-VBI state: a request not yet serviced belongs to the next field.
+extern "C" { volatile uint32_t g_clockFault=0,g_clockFaultData[5]={}; }
+extern "C" uint32_t pop2WallTicks() {
+    static uint32_t lastTick=0;
+    uint32_t before,after,base;uint16_t phase,hi,lo,check,pending,again;
+    do {
+        before=g_scaffoldFields;base=inputTicks;phase=inputPhase;
+        pending=*intreqrPointer&INTF_VERTB;
+        hi=*vposrPointer;lo=*vhposrPointer;check=*vposrPointer;
+        again=*intreqrPointer&INTF_VERTB;after=g_scaffoldFields;
+    // The beam can expose scanline zero before the VBI request/epoch catches
+        // up. HP 0/1 can likewise still carry the preceding vertical position.
+    } while(before!=after || pending!=again || ((hi^check)&1) ||
+            (lo&255)<2 || (((hi&1)<<8)|(lo>>8))==0);
+    if(pending)base+=VideoTicks::fieldDelta(true,phase);
+    uint32_t line=((hi&1)<<8)|(lo>>8);
+    uint32_t micro=line*64+((lo&255)*64)/227;
+    uint32_t tick=VideoTicks::withinPALField(base,phase,uint16_t(micro<20000?micro:19999));
+    if(int32_t(tick-lastTick)<0 && !g_clockFault) {
+        g_clockFaultData[0]=lastTick;g_clockFaultData[1]=tick;
+        g_clockFaultData[2]=after;g_clockFaultData[3]=(uint32_t(hi)<<16)|lo;
+        g_clockFaultData[4]=(uint32_t(phase)<<16)|pending;g_clockFault=1;
+    }
+    lastTick=tick;return tick;
+}
+#endif
 #ifdef POP2_INPUT_PROBE
 extern "C" {
 uint32_t g_inputProbeStage=0,g_inputProbeEvents[9][3]={};
@@ -72,6 +103,12 @@ static void inputProbe(){
     pop2InputProbeComplete();
 }
 #endif
+#if defined(POP2_TIMING_PROBE) && defined(POP2_INTEGRATION_PROBE)
+extern "C" {extern volatile uint32_t g_timingPhase,g_timingSamples[0x1005],g_integrationStage;}
+static void timingSample() {if(g_integrationStage==3 && g_timingPhase<0x1005)++g_timingSamples[g_timingPhase];}
+#else
+static void timingSample() {}
+#endif
 static Interrupt server;
 #ifdef POP2_CORE
 static Interrupt windowServer;
@@ -89,7 +126,7 @@ static uint32_t windowVbi() {
 #ifdef POP2_AUDIO
     NativeAudio::field();
 #endif
-    ++g_systemWindowFields;++g_scaffoldFields;return 0; }
+    ++g_systemWindowFields;++g_scaffoldFields;timingSample();return 0; }
 // Scheduling and exception-vector handback adapted from Alone in the Dark.
 int32_t pop2SystemWindow(int32_t (*operation)(void*),void* context) {
     if(!operation || !vertbTaken || !g_coreServiceActive || g_systemWindowActive ||
@@ -127,7 +164,7 @@ static uint32_t vbi() { *intreqPointer=INTF_VERTB;
 #ifdef POP2_AUDIO
     NativeAudio::field();
 #endif
-    ++g_scaffoldFields;return 0; }
+    ++g_scaffoldFields;timingSample();return 0; }
 static_assert(__builtin_offsetof(ExecBase,IntVects)==84,"Exec vector layout changed");
 bool PlatformAmiga::run() {
     g_scaffoldStage=1;

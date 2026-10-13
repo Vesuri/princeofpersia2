@@ -9,6 +9,7 @@ public:
     bool allocate();
     void start();
     void field();
+    void paceFrame();
     void wait() {while(pending_) {__asm__ volatile("nop" ::: "memory");}}
     void release();
     bool publish(const uint8_t* chunky,const Planar8::Rect& viewport,
@@ -19,6 +20,7 @@ private:
     uint32_t* copper_=nullptr;
     volatile uint16_t front_=0,pending_=0;
     bool started_=false,valid_=false;
+    uint32_t lastFrameField_=0;
     Planar8::Rect viewport_={};
     Planar8::Rect sync_[64];uint16_t syncCount_=0;
     void lists(uint16_t buffer,const uint32_t* rgb);

@@ -2,7 +2,7 @@
 import hashlib,csv,os,sys,shutil
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
-FILES={'FSUAE_ARM','FSUAE_COMMON','KICKSTART_A1200','SETPATCH','LHA','VASM'}
+FILES={'FSUAE_APROF','FSUAE_ARM','FSUAE_COMMON','KICKSTART_A1200','SETPATCH','LHA','VASM'}
 def verify(group):
     count=0
     for row in csv.DictReader((ROOT/'manifest/scaffold-inputs.tsv').read_text().splitlines(),delimiter='\t'):

@@ -19,7 +19,25 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 . ./fsuae.sh
 python3 ../tools/build_receipt.py verify
-FSUAE="$FSUAE_ARM"
+if [ "${PERFORMANCE:-0}" = 1 ]; then
+  [ "${CORE:-0}" = 1 ] || { echo 'PERFORMANCE / CORE REQUIRED'; exit 2; }
+  python3 - <<'CHECK_PROFILE'
+import sys
+sys.path.insert(0,'../tools')
+from build_receipt import verify
+expected={'-DPOP2_CORE','-DPOP2_DISPLAY','-DPOP2_INPUT','-DPOP2_UI','-DPOP2_AUDIO','-DPOP2_INTEGRATION_PROBE','-DPOP2_TIMING_PROBE'}
+if set(verify()['flags'].split()) != expected:
+    raise SystemExit('PERFORMANCE / REQUIRES PROFILE=1 VERIFY=0 BUILD')
+CHECK_PROFILE
+  if [ -z "$SCRIPT" ]; then SCRIPT="$PWD/performance.gdb"; fi
+fi
+[[ "${CPU_PROFILE:-0}" = 0 || "${CPU_PROFILE:-0}" = 1 ]] || exit 2
+if [ "${CPU_PROFILE:-0}" = 1 ]; then
+  python3 ../tools/scaffold_inputs.py profiler
+  FSUAE="$FSUAE_APROF"
+else
+  FSUAE="$FSUAE_ARM"
+fi
 AMIGA_SETUP="${AMIGA_SETUP:-a1200-fast}"
 NTSC=0 DEBUG=1 SOUND="${SOUND:-0}" WINDOW="${WINDOW:-none}" WARP="${WARP:-1}"
 DEADLINE="${DEADLINE:-60}"
@@ -30,6 +48,7 @@ DH0="$RUN/dh0"; DH1="$RUN/dh1"
 mkdir -p "$DH0/s" "$DH0/c" "$DH1" "$RUN/state" "$RUN/logs" "$RUN/gdbhome"
 cp out/PrinceOfPersia2.exe "$DH1/PrinceOfPersia2"
 cp out/PrinceOfPersia2.elf "$RUN/PrinceOfPersia2.elf"
+cp out/PrinceOfPersia2.json "$RUN/build-receipt.json"
 cp "$SETPATCH" "$DH0/c/SetPatch"
 if [ "${CORE:-0}" = 1 ]; then
   python3 ../tools/stage_core.py "$DH1"
@@ -37,7 +56,7 @@ if [ "${CORE:-0}" = 1 ]; then
   if [ -z "$SCRIPT" ]; then SCRIPT="$RUN/core.gdb"; fi
 fi
 if [ -n "$SCRIPT" ]; then
-  sed "s|@RUN@|$RUN|g" "$SCRIPT" > "$RUN/observer.gdb"
+  sed -e "s|@RUN@|$RUN|g" -e "s|@PROFILE@|${CPU_PROFILE:-0}|g" "$SCRIPT" > "$RUN/observer.gdb"
   SCRIPT="$RUN/observer.gdb"
 fi
 cat > "$DH0/s/startup-sequence" <<'STARTUP'
@@ -80,11 +99,17 @@ for ((i=0;i<20;i++)); do [ -f "$DH1/Shell.done" ] && break; sleep 1; done
 if [ "${CORE:-0}" = 1 ]; then
   if [ "${RELEASE_STARTUP:-0}" = 1 ]; then
     python3 ../tools/check_release_startup.py "$RUN" "$RELEASE_REFERENCE"
+  elif [ "${PERFORMANCE:-0}" = 1 ]; then
+    python3 ../tools/check_performance.py "$RUN" "$PERFORMANCE_REFERENCE" --setup "$AMIGA_SETUP"
+  elif [ "${TIMING_TM:-0}" = 1 ]; then
+    python3 ../tools/check_timing_tm.py "$RUN" "$TIMING_TM_REFERENCE" --setup "$AMIGA_SETUP"
+  elif [ "${TIMING_VBL:-0}" = 1 ]; then
+    python3 ../tools/check_timing_vbl.py "$RUN" "$TIMING_VBL_REFERENCE" --setup "$AMIGA_SETUP"
   elif [ "${INTEGRATION:-0}" = 1 ]; then
     if [ "${INTEGRATION_NO_RIGHT:-0}" = 1 ]; then
-      python3 ../tools/check_integration_result.py "$RUN" "$INTEGRATION_REFERENCE" "$INTEGRATION_TITLE_REFERENCE" --no-right
+      python3 ../tools/check_integration_result.py "$RUN" "$INTEGRATION_REFERENCE" "$INTEGRATION_TITLE_REFERENCE" --setup "$AMIGA_SETUP" --no-right
     else
-      python3 ../tools/check_integration_result.py "$RUN" "$INTEGRATION_REFERENCE" "$INTEGRATION_TITLE_REFERENCE"
+      python3 ../tools/check_integration_result.py "$RUN" "$INTEGRATION_REFERENCE" "$INTEGRATION_TITLE_REFERENCE" --setup "$AMIGA_SETUP"
     fi
   elif [ "${AUDIO_PROBE:-0}" = 1 ]; then
     python3 ../tools/check_audio_result.py "$RUN"

@@ -13,6 +13,7 @@ bool hideOverlay();
 void attach(PrinceScreen* output,const uint8_t* transfer);
 bool publish();
 void wait();
+void paceFrame();
 bool handles(uint16_t trap);
 bool dispatch(uint16_t trap,uint32_t* registers,uint8_t* arguments,uint32_t& consumed);
 const char* error();
