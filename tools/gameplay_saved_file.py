@@ -40,6 +40,69 @@ def export(reference):
     print('GAMEPLAY SAVE EXPORT PASS: data/resource forks and type/creator; wrapper preserved')
 
 
+def install_native(reference, destination):
+    """Stage an original-created save before a fresh diagnostic Amiga boot."""
+    import hashlib
+    import json
+    from datetime import datetime, timedelta, timezone
+    from extract_original_data import metadata, pins
+    reference = reference.resolve()
+    for name, expected in pins(ROOT / 'manifest/gameplay-save-reference.sha256').items():
+        if hashlib.sha256((reference / name).read_bytes()).hexdigest() != expected:
+            raise ValueError('GAMEPLAY IMPORT / REFERENCE PIN ' + name)
+    for name, expected in pins(ROOT / 'manifest/gameplay-import-reference.sha256').items():
+        if hashlib.sha256((reference / name).read_bytes()).hexdigest() != expected:
+            raise ValueError('GAMEPLAY IMPORT / WRAPPER PIN ' + name)
+    raw = (reference / 'saved-Level-1.macbin').read_bytes()
+    if len(raw) < 128 or raw[1] != 7 or raw[2:9] != b'Level 1':
+        raise ValueError('GAMEPLAY IMPORT / WRAPPER')
+    size, resource = struct.unpack_from('>II', raw, 83)
+    offset = 128 + ((size + 127) // 128) * 128
+    data = (reference / 'saved-Level-1.data').read_bytes()
+    rsrc = (reference / 'saved-Level-1.rsrc').read_bytes()
+    kind = (reference / 'saved-Level-1.type-creator').read_bytes()
+    if (size != len(data) or resource != len(rsrc) or raw[128:128+size] != data or
+            raw[offset:offset+resource] != rsrc or raw[65:73] != kind):
+        raise ValueError('GAMEPLAY IMPORT / WRAPPER FORKS')
+    # Inverse of install_reference_volume.macbinary; use the existing AFI1 encoder.
+    finder = raw[65:73] + bytes((raw[73], raw[101])) + raw[75:81] + bytes(16)
+    epoch = datetime(1904, 1, 1, tzinfo=timezone.utc)
+    date = lambda start: (epoch + timedelta(seconds=int.from_bytes(raw[start:start+4], 'big'))).strftime('%Y-%m-%d %H:%M:%S %z')
+    info = metadata([dict(XADFileType=int.from_bytes(kind[:4], 'big'),
+                          XADFileCreator=int.from_bytes(kind[4:], 'big'),
+                          XADFinderFlags=int.from_bytes(finder[8:10], 'big'),
+                          XADCreationDate=date(91), XADLastModificationDate=date(95))], finder)
+    files = {'Level 1': data, 'Level 1.rsrc': rsrc, 'Level 1.finfo': info}
+    for name in files:
+        if (destination / name).exists():
+            raise ValueError('GAMEPLAY IMPORT / FRESH DESTINATION REQUIRED')
+    for name, body in files.items():
+        (destination / name).write_bytes(body)
+    receipt = {'source': str(reference.relative_to(ROOT)),
+               'files': {name: hashlib.sha256(body).hexdigest() for name, body in files.items()}}
+    (destination.parent / 'mac-save-import.json').write_text(json.dumps(receipt, indent=2) + '\n')
+    print('GAMEPLAY MAC SAVE STAGED: unchanged original forks and Finder metadata')
+
+
+def install_reference(reference, destination):
+    """Import the pinned save into a fresh Macintosh reference volume."""
+    import tempfile
+    # Reuse fork, wrapper and metadata validation before touching the new disk.
+    with tempfile.TemporaryDirectory(prefix='mac-save-stage-', dir=ROOT / 'tmp') as directory:
+        stage = Path(directory) / 'dh1'; stage.mkdir()
+        install_native(reference, stage)
+    hfs('hmount', str(destination / 'volume.hd'))
+    try:
+        parent = ':Desktop Folder' if 'Desktop Folder' in hfs('hls', '-1a', ':').splitlines() else ''
+        folder = parent + ':Prince of Persia 2'
+        if 'Level 1' in hfs('hls', '-1a', folder).splitlines():
+            raise ValueError('GAMEPLAY IMPORT / ORIGINAL SAVE ALREADY EXISTS')
+        hfs('hcopy', '-m', str(reference.resolve() / 'saved-Level-1.macbin'), folder + ':Level 1')
+    finally:
+        hfs('humount')
+    print('GAMEPLAY MAC SAVE IMPORTED INTO FRESH ORIGINAL VOLUME')
+
+
 if __name__=='__main__':
     import argparse
     parser=argparse.ArgumentParser(description=__doc__)

@@ -830,15 +830,19 @@ static bool gameplayLeft=false;
 static void gameplayKeyboard(uint16_t step){
     bool left=step>=14 && step<=17;
     if(left!=gameplayLeft){gameplayEdges(0x4f,left);gameplayLeft=left;}
+#ifndef POP2_GAMEPLAY_IMPORT_PROBE
     if(step==12 && !(g_gameplayInputActions&1)){
         gameplayEdges(0x66,true,0x21,true);g_gameplayInputActions|=1;
     }
+#endif
     if(step==23 && !(g_gameplayInputActions&2)){
         gameplayEdges(0x66,true);g_gameplayInputActions|=2;
     }
+#ifndef POP2_GAMEPLAY_IMPORT_PROBE
     if(step==24 && !(g_gameplayInputActions&4)){
         gameplayEdges(0x18,true);gameplayEdges(0x18,false,0x66,false);g_gameplayInputActions|=4;
     }
+#endif
 }
 extern "C" void pop2GameplayPickerShown(){integrationPress(0x44,120);}
 extern "C" void pop2GameplaySaved(uint32_t result){
@@ -929,7 +933,11 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
 #ifdef POP2_INTEGRATION_PROBE
 #ifdef POP2_GAMEPLAY_RESTART_PROBE
 #ifdef POP2_GAMEPLAY_SAVE_PROBE
+#ifdef POP2_GAMEPLAY_IMPORT_PROBE
+    if(g_integrationStage==4)return stop(frame,usp,"GAMEPLAY / MAC SAVE IMPORT COMPLETE",trap,seg,off);
+#else
     if(g_integrationStage==4)return stop(frame,usp,"GAMEPLAY / SAVE LOAD COMPLETE",trap,seg,off);
+#endif
 #else
     if(g_integrationStage==4)return stop(frame,usp,"GAMEPLAY / RESTART COMPLETE",trap,seg,off);
 #endif
@@ -1084,6 +1092,13 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
             uint8_t* keys=(uint8_t*)l(usp);volatile uint32_t* row=g_gameplayKeys[g_gameplayKeyCount++];
             row[0]=gameplayStep;row[1]=keys[15]&8;row[2]=keys[15]&16;row[3]=keys[6]&128;
             if(gameplayStep==12 && (g_gameplayInputActions&1))gameplayEdges(0x21,false,0x66,false);
+#ifdef POP2_GAMEPLAY_IMPORT_PROBE
+            // Fresh Mac import consumes Command at step 23, then handles Open
+            // before another gameplay keyboard read. Preserve that event order.
+            if(gameplayStep==23 && !(g_gameplayInputActions&4)){
+                gameplayEdges(0x18,true);gameplayEdges(0x18,false,0x66,false);g_gameplayInputActions|=4;
+            }
+#endif
         }
 #endif
 #endif

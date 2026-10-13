@@ -5,7 +5,7 @@ local M={}
 local cpu=manager.machine.devices[':maincpu'];local mem=cpu.spaces.program
 local dbg=manager.machine.debugger
 local run=assert(os.getenv('POP2_REFERENCE_RUN'))
-local points={};local rooms=0;local starts=0;local commands=0
+local points={};local rooms=0;local starts=0;local commands=0;local lastStep=0
 local route=os.getenv("POP2_GAMEPLAY");local phase;local reply;local files=0;local loadedFrames=0;local flushing;local flushed=false
 local function dump(name,address,size)
  local f=assert(io.open(run..'/'..name..'.bin','wb'))
@@ -15,7 +15,7 @@ end
 function M.map(seg,base,guard,condition)
  if seg~=2 then return end
  local sites={{0x5aea,'restart-enter'},{0x6058,'first-frame'},{0x3554,'menu-command'}}
- if route=='save-load' then
+ if route=='save-load' or route=='load-import' then
   for _,point in ipairs({{0xe36,'save-picker'},{0xe5c,'load-picker'},{0xe5e,'picker-return'},
                         {0x1270,'save-enter'},{0x143e,'save-return'},{0x1038,'load-enter'},{0x11e2,'load-return'},{0x68b2,'frame-return'},{0x1a36,'protection-enter'},{0x5622,'keyboard-read'}})do sites[#sites+1]=point end
  end
@@ -38,10 +38,15 @@ function M.poll()
  if not label then return false end
  local a5=cpu.state.A5.value&0xffffff
  if label=='keyboard-read' then
+  lastStep=mem:readv_u16(a5-0x349a)
   local keymap=(cpu.state.A6.value&0xffffff)-16
   print(string.format('GAMEPLAY_KEYS step=%d left=%d right=%d command=%d',mem:readv_u16(a5-0x349a),mem:readv_u8(keymap+15)&8,mem:readv_u8(keymap+15)&16,mem:readv_u8(keymap+6)&128))
+  if route=='load-import' and phase~='load-return' then
+   local step=mem:readv_u16(a5-0x349a);local mac=dofile('tools/mame_mac_input.lua')
+   if step==13 then mac.key_down('Left Arrow')elseif step==17 then mac.key_up('Left Arrow')end
+  end
  elseif label=='protection-enter' then
-  assert(route=='save-load' and phase=='load-return','GAMEPLAY PROTECTION CONTEXT')
+  assert((route=='save-load' or route=='load-import') and phase=='load-return','GAMEPLAY PROTECTION CONTEXT')
   print(string.format('GAMEPLAY_PROTECTION_ENTER accepted=%d',mem:readv_u16(a5-0x56d8)))
   mem:writev_u16(a5-0x56d8,1) -- Owner decision D6; original accepted branch runs.
   print('GAMEPLAY_PROTECTION_ACCEPTED decision=D6')
@@ -100,6 +105,7 @@ function M.poll()
  end
  dbg.execution_state='run';return true
 end
+function M.step()return lastStep end
 function M.rooms()return rooms end
 function M.phase()return phase end
 function M.loadedFrames()return loadedFrames end
@@ -108,8 +114,8 @@ function M.finish()
   assert(rooms==2 and starts==1 and commands==1,'GAMEPLAY RESTART COMPLETION')
   print('GAMEPLAY_REFERENCE_COMPLETE route=restart first_frames=2')
  else
-  assert(route=='save-load' and rooms==2 and loadedFrames==1 and flushed and files==2 and phase=='load-return','GAMEPLAY SAVE/LOAD COMPLETION')
-  print('GAMEPLAY_REFERENCE_COMPLETE route=save-load loaded_frames=1')
+  assert((route=='save-load' or route=='load-import') and rooms==2 and loadedFrames==1 and flushed and files==(route=='load-import' and 1 or 2) and phase=='load-return','GAMEPLAY SAVE/LOAD COMPLETION')
+  print('GAMEPLAY_REFERENCE_COMPLETE route='..route..' loaded_frames=1')
  end
 end
 return M

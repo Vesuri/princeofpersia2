@@ -34,6 +34,9 @@ def run(name=None, control=None):
     if os.environ.get('POP2_RESTART_FROM'):
         from reference_saved_files import install_saved
         install_saved(Path(os.environ['POP2_RESTART_FROM']),destination)
+    if os.environ.get('POP2_GAMEPLAY_IMPORT_FROM'):
+        from gameplay_saved_file import install_reference
+        install_reference(Path(os.environ['POP2_GAMEPLAY_IMPORT_FROM']),destination)
     generate(destination/'metadata.lua')
     subprocess.run(['python3','tools/check_mame_literals.py','--syntax-wrapper',str(destination/'syntax.lua')],cwd=ROOT,check=True)
     env=os.environ.copy()
@@ -131,7 +134,7 @@ def run(name=None, control=None):
         from video_transfer import measure
         measure(destination)
     from report_reference import report
-    report(destination,"demo" if env.get("POP2_DEMO_ROUTE") else "integration" if any(env.get(k) for k in ("POP2_INTEGRATION", "POP2_NEWGWORLD", "POP2_TITLE_COPY")) else "opening" if env.get("POP2_AUDIO") else "file-restart" if env.get("POP2_RESTART_FROM") else "ui" if env.get("POP2_UI") else "display" if env.get("POP2_DISPLAY") else "opening")
+    report(destination,"load-import" if env.get("POP2_GAMEPLAY")=="load-import" else "demo" if env.get("POP2_DEMO_ROUTE") else "integration" if any(env.get(k) for k in ("POP2_INTEGRATION", "POP2_NEWGWORLD", "POP2_TITLE_COPY")) else "opening" if env.get("POP2_AUDIO") else "file-restart" if env.get("POP2_RESTART_FROM") else "ui" if env.get("POP2_UI") else "display" if env.get("POP2_DISPLAY") else "opening")
     return destination
 
 if __name__=='__main__':

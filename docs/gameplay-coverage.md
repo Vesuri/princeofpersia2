@@ -262,3 +262,32 @@ truncated evidence and reuse of a single run. The route-replayer unit tests
 also reject missing level transitions and an unreached finish. Completed disk
 images are compressed with verified round trips. Saves and captures stay ignored.
 This proves original level-two repeatability, not its Amiga pair.
+
+### Macintosh save import
+
+MEASURED: `gameplay-import-original-2` and `gameplay-import-original-3` load the
+pinned original-created `Level 1` into fresh Macintosh sessions without saving.
+They reproduce three full A5/context captures, indexed screens, palettes and
+all 25 consumed keyboard records. Open is handled at step 23; ResumeGame, the
+loaded first frame, the following gameplay frame and the volume flush complete.
+The added document changes Finder startup, so the repeated opening image and
+exact trap trace have their own `manifest/reference-import-startup.sha256`.
+Frame hashes are in `manifest/gameplay-import-frames.sha256`; the original save
+wrapper is pinned in `manifest/gameplay-import-reference.sha256`.
+
+Fresh native runs `.run-1gPmFM` and `.run-fBAvX7` match those original checkpoints:
+RNG, player record, selected context, pixels, AGA planes, palette, Copper output
+and consumed keys. Neither native session saves before loading. The original
+100-byte data fork, empty resource fork and imported Finder metadata remain
+unchanged. Hardware, heap, original-code and input restoration pass. The two
+native runs repeat the measured state and presentation. Fourteen original and
+19 native evidence-corruption controls reject altered completion, input, files,
+build identity, game state, rendering and restoration. The combined result is
+`GAMEPLAY LOAD-IMPORT GATE PASS`; ordinary release restoration also passes.
+
+`make gameplay-import-check` repeats this gate using the pinned original save
+export in the ignored `gameplay-save-load-keys-1` reference folder. The existing
+`tools/check_gameplay.py --route load-import --save-source PATH` option selects
+an equivalent pinned export. Saves restore a level checkpoint, not an exact
+position. Import staging and scripted inputs require an explicit verification
+build; ordinary release startup does not scan save hashes.

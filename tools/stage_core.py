@@ -80,3 +80,11 @@ if restart:
         shutil.copyfile(source,target)
 
     (Path(sys.argv[1])/'restart-state.json').write_text(json.dumps(manifest,indent=2)+'\n')
+
+
+import_reference=os.environ.get('GAMEPLAY_IMPORT_REFERENCE')
+if import_reference:
+    if not {'-DPOP2_VERIFY','-DPOP2_GAMEPLAY_IMPORT_PROBE'}.issubset(verify_receipt()['flags'].split()):
+        raise RuntimeError('GAMEPLAY IMPORT / DIAGNOSTIC BUILD REQUIRED')
+    from gameplay_saved_file import install_native
+    install_native(Path(import_reference), Path(sys.argv[1]))

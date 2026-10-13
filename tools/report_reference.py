@@ -86,12 +86,12 @@ def png(rgb):
 
 
 def report(directory,profile="opening"):
-    require(profile in ("opening","file-restart","display","ui","integration","demo"),"RESULT PROFILE")
+    require(profile in ("opening","file-restart","display","ui","integration","demo","load-import"),"RESULT PROFILE")
     trace,facts=analyze((directory/'session.log').read_text(),demo=profile=='demo')
     frame=(directory/'opening.ppm').read_bytes()
     require(frame.startswith(b'P6\n640 480\n255\n') and len(frame)==921615,'CAPTURE FORMAT')
     outputs={'opening.ppm':frame,'traps.txt':trace}
-    expected=pins(ROOT/('manifest/reference-results.sha256' if profile in ('opening','display','ui','integration','demo') else 'manifest/reference-file-restart.sha256'))
+    expected=pins(ROOT/('manifest/reference-import-startup.sha256' if profile=='load-import' else 'manifest/reference-results.sha256' if profile in ('opening','display','ui','integration','demo') else 'manifest/reference-file-restart.sha256'))
     # Preserve useful diagnostic output even when the pinned comparison fails.
     (directory/'traps.txt').write_bytes(trace)
     (directory/'opening.png').write_bytes(png(frame[15:]))

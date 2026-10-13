@@ -363,8 +363,14 @@ mac.run(function()
   print('DISPLAY_CONFIRMED 640x480x8 mdc48')
   assert(mac.mouse_to(103,241));mac.click();mac.wait(60)
   assert(mac.mouse_to(598,98));mac.click(2);mac.wait(400)
-  assert(mac.mouse_to(103,113));mac.wait(60)
-  for i=1,2 do mac.mouse_down();mac.wait(12);mac.mouse_up();mac.wait(12)end
+  if os.getenv('POP2_GAMEPLAY')=='load-import' then
+   -- Adding the save changes Finder's first icon. Select the application by
+   -- its initial instead of opening the save document at that icon position.
+   mac.press('p');mac.wait(60);mac.press('o',{mac.CMD})
+  else
+   assert(mac.mouse_to(103,113));mac.wait(60)
+   for i=1,2 do mac.mouse_down();mac.wait(12);mac.mouse_up();mac.wait(12)end
+  end
   assert(mac.wait_for('game',function()return mac.frontmost()==app end,1800),'APPLICATION')
   -- The paired CopyBits survey keeps the hardware cursor outside WIND 400.
   -- Use ordinary ADB input so no QuickDraw state or pixels are patched.
@@ -404,12 +410,16 @@ mac.run(function()
     elseif os.getenv('POP2_GAMEPLAY')=='restart' then
      mac.wait(60);mac.press('r',{mac.CMD})
     else
-     assert(os.getenv('POP2_GAMEPLAY')=='save-load','GAMEPLAY ROUTE')
+     assert(os.getenv('POP2_GAMEPLAY')=='save-load' or os.getenv('POP2_GAMEPLAY')=='load-import','GAMEPLAY ROUTE')
+     if os.getenv('POP2_GAMEPLAY')=='load-import' then
+      assert(mac.wait_for('import-input',function()return gameplay.step()>=22 end,3600),'GAMEPLAY IMPORT INPUT')
+     else
      mac.wait(60);mac.press('s',{mac.CMD})
      assert(mac.wait_for('save-picker',function()return gameplay.phase()=='save-picker'end,3600),'GAMEPLAY SAVE PICKER')
      mac.wait(120);dofile('tools/mame_mac_frame.lua').rgb(run..'/save-picker.ppm');mac.press('Return')
      assert(mac.wait_for('save-complete',function()return gameplay.phase()=='save-return'end,3600),'GAMEPLAY SAVE COMPLETE')
      mac.wait(30);mac.key_down('Left Arrow');mac.wait(20);mac.key_up('Left Arrow');mac.wait(30)
+     end
      mac.press('o',{mac.CMD})
      assert(mac.wait_for('load-picker',function()return gameplay.phase()=='load-picker'end,3600),'GAMEPLAY LOAD PICKER')
      mac.wait(120);dofile('tools/mame_mac_frame.lua').rgb(run..'/load-picker.ppm');mac.press('Down Arrow');mac.press('Return')
