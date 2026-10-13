@@ -70,7 +70,7 @@ def main():
 
     def build(extra=''):
         with (logs/('build-control.log' if extra else 'build.log')).open('w') as out:
-            subprocess.run(['make', '-C', 'amiga', 'EXTRA_DEFINES='+flags+extra],
+            subprocess.run(['make', '-C', 'amiga', 'VERIFY=1', 'EXTRA_DEFINES='+flags+extra],
                            stdout=out, stderr=subprocess.STDOUT, check=True)
 
     def launch(label, right_expected=True):

@@ -3,7 +3,9 @@ import os,shutil,sys
 from pathlib import Path
 from extract_original_data import ROOT,DESTINATION,verify_output
 verified=verify_output(DESTINATION)
-# Runtime independently checks the application and relocation-plan digests.
+# Verify generated plans before staging; native digest checks are opt-in.
+from core_inputs import verify as verify_core
+verify_core()
 sources=[(DESTINATION/name,name) for name in verified]
 sources.extend((ROOT/'build/core'/name,name) for name in ('relocations.bin','file-catalog.bin'))
 for source,name in sources:

@@ -31,12 +31,12 @@ def main():
         else:raise AssertionError('accepted '+label)
     # Exercise the actual CRT result and Shell branch on the same restore path.
     try:
-        assert run(['make','-C','amiga','EXTRA_DEFINES=-DPOP2_FAIL_EXIT'],logs/'build-fail.log')==0
+        assert run(['make','-C','amiga','VERIFY=1','EXTRA_DEFINES=-DPOP2_FAIL_EXIT'],logs/'build-fail.log')==0
         status,failed=launch('failed-exit')
         assert status!=0 and 'SCAFFOLD PROBE PASS' in (failed/'gdb-out.log').read_text()
         assert (failed/'dh1/Shell.done').read_text().strip()=='SHELL FAIL'
     finally:
-        assert run(['make','-C','amiga','EXTRA_DEFINES='],logs/'build-normal.log')==0
+        assert run(['make','-C','amiga','VERIFY=1','EXTRA_DEFINES='],logs/'build-normal.log')==0
     # Both binaries restore; only one returns success. Revalidate normal build.
     status,restored=launch('normal-again')
     assert status==0

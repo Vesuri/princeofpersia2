@@ -20,7 +20,7 @@ trap 'exit 143' TERM
 . ./fsuae.sh
 python3 ../tools/build_receipt.py verify
 FSUAE="$FSUAE_ARM"
-AMIGA_SETUP=a1200-fast
+AMIGA_SETUP="${AMIGA_SETUP:-a1200-fast}"
 NTSC=0 DEBUG=1 SOUND="${SOUND:-0}" WINDOW="${WINDOW:-none}" WARP="${WARP:-1}"
 DEADLINE="${DEADLINE:-60}"
 [[ "$DEADLINE" =~ ^[1-9][0-9]*$ ]] || exit 2
@@ -78,7 +78,9 @@ cat "$RUN/gdb-out.log"
 [ "$status" = 0 ] || exit "$status"
 for ((i=0;i<20;i++)); do [ -f "$DH1/Shell.done" ] && break; sleep 1; done
 if [ "${CORE:-0}" = 1 ]; then
-  if [ "${INTEGRATION:-0}" = 1 ]; then
+  if [ "${RELEASE_STARTUP:-0}" = 1 ]; then
+    python3 ../tools/check_release_startup.py "$RUN" "$RELEASE_REFERENCE"
+  elif [ "${INTEGRATION:-0}" = 1 ]; then
     if [ "${INTEGRATION_NO_RIGHT:-0}" = 1 ]; then
       python3 ../tools/check_integration_result.py "$RUN" "$INTEGRATION_REFERENCE" "$INTEGRATION_TITLE_REFERENCE" --no-right
     else

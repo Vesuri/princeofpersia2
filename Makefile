@@ -3,8 +3,8 @@ SHELL := /bin/bash
 
 .PHONY: help verify-input check inspect extract-original-data check-extraction reference check-reference
 help:
-	@echo 'make / make host-tests  build the empty host program and test portable helpers'
-	@echo 'make amiga / make scaffold-check  build / verify the empty Amiga boot and quit'
+	@echo 'make / make release  build the game without runtime verification; VERIFY=1 opts in'
+	@echo 'make play AMIGA_SETUP=a1200-040  build release and play; make scaffold-check tests empty boot'
 	@echo 'make core / make core-check  build / verify bounded original startup'
 	@echo 'make display / make display-check  build / verify display services and AGA presentation'
 	@echo 'make audio / make audio-check  build / verify original audio calls and Paula DMA'
@@ -55,16 +55,20 @@ static-map-check: ghidra
 	@. amiga/env.sh && python3 tools/check_map_gate.py
 
 .PHONY: all host-tests amiga scaffold-check slave dist-scaffold
-all: host-tests
+all: release
 host-tests: shared-runtime-check
 	@. amiga/env.sh && python3 tools/host_tests.py
-amiga:
+amiga: release
+.PHONY: release scaffold
+release: audio-inputs
 	@. amiga/env.sh && $(MAKE) -C amiga
-scaffold-check: host-tests amiga
+scaffold:
+	@. amiga/env.sh && $(MAKE) -C amiga VERIFY=1 EXTRA_DEFINES=''
+scaffold-check: host-tests scaffold
 	@. amiga/env.sh && python3 tools/check_scaffold.py
 slave:
 	@. amiga/env.sh && $(MAKE) -C whdload
-dist-scaffold: amiga slave
+dist-scaffold: scaffold slave
 	@. amiga/env.sh && python3 tools/package_release.py
 
 .PHONY: core-inputs core
@@ -118,3 +122,7 @@ integration-contracts-check: shared-runtime-check
 
 integration-check: host-tests audio-inputs integration-contracts-check
 	@. amiga/env.sh && python3 tools/check_integration.py
+
+.PHONY: play
+play: release
+	@/bin/bash amiga/play.sh

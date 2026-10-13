@@ -26,7 +26,7 @@ def check(saved,reference,core_reference,written=None):
 
     def build(extra=''):
         with (scratch/('build-'+(extra or 'read')+'.log')).open('w') as output:
-            subprocess.run(['make','-C','amiga','EXTRA_DEFINES=-DPOP2_CORE -DPOP2_FILE_PROBE '+extra],
+            subprocess.run(['make','-C','amiga','VERIFY=1','EXTRA_DEFINES=-DPOP2_CORE -DPOP2_FILE_PROBE '+extra],
                            cwd=ROOT,stdout=output,stderr=subprocess.STDOUT,check=True)
 
     def launch(label,**changes):
@@ -79,7 +79,7 @@ def check(saved,reference,core_reference,written=None):
         return result
     finally:
         with (scratch/'build-normal.log').open('w') as output:
-            subprocess.run(['make','-C','amiga','EXTRA_DEFINES=-DPOP2_CORE'],cwd=ROOT,stdout=output,stderr=subprocess.STDOUT,check=True)
+            subprocess.run(['make','-C','amiga','VERIFY=1','EXTRA_DEFINES=-DPOP2_CORE'],cwd=ROOT,stdout=output,stderr=subprocess.STDOUT,check=True)
 
 
 if __name__=='__main__':

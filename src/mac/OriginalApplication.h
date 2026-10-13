@@ -4,7 +4,8 @@
 #endif
 #include "ResourceMap.h"
 
-// Borrowed, immutable, hash-verified application resource fork. The caller keeps
+// Borrowed immutable application fork; installation verifies its hash. Host and
+// VERIFY builds repeat the hash check. All builds check structure. The caller keeps
 // the input storage alive. All addresses here are file offsets, never Mac PCs.
 class OriginalApplication {
 public:

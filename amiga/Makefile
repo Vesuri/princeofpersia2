@@ -1,4 +1,15 @@
-# Empty scaffold. Explicit sources; flags and header dependencies invalidate objects.
+# Release by default. VERIFY=1 enables expensive runtime diagnostics.
+VERIFY ?= 0
+ifeq ($(filter 0 1,$(VERIFY)),)
+$(error VERIFY must be 0 or 1)
+endif
+EXTRA_DEFINES ?= -DPOP2_CORE -DPOP2_DISPLAY -DPOP2_INPUT -DPOP2_UI -DPOP2_AUDIO
+ifeq ($(VERIFY),0)
+ifneq ($(filter-out -DPOP2_CORE -DPOP2_DISPLAY -DPOP2_INPUT -DPOP2_UI -DPOP2_AUDIO,$(filter -DPOP2_%,$(EXTRA_DEFINES))),)
+$(error Diagnostic POP2 defines require VERIFY=1)
+endif
+endif
+VERIFY_DEFINES = $(if $(filter 1,$(VERIFY)),-DPOP2_VERIFY)
 SHELL := /bin/bash
 .DEFAULT_GOAL := all
 CC = m68k-amiga-elf-gcc
@@ -9,7 +20,7 @@ VASM ?= $(HOME)/.local/vasmm68k_mot
 FW = ../src/platform/amiga/framework
 OUT = out/PrinceOfPersia2
 COMMON = -g -m68020 -mtune=68020 -msoft-float -O2 -nostdlib -ffunction-sections -fdata-sections -fno-tree-loop-distribution -MMD -MP
-CXXFLAGS = $(COMMON) -std=gnu++17 -fno-rtti -fno-exceptions -fno-use-cxa-atexit -fcheck-new -fpermissive -Wno-write-strings -DPOP2_PLATFORM_AMIGA -DAMIGAXDEV_RESOURCE_DIRECTORY_INDEXED -DAMIGAXDEV_RESOURCE_DIRECTORY_MAP_LIMIT $(EXTRA_DEFINES) -include $(FW)/SASCCompat.h -I$(FW) -I$(FW)/compat-include -I../src
+CXXFLAGS = $(COMMON) -std=gnu++17 -fno-rtti -fno-exceptions -fno-use-cxa-atexit -fcheck-new -fpermissive -Wno-write-strings -DPOP2_PLATFORM_AMIGA -DAMIGAXDEV_RESOURCE_DIRECTORY_INDEXED -DAMIGAXDEV_RESOURCE_DIRECTORY_MAP_LIMIT $(EXTRA_DEFINES) $(VERIFY_DEFINES) -include $(FW)/SASCCompat.h -I$(FW) -I$(FW)/compat-include -I../src
 FW_NAMES = AmigaHardware Bitmap CopperList Palette Palette24Bit Sprite Util
 CXX_SRC = ../src/main.cpp ../src/platform/amiga/PlatformAmiga.cpp ../src/platform/amiga/PrinceScreen.cpp ../src/platform/amiga/GCCRuntime.cpp ../src/platform/amiga/CoreRuntime.cpp ../src/platform/amiga/NativeAudio.cpp ../src/platform/amiga/PaulaAudio.cpp ../src/platform/amiga/NativeUI.cpp ../src/platform/amiga/NativeInput.cpp ../src/platform/amiga/NativeFiles.cpp ../src/platform/amiga/NativeDisplay.cpp ../src/platform/amiga/NativeResources.cpp $(addprefix $(FW)/,$(addsuffix .cpp,$(FW_NAMES))) $(wildcard ../src/mac/*.cpp)
 ASM_NAMES = AmigaHardwareAssembler BitmapAssembler CopperListAssembler UtilAssembler
@@ -66,6 +77,9 @@ obj/DisplayC2P.o: ../src/platform/amiga/DisplayC2P.s ../src/platform/amiga/kalms
 	$(VASM) -m68020 -Felf -quiet -x -no-opt -nowarn=62 "$<" -o "$@"
 obj/MacEntry.o: ../src/platform/amiga/MacEntry.s
 	$(AS) -mcpu=68020 -g --register-prefix-optional $(if $(filter -DPOP2_INTEGRATION_PROBE,$(EXTRA_DEFINES)),--defsym POP2_INTEGRATION_PROBE=1) "$<" -o "$@"
+ifeq ($(VERIFY),0)
+PROBES :=
+endif
 COMMA := ,
 vpath %.cpp ../src ../src/mac ../src/platform/amiga $(FW)
 .PHONY: all verify FORCE audit
@@ -98,8 +112,8 @@ $(OUT).exe: $(OUT).elf
 # Partial-link every compiled source without GC, so dormant missing bridges fail audit.
 audit: $(OUT).exe
 	$(LD) -r $(OBJS) -o obj/all.o
-	@python3 ../tools/check_scaffold_link.py $(OUT).elf obj/all.o $(PROBES)
-	@python3 ../tools/build_receipt.py write '$(EXTRA_DEFINES)'
+	@POP2_VERIFY_BUILD=$(VERIFY) python3 ../tools/check_scaffold_link.py $(OUT).elf obj/all.o $(PROBES)
+	@python3 ../tools/build_receipt.py write '$(strip $(EXTRA_DEFINES) $(VERIFY_DEFINES))'
 -include $(wildcard obj/*.d)
 
 .PHONY: shared-runtime-check

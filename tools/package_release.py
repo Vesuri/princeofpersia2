@@ -8,7 +8,10 @@ def package():
     verify('release')
     sys.path.insert(0,os.environ['AMIGA_PYLIB'])
     from amigaxdev import release
-    if receipt()['flags']:raise RuntimeError('PACKAGING / DIAGNOSTIC FLAGS')
+    # This development archive contains only the empty scaffold. Its retained
+    # verification observers are allowed; gameplay and fault-injection flags are not.
+    if set(receipt()['flags'].split())-{'-DPOP2_VERIFY'}:
+        raise RuntimeError('PACKAGING / DIAGNOSTIC FLAGS')
     version=(ROOT/'VERSION').read_text().strip()
     files={'PrinceOfPersia2':(ROOT/'amiga/out/PrinceOfPersia2.exe').read_bytes(),
            'PrinceOfPersia2.slave':(ROOT/'build/whdload/PrinceOfPersia2.slave').read_bytes(),

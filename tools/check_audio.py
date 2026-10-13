@@ -55,7 +55,7 @@ def main():
     subprocess.run(['c++','-std=c++17','-g','-fsanitize=address,undefined','-Isrc','tools/probe_audio_contract.cpp','-o',str(logs/'contract')],check=True)
     subprocess.run([str(logs/'contract'),str(fixture)],check=True)
     def build(extra=''):
-        with (logs/'build.log').open('a') as out:subprocess.run(['make','-C','amiga','EXTRA_DEFINES='+FLAGS+extra],stdout=out,stderr=subprocess.STDOUT,check=True)
+        with (logs/'build.log').open('a') as out:subprocess.run(['make','-C','amiga','VERIFY=1','EXTRA_DEFINES='+FLAGS+extra],stdout=out,stderr=subprocess.STDOUT,check=True)
     def launch(label,success=True,**changes):
         env=dict(os.environ,CORE='1',AUDIO_PROBE='1',SOUND='1',DEADLINE='300',GDBSCRIPT=str(ROOT/'amiga/audio.gdb'));env.update(changes)
         with (logs/(label+'.log')).open('w') as out:result=subprocess.run(['/bin/bash','amiga/run.sh'],env=env,stdout=out,stderr=subprocess.STDOUT)

@@ -179,10 +179,14 @@ fork/metadata hashes unchanged. The successful options write is its positive
 control. Run `tools/check_native_settings.py SAVE ORIGINAL_FILES ORIGINAL_CORE`
 to reproduce these controls independently.
 
-Before original startup, the native file layer verifies the complete installed
-catalog, metadata and both forks: 97 successful hashes covering 16,107,176 bytes
-for a fresh installation. Changed options retain the existing 16-byte data and
-valid AFI1 metadata exceptions; their immutable resource fork remains pinned.
-This moves verification ahead of music and timer startup. The settings regression
-checks the complete hash count and byte total, subtracting only changed options
-data and metadata on restart.
+With `VERIFY=1`, the native file layer hashes the complete installed catalog,
+metadata and both forks before startup: 97 successful hashes covering 16,107,176
+bytes for a fresh installation. The settings regression checks the complete count
+and byte total, subtracting changed options data and metadata on restart.
+
+Release builds omit those scans and first-use hashes. Installation/staging tools
+verify the supplied inputs on the host. Runtime startup reads required application
+and catalog data and validates their structure; resource payloads remain loaded
+on demand. Release retains the 16-byte settings contract, immutable-asset write
+rejection, bounds and ownership checks. Ordinary file opens no longer enter an OS
+window merely to revisit a completed hash check.

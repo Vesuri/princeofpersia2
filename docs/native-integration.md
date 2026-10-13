@@ -28,7 +28,9 @@ The checker requires the pinned evidence and rejects ten deliberately altered
 or incomplete inputs, then checks the restored positive evidence again.
 
 `make integration-check` includes those contracts, portable helper checks and
-audio-input verification, then runs the full native integration gate. The native
+audio-input verification, then runs the full native integration gate with
+`VERIFY=1`. Ordinary builds disable runtime hashing, trap/resource/volume logs
+and verification snapshots. The native
 gate compares two original references and two native routes, exercises a no-Right
 input control, and rejects deliberately altered completion, state, display and
 restoration evidence. Its acceptance requires:
@@ -181,3 +183,23 @@ In particular, Alone in the Dark preserves queued VBL ticks and queue passes;
 the current local scheduler can collapse elapsed ticks. Full timing equivalence
 is unproven. These services must not be described as fully shared or as having
 passed item 11.
+
+## Release startup check
+
+The release-only observer stops at the original CODE 15 + $0416 first-text call
+(text $6978, page 1), without injecting input or changing original state. It
+compares the complete 512×384 viewport against the pinned Macintosh opening
+capture. The executable symbol audit rejects runtime hashing, trap traces and
+integration input probes. Missing completion and altered-pixel controls must fail.
+This opening checkpoint passes on both a1200-fast and a1200-040; it does not
+establish a startup speedup or replace the first-room integration gate.
+
+With a completed original core reference directory, reproduce using:
+
+```sh
+. amiga/env.sh
+make release
+AMIGA_SETUP=a1200-040 CORE=1 RELEASE_STARTUP=1 \
+  RELEASE_REFERENCE=/path/to/completed/reference \
+  GDBSCRIPT="$PWD/amiga/release_startup.gdb" DEADLINE=240 /bin/bash amiga/run.sh
+```

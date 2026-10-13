@@ -9,8 +9,10 @@ bool OriginalApplication::fail(const char* error) { close();error_=error;return 
 bool OriginalApplication::open(const uint8_t* bytes,uint32_t size,const uint8_t expected[32]) {
     close();
     if(!bytes || !expected || size<16 || size>0x7fffffffUL)return fail("APPLICATION / INPUT SIZE");
+#if !defined(POP2_PLATFORM_AMIGA) || defined(POP2_VERIFY)
     SHA256 sha;uint8_t digest[32];sha_init(&sha);sha_update(&sha,bytes,size);sha_final(&sha,digest);
     for(unsigned i=0;i<32;++i)if(digest[i]!=expected[i])return fail("APPLICATION / SHA256");
+#endif
     ResourceMap::Layout layout;
     if(!ResourceMap::layout(bytes,size,layout) ||
        !map_.open(bytes,size,bytes+layout.mapOffset,layout.mapLength))return fail("APPLICATION / RESOURCE MAP");

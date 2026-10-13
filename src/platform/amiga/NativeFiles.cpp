@@ -55,11 +55,13 @@ int32_t queryBacking(void* context) {
     if(folder)FreeDosObject(DOS_FIB,folder);if(info)FreeMem(info,sizeof(InfoData));UnLock(lock);
     if(!error) {
         *(MacVolumeBacking*)context=result;
+#ifdef POP2_VERIFY
         if(g_fileVolumeQueries<128) {
             volatile uint32_t* row=g_fileVolume[g_fileVolumeQueries++];
             row[0]=result.blocks;row[1]=result.used;row[2]=result.blockBytes;
             row[3]=result.created;row[4]=result.modified;row[5]=result.locked;
         } else g_fileVolumeQueries=129;
+#endif
     }
     return error;
 }
@@ -112,6 +114,7 @@ bool discover() {
 bool verify(const char* path,uint32_t size,const uint8_t expected[32],uint8_t* body=0) {
     BPTR f=Open((CONST_STRPTR)path,MODE_OLDFILE);if(!f)return false;
     bool ok=Seek(f,0,OFFSET_END)>=0 && Seek(f,0,OFFSET_BEGINNING)==(LONG)size;
+#ifdef POP2_VERIFY
     SHA256 sha;sha_init(&sha);uint32_t done=0;
     while(ok && done<size) {
         uint32_t n=size-done;if(n>sizeof(scratch))n=sizeof(scratch);
@@ -121,9 +124,17 @@ bool verify(const char* path,uint32_t size,const uint8_t expected[32],uint8_t* b
     if(!Close(f))ok=false;uint8_t digest[32];sha_final(&sha,digest);
     ok=ok && equal(digest,expected,32);
     if(ok) {++g_fileVerifiedFiles;g_fileVerifiedBytes+=size;}
+#else
+    // Release reads only requested startup metadata; installation has verified
+    // hashes. There is no discard-only scan and no duplicate first-use hashing.
+    (void)expected;
+    if(ok && body)ok=Read(f,body,size)==(LONG)size;
+    if(!Close(f))ok=false;
+#endif
     return ok;
 }
 struct Verification { uint32_t id;bool resource; };
+#ifdef POP2_VERIFY
 int32_t verifyOperation(void* context) {
     Verification& v=*(Verification*)context;
     for(unsigned i=0;i<MacFiles::maxEntries;++i)if(sources[i].id==v.id) {
@@ -143,8 +154,14 @@ int32_t verifyOperation(void* context) {
     // input digest. Their metadata and lengths are set only after DOS succeeds.
     return files.entry(v.id) ? 0 : MacFiles::fnfErr;
 }
+
+#endif
 int32_t verifyFork(uint32_t id,bool resource) {
+#ifdef POP2_VERIFY
     Verification v={id,resource};return pop2SystemWindow(verifyOperation,&v);
+#else
+    (void)resource;return files.entry(id) ? 0 : MacFiles::fnfErr;
+#endif
 }
 int32_t storeRecord(uint32_t id,const FileMetadata::Record& record) {
     const auto* entry=files.entry(id);char path[192];
@@ -160,8 +177,10 @@ int32_t transfer(void* context) {
 #ifdef POP2_FILE_PROBE
     Delay(2); // Positive scheduling/VBI control inside the DOS window.
 #endif
-    Verification verification={r.id,r.resource};int32_t error=verifyOperation(&verification);if(error)return error;
-    error=files.forkPath(r.id,r.resource,path,sizeof(path));if(error)return error;
+#ifdef POP2_VERIFY
+    Verification verification={r.id,r.resource};int32_t verified=verifyOperation(&verification);if(verified)return verified;
+#endif
+    int32_t error=files.forkPath(r.id,r.resource,path,sizeof(path));if(error)return error;
     BPTR f=Open((CONST_STRPTR)path,MODE_OLDFILE);
     if(!f)return IoErr()==ERROR_OBJECT_NOT_FOUND ? -43 : -36;
     if(Seek(f,r.offset,OFFSET_BEGINNING)<0)error=-36;
@@ -252,12 +271,14 @@ bool prepare() {
         at+=104;
     }
     if(at!=(uint32_t)length || !discover())return false;
+#ifdef POP2_VERIFY
     // Verify immutable inputs before original startup can start music or timers.
     // Reuse the same verifier and mutable-options rule as first-use opens.
     for(auto& source:sources)if(source.id)for(unsigned fork=0;fork<2;++fork){
         Verification request={source.id,fork!=0};
         if(verifyOperation(&request))return false;
     }
+#endif
     return true;
 }
 int32_t openFork(int16_t volume,uint32_t directory,const char* name,bool resource,uint8_t permission,int16_t& ref) {

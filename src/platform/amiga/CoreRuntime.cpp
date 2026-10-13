@@ -246,8 +246,10 @@ bool readFile(const char* name,uint8_t*& data,uint32_t& size,uint32_t limit,cons
     size=n;data=(uint8_t*)AllocMem(size,MEMF_PUBLIC);
     if(!data) { Close(f);return fail("CORE INPUT / MEMORY"); }
     LONG got=Read(f,data,size);Close(f);if(got!=(LONG)size)return fail("CORE INPUT / READ");
+#ifdef POP2_VERIFY
     SHA256 sha;uint8_t actual[32];sha_init(&sha);sha_update(&sha,data,size);sha_final(&sha,actual);
     for(unsigned i=0;i<32;++i)if(actual[i]!=digest[i])return fail("CORE INPUT / SHA256");
+#endif
     return true;
 }
 bool relocate(int16_t segment,uint8_t* code,uint32_t size) {
@@ -380,8 +382,11 @@ bool prepare() {
     arena=(uint8_t*)AllocMem(g_coreZoneBytes,MEMF_PUBLIC|MEMF_CLEAR);
     world=(uint8_t*)AllocMem(worldSize,MEMF_PUBLIC|MEMF_CLEAR);
     stack=(uint8_t*)AllocMem(65536,MEMF_PUBLIC|MEMF_CLEAR);
+#ifdef POP2_VERIFY
     initial=(uint8_t*)AllocMem(spec.below,MEMF_PUBLIC|MEMF_CLEAR);
-    if(!arena || !world || !stack || !initial)return fail("CORE / MEMORY");
+    if(!initial)return fail("CORE / MEMORY");
+#endif
+    if(!arena || !world || !stack)return fail("CORE / MEMORY");
     if(!heap.init(arena,g_coreZoneBytes))return fail("CORE / APPLICATION ZONE");
     a5=world+spec.below;low=a5+8192;g_coreA5=(uint32_t)a5;g_coreBelow=spec.below;g_coreInitial=(uint32_t)initial;
     sl(low+0x130,(uint32_t)arena+g_coreZoneBytes);sl(low+0x118,(uint32_t)arena);sl(low+0x2aa,(uint32_t)arena);
@@ -627,6 +632,7 @@ void execute() {
 #endif
     suspendVectors();g_coreVectorRestored=1;
     for(unsigned i=0;i<11;++i)if(vectorTable[vectorIndices[i]]!=savedVectors[i])g_coreVectorRestored=0;
+#ifdef POP2_VERIFY
     g_coreHeapOK=heap.check();
     if((g_coreStopTrap==0xa86e && g_coreStopSegment==2 && g_coreStopOffset==0x3e90)
 #ifdef POP2_UI
@@ -638,6 +644,7 @@ void execute() {
 #endif
         g_coreCodeAudit=auditCode();
     }
+#endif
 }
 void release() {
 #ifdef POP2_AUDIO
@@ -750,7 +757,9 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
     bool builtin=cachedCaller || pc==(uint32_t)pop2_old_loadseg || pc==(uint32_t)pop2_old_exit;
     if(builtin)trap=w((uint8_t*)pc+2);
     if(codeCaller) {
+#ifdef POP2_VERIFY
         uint32_t* row=g_coreTrace[(g_coreCount++)%traceCapacity];row[0]=seg;row[1]=off;row[2]=trap;
+#endif
     } else if(!builtin && !fixtureCaller && !audioCaller && !(pc>=(uint32_t)a5+app.world().jumpOffset && pc<(uint32_t)a5+app.world().jumpOffset+app.world().jumpBytes && trap==0xa9f0))
         return stop(frame,usp,"TRAP / UNKNOWN CALLER",trap,seg,off);
     if(cachedCaller){
@@ -939,8 +948,10 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
         if(!r && !resourceError)goto failed;
         sl(usp+6,r ? (uint32_t)r->handle : 0);regs[0]=0;
         if(!r) {consumed=6;break;}
+#ifdef POP2_VERIFY
         if(g_coreResourceCount<32){ uint32_t* row=g_coreResources[g_coreResourceCount];row[0]=r->type;row[1]=(uint16_t)r->id;row[2]=(uint32_t)r->handle; }
         ++g_coreResourceCount;
+#endif
         consumed=6;break;
     }
     case 0xa9a5: case 0xa9a6: case 0xa9a2: case 0xa992: case 0xa9a3: {
@@ -951,7 +962,9 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
         if(trap==0xa9a2 && !load(*r))goto failed;
         if(trap==0xa992) { r->detached=true;heap.setState(h,heap.state(h)&~0x20);regs[0]=0; }
         if(trap==0xa9a3) {
+#ifdef POP2_VERIFY
             if(seg==1 && off==0x120)copy(initial,world,g_coreBelow);
+#endif
             if(r->detached) { fail("RESOURCE / RELEASE DETACHED");goto failed; }
             error=heap.disposeHandle(h);r->handle=0;r->detached=true;
         }
@@ -1098,7 +1111,10 @@ static uint32_t callbackService(uint32_t* parked) {
     uint32_t seg=0,off=0;if(!location(pc,seg,off))return 0;
     uint8_t* usp=(uint8_t*)parked+66;
     if(usp<stack || usp>stack+65536-4)return 0;
+
+#ifdef POP2_VERIFY
     uint32_t* row=g_coreTrace[(g_coreCount++)%traceCapacity];row[0]=seg;row[1]=off;row[2]=trap;
+#endif
     uint8_t frame[8]={};sw(frame,g_coreServiceSR);sl(frame+2,pc+2);
     uint32_t consumed=0;bool ok=true;
     g_coreServiceActive=1;

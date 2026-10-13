@@ -27,6 +27,10 @@ validation remain open.
 - No personal paths or paths into other projects in tracked files. Name other projects
   by name. Shared paths use overridable variables from `amiga/env.sh`; `~/.local`
   and `~/.local/share/amiga` are the allowed conventions.
+- Ordinary play uses release builds. Expensive runtime verification, hashing,
+  tracing and diagnostic probes must be behind an explicit debug/verification
+  toggle. Verify installed inputs with host/installation tooling; do not repeat
+  whole-file hash scans during release startup. Keep correctness guards active.
 - Pin inputs by SHA-256 or commit in `manifest/` and verify before use. Preserve
   original inputs. Setup never deletes: move differing files to `.replaced/`.
 - Before implementing or fixing a service, inspect Vette! and Alone in the Dark

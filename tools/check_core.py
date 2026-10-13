@@ -18,7 +18,7 @@ def main():
     env=dict(os.environ,CORE='1',CORE_REFERENCE=str(reference))
     def build(flags='-DPOP2_CORE'):
         with (logs/('build-'+flags.replace(' ','_')+'.log')).open('w') as output:
-            subprocess.run(['make','-C','amiga','EXTRA_DEFINES='+flags],check=True,stdout=output,stderr=subprocess.STDOUT)
+            subprocess.run(['make','-C','amiga','VERIFY=1','EXTRA_DEFINES='+flags],check=True,stdout=output,stderr=subprocess.STDOUT)
     def launch(name,**changes):
         with (logs/(name+'.log')).open('w') as output:
             status=subprocess.run(['/bin/bash','amiga/run.sh'],env=dict(env,**changes),stdout=output,stderr=subprocess.STDOUT).returncode

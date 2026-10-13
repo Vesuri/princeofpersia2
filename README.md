@@ -46,10 +46,16 @@ Run `make map` for the static census, `make ghidra` for headless exports, and
 `make static-map-check` for two fresh original runs plus rejection controls. See
 [static and live map](docs/static-map.md) for coverage, service seams and limits.
 
-Run `make` for the empty host build and synthetic helper tests, `make amiga` for
-the empty Amiga executable, or `make scaffold-check` for the full boot/quit and
-rejection gate. See [runtime scaffold](docs/scaffold.md) for reuse boundaries,
-launchers, build audits and development-only packaging.
+Run `make` or `make release` for the playable release build. Runtime SHA-256
+scans, trap tracing and expensive exit audits are off by default. `make VERIFY=1`
+explicitly enables them; verification gates select that mode themselves. Both
+modes retain file-format, bounds, ownership and original-byte guards. Host
+installation/staging tools verify the pinned inputs before use.
+
+Run `make play AMIGA_SETUP=a1200-040` for a visible interactive release run with
+sound. The launcher refuses verification or probe builds. `make host-tests`
+runs portable helper tests; `make scaffold` and `make scaffold-check` retain the
+empty Amiga boot/quit checks. See [runtime scaffold](docs/scaffold.md).
 
 Run `make core` for the bounded original startup executable or `make core-check`
 for paired Macintosh/Amiga execution and rejection controls. See

@@ -1,5 +1,5 @@
 """Inherited no-float/probe discipline, plus dormant-link and HUNK audits."""
-import re,subprocess,sys
+import os,re,subprocess,sys
 from pathlib import Path
 elf,partial,*probes=sys.argv[1:]
 def symbols(path):return subprocess.check_output(['m68k-amiga-elf-objdump','-t',path],text=True)
@@ -16,3 +16,11 @@ version=Path('../VERSION').read_text().strip().encode()
 assert b'$VER: Prince of Persia 2 scaffold '+version+b' ' in exe,'version mismatch'
 assert 'unused_shared_start' not in s,'wrong CRT entry retained'
 print('LINK AUDIT PASS: HUNK, version, no float, retained data probes, complete partial link')
+
+# Verification must never leak into the release executable. Ignore constructor
+# names containing a source-file name; inspect actual function/data symbols.
+if os.environ.get('POP2_VERIFY_BUILD')=='0':
+    names={line.split()[-1] for line in s.splitlines() if len(line.split())>=6}
+    assert not any(re.match(r'_Z[0-9]+sha_(init|update|final)',name) for name in names),'release contains runtime SHA-256'
+    assert not names.intersection({'g_coreTrace','g_coreCount','g_fileVerifiedFiles','g_fileVerifiedBytes','g_coreResources','g_coreResourceCount','g_fileVolume','g_fileVolumeQueries'}),'release contains verification counters/trace'
+    print('RELEASE AUDIT PASS: no runtime SHA-256, trap trace or hash counters')

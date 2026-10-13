@@ -55,7 +55,7 @@ def main():
 
     def build(flags):
         with (logs/('build-'+flags.replace(' ','_')+'.log')).open('w') as stream:
-            subprocess.run(['make','-C','amiga','EXTRA_DEFINES='+flags],stdout=stream,stderr=subprocess.STDOUT,check=True)
+            subprocess.run(['make','-C','amiga','VERIFY=1','EXTRA_DEFINES='+flags],stdout=stream,stderr=subprocess.STDOUT,check=True)
 
     def launch(label,**changes):
         with (logs/(label+'.log')).open('w') as stream:

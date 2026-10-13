@@ -62,7 +62,7 @@ def main():
     env=dict(os.environ,CORE='1',UI_REFERENCE=str(ui),INPUT_REFERENCE=str(keys),DEADLINE='300')
     def build(options):
         with (logs/('build-'+options.replace(' ','_')+'.log')).open('w') as out:
-            subprocess.run(['make','-C','amiga','EXTRA_DEFINES='+options],stdout=out,stderr=subprocess.STDOUT,check=True)
+            subprocess.run(['make','-C','amiga','VERIFY=1','EXTRA_DEFINES='+options],stdout=out,stderr=subprocess.STDOUT,check=True)
     def launch(label,success=True,**changes):
         with (logs/(label+'.log')).open('w') as out:
             result=subprocess.run(['/bin/bash','amiga/run.sh'],env=dict(env,**changes),stdout=out,stderr=subprocess.STDOUT)

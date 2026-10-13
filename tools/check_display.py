@@ -57,7 +57,7 @@ def main():
     env=dict(os.environ,CORE='1',DISPLAY_REFERENCE=str(scenes))
     def build(flags):
         with (logs/('build-'+flags.replace(' ','_')+'.log')).open('w') as stream:
-            subprocess.run(['make','-C','amiga','EXTRA_DEFINES='+flags],stdout=stream,stderr=subprocess.STDOUT,check=True)
+            subprocess.run(['make','-C','amiga','VERIFY=1','EXTRA_DEFINES='+flags],stdout=stream,stderr=subprocess.STDOUT,check=True)
     def launch(label,success=True,**changes):
         with (logs/(label+'.log')).open('w') as stream:
             result=subprocess.run(['/bin/bash','amiga/run.sh'],env=dict(env,**changes),stdout=stream,stderr=subprocess.STDOUT)

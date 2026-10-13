@@ -2,8 +2,9 @@
 
 `make core` builds the bounded native startup implementation. `make core-check`
 runs a fresh Macintosh reference, the portable input checks, native execution
-comparisons and rejection controls. The existing `make amiga` and
-`make scaffold-check` retain the empty boot/quit configuration. The core build is
+comparisons and rejection controls. `make scaffold` and
+`make scaffold-check` retain the empty boot/quit configuration. `make` and
+`make amiga` build the full release game. The core build is
 an unfinished game executable: it returns DOS FAIL at the named unsupported
 `InitGraf` service, after restoring the Amiga. It is not a release build.
 The separate [display build](display.md) implements InitGraf and reaches the next
@@ -16,8 +17,9 @@ hashed relocation plan before takeover. `manifest/runtime-data.sha256` pins the
 application; `manifest/core-inputs.sha256` pins the generated plan and startup
 trap prefix. `make core-inputs` derives the plan from verified original bytes and
 the pinned decoder. The plan and its original instruction guards remain under
-ignored `build/core/`; only hash constants enter the executable. Native and host
-checks reject bad hashes, malformed resource extents, A5 layouts and jump tables.
+ignored `build/core/`. Host checks verify hashes before staging; native hashing
+is enabled only with `VERIFY=1`. Both native modes reject malformed resource
+extents, A5 layouts and jump tables, and retain original instruction guards.
 
 Owner-authorized relocations redirect absolute low-memory accesses to A5-relative
 shadows without changing instruction lengths or startup decisions. The 56 mapped

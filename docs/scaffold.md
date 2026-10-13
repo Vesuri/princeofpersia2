@@ -43,10 +43,10 @@ linked or tracked.
 
 ## Build and checks
 
-- `make` / `make host-tests`: empty host program plus 18 inherited helper fixtures and a SHA/identity fixture.
+- `make host-tests`: empty host program plus 18 inherited helper fixtures and a SHA/identity fixture.
   Tests use synthetic data only: heap compaction, resource mutation/serialization,
   failure atomicity, bounded reads/writes, metadata, clipping and record handling.
-- `make amiga`: empty HUNK executable, `amiga/out/PrinceOfPersia2.exe`.
+- `make scaffold`: empty verification HUNK executable, `amiga/out/PrinceOfPersia2.exe`.
   Header dependencies and a content-checked flags file prevent stale objects.
 - `make scaffold-check`: host tests, Amiga build and the complete live gate.
 - `amiga/run.sh`: the same bounded boot/quit path used by the gate.
