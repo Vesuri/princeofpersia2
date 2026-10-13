@@ -154,3 +154,17 @@ save and load checks additionally matched CPU registers. Separately,
 `gameplay-level1-discovery-4` and `gameplay-level1-discovery-5` reproduced all 45
 checkpoints through the rooftop approach with identical A5/context, screen and
 palette. Neither result establishes level-1 completion.
+
+A longer restored continuation in `gameplay-checkpoints-1` matched the original
+full A5 captures through approach checkpoint 28, then differed at A5−0x7A7 in
+checkpoint 29. That byte belongs to the timer longword read and cleared by
+CODE 21 `osGetTime` (0x6A68/0x6A70; DERIVED). Context, indexed screen and palette
+continued to match through approach checkpoint 45. Thus the 30-step restore test
+is bounded evidence, not a claim of indefinite full-memory replay equivalence.
+
+MEASURED: the same discovery session crossed the first rooftop gap with 12
+Left+Up steps from step 384, and the next gap with 3 Left then 14 Left+Up steps
+from step 412. Captures at steps 396 and 429 show the Prince alive on the far
+rooftops. A subsequent pursuer was defeated with an 8-step Control input from
+step 467. The following room's combat remains unresolved; these are route
+fragments, not level completion or native acceptance.
