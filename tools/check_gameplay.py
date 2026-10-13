@@ -66,7 +66,8 @@ def main():
                 subprocess.run(['make','-C','amiga','VERIFY=1','EXTRA_DEFINES='+flags],stdout=out,stderr=subprocess.STDOUT,check=True)
             for ordinal in range(2):
                 env=dict(os.environ,CORE='1',GAMEPLAY_REFERENCE=str(references[0]),
-                         AMIGA_SETUP='a1200-030',GDBSCRIPT=str(ROOT/('amiga/gameplay_'+label+'.gdb')),DEADLINE='600')
+                         AMIGA_SETUP='a1200-030',GDBSCRIPT=str(ROOT/('amiga/gameplay_'+label+'.gdb')),DEADLINE='600',
+                         SOUND='0',EXTRA_ARGS='--floppy_drive_volume=0 --floppy_drive_volume_empty=0')
                 env['GAMEPLAY_RESTART' if args.route=='restart' else 'GAMEPLAY_SAVE']='1'
                 with (logs/('native-'+str(ordinal)+'.log')).open('w') as out:
                     subprocess.run(['/bin/bash','amiga/run.sh'],env=env,stdout=out,stderr=subprocess.STDOUT,check=True)
