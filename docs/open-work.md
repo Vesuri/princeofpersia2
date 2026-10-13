@@ -21,3 +21,12 @@ acceptance gates pass.
     Acceptance: original timing-service contracts and game-step cadence pass on
     `a1200-fast`, matched gameplay regressions pass, and the release hardware and
     installer requirements accurately include the validated configuration.
+
+16. **Deferred torch animation and RNG timing investigation.** Investigate the
+    recorded original/native ambient-audio RNG timing differences and level-three
+    torch animation mismatch after the current gameplay coverage work. Existing
+    evidence is described in `docs/gameplay-coverage.md`; preserve failed
+    comparisons without treating them as passes. Do not launch further deep RNG
+    investigations while establishing routes through the remaining levels and ending.
+    Acceptance: explain and resolve the recorded differences with original-paired
+    evidence, including checks for any effect on gameplay decisions.

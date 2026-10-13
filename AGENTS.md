@@ -22,6 +22,10 @@ and deferred CPU validation remain open.
 - Correctness needs tests against the original and positive completion signals.
   A timeout or an unreached probe is not a pass; negative observations need controls.
 - No performance claims without matched-workload measurements.
+- Stay focused on the current work item. When a tempting deep investigation is
+  outside the work needed to advance that item, record it in `docs/open-work.md`
+  as future work and continue the task at hand. Do not let incidental differences
+  such as torch animation displace broad gameplay coverage.
 - Never kill emulators or debuggers by process name. Use this project's recorded PIDs
   and the shared `FSUAE_COMMON` helper. Never edit a running shell launcher.
 - No personal paths or paths into other projects in tracked files. Name other projects
