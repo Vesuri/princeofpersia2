@@ -1,3 +1,4 @@
+if os.getenv('POP2_GAMEPLAY')=='route' then return dofile('tools/mac_gameplay_route.lua')end
 -- Original gameplay lifecycle observer. Diagnostic only. The save/load route
 -- supplies the D6-authorized protection-accepted condition, as in the UI fixture.
 local M={}

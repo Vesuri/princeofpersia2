@@ -398,7 +398,10 @@ mac.run(function()
    if not os.getenv('POP2_DEMO_ROUTE') then mac.press('Space')end
    if gameplay then
     assert(mac.wait_for('gameplay-first-frame',function()return gameplay.rooms()==1 end,18000),'GAMEPLAY FIRST FRAME')
-    if os.getenv('POP2_GAMEPLAY')=='restart' then
+    if os.getenv('POP2_GAMEPLAY')=='route' then
+     assert(mac.wait_for('route-complete',gameplay.complete,216000),'GAMEPLAY ROUTE INCOMPLETE')
+     return
+    elseif os.getenv('POP2_GAMEPLAY')=='restart' then
      mac.wait(60);mac.press('r',{mac.CMD})
     else
      assert(os.getenv('POP2_GAMEPLAY')=='save-load','GAMEPLAY ROUTE')

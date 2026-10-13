@@ -95,3 +95,35 @@ is identified by the original record copy at CODE 4+3272; no pointer or
 clock masks are applied to it. Save/load is a session route, not a whole-level
 route. This gate does not yet prove reading this application-folder save after a
 fresh boot; the earlier persistence fixtures use a file in `Data`.
+
+## Original route discovery
+
+`POP2_GAMEPLAY=route POP2_DISPLAY_ROUTE=1 python3 tools/run_reference.py --name NAME`
+starts an interactive, diagnostic Macintosh route capture. In its ignored run
+folder, `route-status.txt` identifies the last completed original frame and
+`route-N` files retain the original state, indexed screen and palette. Supply
+`route-command.txt` as one line containing the next sequence number, completed
+frame count (1–600), and comma-separated keys, for example `1 30 left`.
+Use an atomic rename when replacing the command file. `none` releases all keys.
+Available keys include arrows, Shift, Control, Space, Return, Escape, Command and R.
+Control selects the original sword action; Shift is the distinct careful-movement
+and grabbing action. The controller uses ordinary ADB input and logs the actual
+KeyMap consumed by the original, rather than assuming each requested key was read.
+
+The headless debugger resumes after its callback returns. While awaiting a host
+command, this observer therefore stays inside the completed-instruction callback;
+no emulated time passes during inspection. A 15-minute host input deadline is a
+failure, not a completed route. Commands and captures are discovery evidence only.
+Death can end an interval early and a new first frame is identified explicitly.
+Only a completed first frame in level 2 emits the level-1 completion marker.
+Original copy protection uses the existing D6 accepted-branch fixture.
+
+MEASURED: discovery captures have advanced by requested intervals of 35 and 24
+completed steps, remained at the same boundary between commands, and observed
+ordinary room transitions and death/restart. These observations validate the
+controller's basic operation; they do not establish a completed level route or
+an original/Amiga pair. Input schedules still need fresh-run repeatability and
+native replay before they can become acceptance evidence. Two discovery runs
+reproduce identical full initial A5/context, screen and palette captures and the
+same first 30 consumed keys: the initial read is unpressed, followed by 29 Left
+reads. This observed ADB delay must be preserved in a native replay.

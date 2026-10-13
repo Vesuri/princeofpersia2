@@ -44,13 +44,13 @@ def run(name=None, control=None):
           '-nvram_directory',str(destination/'nvram'),'-cfg_directory',str(destination/'cfg'),
           '-snapshot_directory',str(destination/'snap'),'-video','none','-sound','none','-window',
           '-nothrottle','-skip_gameinfo','-debug','-debugger','none','-oslog','-nosamples',
-          '-autoboot_delay','0','-autoboot_script',str(destination/'syntax.lua'),'-seconds_to_run','600' if env.get('POP2_AUDIO')=='cutscene' or env.get('POP2_NATURAL_OPENING') or env.get('POP2_GAMEPLAY') else '240' if env.get('POP2_AUDIO') else '180']
+          '-autoboot_delay','0','-autoboot_script',str(destination/'syntax.lua'),'-seconds_to_run','3600' if env.get('POP2_GAMEPLAY')=='route' else '600' if env.get('POP2_AUDIO')=='cutscene' or env.get('POP2_NATURAL_OPENING') or env.get('POP2_GAMEPLAY') else '240' if env.get('POP2_AUDIO') else '180']
     pidfile=destination/'mame.pid'
     with (destination/'session.log').open('wb') as output:
         process=subprocess.Popen(args,cwd=ROOT,env=env,stdout=output,stderr=subprocess.STDOUT)
         pidfile.write_text(str(process.pid)+'\n')
         try:
-            result=process.wait(timeout=480 if env.get('POP2_AUDIO') or env.get('POP2_GAMEPLAY') else 240)
+            result=process.wait(timeout=3600 if env.get('POP2_GAMEPLAY')=='route' else 480 if env.get('POP2_AUDIO') or env.get('POP2_GAMEPLAY') else 240)
         except BaseException:
             # Use the shared identity-checked helper; never kill by process name.
             subprocess.run(['/bin/bash','-c','. amiga/env.sh; . "$FSUAE_COMMON"; fsuae_kill_recorded "$1" mame','reference',str(pidfile)],cwd=ROOT,check=True)
@@ -94,7 +94,8 @@ def run(name=None, control=None):
     if env.get('POP2_GAMEPLAY'):
         log=(destination/'session.log').read_text()
         endpoint='first_frames=2' if env['POP2_GAMEPLAY']=='restart' else 'loaded_frames=1'
-        if log.count('GAMEPLAY_REFERENCE_COMPLETE route='+env['POP2_GAMEPLAY']+' '+endpoint+'\n')!=1 or 'FAIL REFERENCE' in log:
+        marker='GAMEPLAY_ROUTE_COMPLETE level=1 next=2' if env['POP2_GAMEPLAY']=='route' else 'GAMEPLAY_REFERENCE_COMPLETE route='+env['POP2_GAMEPLAY']+' '+endpoint
+        if log.count(marker+'\n')!=1 or 'FAIL REFERENCE' in log:
             raise ValueError('REFERENCE / GAMEPLAY COMPLETION MISSING')
     if env.get('POP2_TITLE_STATE'):
         from check_title_state import check_reference
