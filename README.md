@@ -1,7 +1,7 @@
 # Prince of Persia 2
 
 Macintosh-to-Amiga port following Vette! and Alone in the Dark. The original 68k game
-instructions run natively on an AGA Amiga with a 68020 or better, and the port
+instructions run natively on an AGA Amiga, currently targeting 68030 or better, and the port
 implements the Macintosh services they call. The display is PAL hires interlaced,
 showing the original 512×384 window.
 

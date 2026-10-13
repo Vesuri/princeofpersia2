@@ -1,7 +1,7 @@
 # Timing
 
 Item 11 remains open: full-game step cadence has not matched the Macintosh
-reference on both required CPU configurations. The service fixture below verifies
+reference on the required 68030 and faster CPU configurations. The service fixture below verifies
 VBL semantics independently of that acceptance gate.
 
 ## VBL service fixture
@@ -171,7 +171,8 @@ python3 tools/check_timing_cadence.py NATIVE_RUN ORIGINAL_REFERENCE \
 
 Use the actual selected CPU preset. The current runs correctly fail with
 `TIMING CADENCE / REFERENCE CADENCE INCLUDING FIRST STEP`. Item 11 remains open;
-D5 and the required fixed-68020/fast-CPU acceptance are unchanged.
+The owner deferred 68020 support to final item 15. Item 11 now targets
+`a1200-030` and faster configurations; D5 records that current target.
 
 ## Measurement build
 
