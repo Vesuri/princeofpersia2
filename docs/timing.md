@@ -127,17 +127,51 @@ with no clock fault, but its full integration gate did not pass: title phase 35
 has no validated paired reference. The attempted phase-35 original capture
 failed its initial-cue assertion and is not accepted evidence.
 
-The latest fixed-68020 VBL fixture reached its completion marker with no clock
-fault, but observed 31 ticks and 31 dormant-task decrements. The checker requires
-30 and rejected it. This is an outstanding fixture/clock investigation; neither
-a completion marker alone nor the earlier field-only results validate the new
-clock. Current fixture checkers also reject nonzero clock faults.
+The current fixed-68020 VBL fixture passes with 30 elapsed ticks, consecutive
+callbacks, the original dormant countdown/removal results, user-mode ABI, unchanged
+CODE and restored heap/hardware. All twelve rejection controls pass. This is the
+current build result; prior overshoot observations do not establish a current
+service failure. The 68030 Time Manager and VBL fixtures also pass their pinned
+contracts and twelve rejection controls each.
 
-The owner selected `a1200-030` for current performance work and deferred further
-68020 work until that is established. The current 68030 Time Manager and VBL
-fixtures pass their pinned original contracts, user-mode ABI checks, CODE/heap
-audits and hardware restoration; each rejects twelve altered-evidence controls.
-The fixed-68020 issue above and full game-step cadence remain open in item 11.
+## Current cadence gate
+
+Two completed original routes reproduce 100 timer-1 requests of five ticks,
+with all 99 intervening intervals exactly five ticks. The normalized contract is
+pinned in `manifest/timing-cadence-reference.sha256`; absolute epochs and emulator
+addresses are excluded. `tools/check_timing_cadence.py` checks the profiling
+route's positive completion, initial reference state, converted bitplanes,
+consecutive original frame counters and every recorded timer interval, including
+the first. Six altered-record controls cover missing steps, changed timing and
+changed timer requests. A synthetic positive is only a checker control.
+
+MEASURED current native results, using the profiling build from `fb9fcf3`:
+
+| Configuration | Five-update window | Timer interval results | Cadence gate |
+|---|---|---|---|
+| Fixed 68020 (`a1200-fast`) | 113 PAL fields / 452 ms per update | 53 intervals of 7–31 ticks | Fails |
+| 50 MHz 68030 (`a1200-030`) | 24 fields / 96 ms per update | First interval 11 ticks; next 56 intervals five ticks | Fails first interval |
+| Cached 68040 (`a1200-040`) | 32 fields / 128 ms per update | 45 intervals five ticks; nine intervals 6–11 ticks | Fails |
+
+These are instrumented emulator results. The 68040 emulator's timing model is
+not a hardware speed prediction. All three five-update endpoints have identical
+context bytes, and each route converts only at frame end. The slower 68020 route's
+death image differs from the 68030 parent, so it does not pass the complete
+parent-route image comparison. Performance-window completion does not imply
+cadence acceptance. Neither the initial overrun nor later overruns are excluded
+from the timing gate.
+
+Run the gate after the explicit profiling route described in
+[performance measurements](performance.md):
+
+```sh
+python3 tools/check_timing_cadence.py NATIVE_RUN ORIGINAL_REFERENCE \
+  --setup a1200-030 --controls
+```
+
+Use the actual selected CPU preset. The current runs correctly fail with
+`TIMING CADENCE / REFERENCE CADENCE INCLUDING FIRST STEP`. Item 11 remains open;
+D5 and the required fixed-68020/fast-CPU acceptance are unchanged.
 
 ## Measurement build
 
