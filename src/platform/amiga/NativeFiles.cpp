@@ -90,8 +90,8 @@ bool metadataRead(const char* path,FileMetadata::Record& record) {
     bool ok=Read(f,raw,32)==32 && Read(f,&extra,1)==0;if(!Close(f))ok=false;
     return ok && FileMetadata::decode(raw,32,record);
 }
-bool discover() {
-    BPTR lock=Lock((CONST_STRPTR)"Data",ACCESS_READ);if(!lock)return false;
+bool discoverDirectory(uint32_t directory,const char* path) {
+    BPTR lock=Lock((CONST_STRPTR)path,ACCESS_READ);if(!lock)return false;
     FileInfoBlock info __attribute__((aligned(4)));bool ok=Examine(lock,&info);LONG error=0;
     while(ok && ExNext(lock,&info)) {
         if(info.fib_DirEntryType>=0)continue;
@@ -99,8 +99,8 @@ bool discover() {
         if(n<=6 || !sameName(full+n-6,".finfo"))continue;
         if(n-6>31) {ok=false;break;}
         char name[32];for(unsigned i=0;i<n-6;++i)name[i]=full[i];name[n-6]=0;
-        if(files.child(files.data,name))continue;
-        MacFiles::Entry entry;error=files.planCreate(0,files.data,name,entry);if(error) {ok=false;break;}
+        if(files.child(directory,name))continue;
+        MacFiles::Entry entry;error=files.planCreate(0,directory,name,entry);if(error) {ok=false;break;}
         char path[192];FileMetadata::Record record;uint32_t dataSize=0,resourceSize=0;
         ok=suffix(path,entry.path,".finfo") && metadataRead(path,record) && sizeOf(entry.path,dataSize) &&
             suffix(path,entry.path,".rsrc") && sizeOf(path,resourceSize);
@@ -244,7 +244,7 @@ bool prepare() {
     if(length<8 || length>(LONG)sizeof(catalogBytes) || !verify("file-catalog.bin",length,fileCatalogSHA256,catalogBytes))return false;
     if(!equal(catalogBytes,(const uint8_t*)"PFC1",4) || lng(catalogBytes+4)!=32)return false;
     for(unsigned i=0;i<MacFiles::maxEntries;++i)sources[i]={};
-    files.reset();files.application=files.add(2,"Prince of Persia 2","",true);
+    files.reset();files.application=files.add(2,"Prince of Persia 2","PROGDIR:",true);
     files.data=files.add(files.application,"Data","Data",true);files.applicationComplete=true;
     uint32_t at=8;
     for(unsigned i=0;i<32;++i) {
@@ -270,7 +270,7 @@ bool prepare() {
         for(unsigned k=0;k<32;++k) {source.hash[0][k]=catalogBytes[at+4+k];source.hash[1][k]=catalogBytes[at+40+k];}
         at+=104;
     }
-    if(at!=(uint32_t)length || !discover())return false;
+    if(at!=(uint32_t)length || !discoverDirectory(files.data,"Data") || !discoverDirectory(files.application,"PROGDIR:"))return false;
 #ifdef POP2_VERIFY
     // Verify immutable inputs before original startup can start music or timers.
     // Reuse the same verifier and mutable-options rule as first-use opens.

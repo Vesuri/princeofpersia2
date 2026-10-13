@@ -105,6 +105,8 @@ if [ "${CORE:-0}" = 1 ]; then
     python3 ../tools/check_timing_tm.py "$RUN" "$TIMING_TM_REFERENCE" --setup "$AMIGA_SETUP"
   elif [ "${TIMING_VBL:-0}" = 1 ]; then
     python3 ../tools/check_timing_vbl.py "$RUN" "$TIMING_VBL_REFERENCE" --setup "$AMIGA_SETUP"
+  elif [ "${GAMEPLAY_SAVE:-0}" = 1 ]; then
+    python3 ../tools/check_gameplay_save.py "$RUN" "$GAMEPLAY_REFERENCE" --setup "$AMIGA_SETUP"
   elif [ "${GAMEPLAY_RESTART:-0}" = 1 ]; then
     python3 ../tools/check_gameplay_restart.py "$RUN" "$GAMEPLAY_REFERENCE" --setup "$AMIGA_SETUP"
   elif [ "${INTEGRATION:-0}" = 1 ]; then

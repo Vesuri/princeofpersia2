@@ -93,7 +93,8 @@ def run(name=None, control=None):
             raise ValueError('REFERENCE / AUDIO DRIVER IDENTITY')
     if env.get('POP2_GAMEPLAY'):
         log=(destination/'session.log').read_text()
-        if log.count('GAMEPLAY_REFERENCE_COMPLETE route=restart first_frames=2\n')!=1 or 'FAIL REFERENCE' in log:
+        endpoint='first_frames=2' if env['POP2_GAMEPLAY']=='restart' else 'loaded_frames=1'
+        if log.count('GAMEPLAY_REFERENCE_COMPLETE route='+env['POP2_GAMEPLAY']+' '+endpoint+'\n')!=1 or 'FAIL REFERENCE' in log:
             raise ValueError('REFERENCE / GAMEPLAY COMPLETION MISSING')
     if env.get('POP2_TITLE_STATE'):
         from check_title_state import check_reference

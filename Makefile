@@ -130,3 +130,7 @@ play: release
 .PHONY: gameplay-restart-check
 gameplay-restart-check: host-tests audio-inputs
 	@. amiga/env.sh && python3 tools/check_gameplay.py
+
+.PHONY: gameplay-save-check
+gameplay-save-check: host-tests audio-inputs
+	@. amiga/env.sh && python3 tools/check_gameplay.py --route save-load

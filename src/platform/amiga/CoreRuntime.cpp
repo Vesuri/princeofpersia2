@@ -72,6 +72,16 @@ static void recordIntegrationStage(){
 volatile uint32_t g_gameplayRooms=0,g_gameplayAudioSelector=0,g_gameplayMenu=0;
 volatile uint32_t g_gameplaySuspendCalls=0,g_gameplayResumeCalls=0,g_gameplaySuspendClock=0,g_gameplayResumeClock=0;
 #endif
+#ifdef POP2_GAMEPLAY_SAVE_PROBE
+#ifndef POP2_GAMEPLAY_RESTART_PROBE
+#error Save probe requires the verified gameplay harness
+#endif
+uint32_t g_gameplaySaveReturn=0,g_gameplayLoadReturn=0;
+volatile uint32_t g_gameplaySaveResult=0,g_gameplayLoadResult=0,g_gameplaySavedAt=0,g_gameplayLoadedFrames=0;
+volatile uint32_t g_gameplayInputActions=0,g_gameplayKeyCount=0,g_gameplayKeys[128][4]={};
+void pop2_gameplay_saved();void pop2_gameplay_loaded();
+__attribute__((noinline)) void pop2GameplayFileCheckpoint(){__asm__ volatile("nop" ::: "memory");}
+#endif
 #ifdef POP2_TIMING_TM_PROBE
 #if !defined(POP2_VERIFY) || !defined(POP2_INTEGRATION_PROBE) || defined(POP2_TIMING_VBL_PROBE)
 #error Time Manager fixture requires verification and a separate original-opening run
@@ -758,13 +768,50 @@ extern "C" void pop2IntegrationRoomHook(){
     g_integrationPulseRaw=128;NativeInput::flush(0xffff,0);NativeDisplay::wait();
 #ifdef POP2_GAMEPLAY_RESTART_PROBE
     ++g_gameplayRooms;
+#ifdef POP2_GAMEPLAY_SAVE_PROBE
+    g_integrationStage=g_gameplayRooms==1?3:5;
+#else
     g_integrationStage=g_gameplayRooms==1?3:4;
-    if(g_gameplayRooms==1)integrationPress(0x13,60);
+#endif
+    if(g_gameplayRooms==1){
+#ifdef POP2_GAMEPLAY_SAVE_PROBE
+        // The save fixture feeds measured keys at original ReadKeyboard steps.
+#else
+        integrationPress(0x13,60);
+#endif
+    }
     recordIntegrationStage();
 #else
     g_integrationRightAt=NativeInput::ticks()+120;g_integrationStage=3;recordIntegrationStage();
 #endif
 }
+#ifdef POP2_GAMEPLAY_SAVE_PROBE
+static void gameplayEdges(uint8_t first,bool downFirst,uint8_t second=128,bool downSecond=false){
+    NativeInput::inject(first,downFirst);
+    if(second<128)NativeInput::inject(second,downSecond);
+    uint32_t tick=NativeInput::ticks();while(NativeInput::ticks()==tick){}
+}
+static bool gameplayLeft=false;
+static void gameplayKeyboard(uint16_t step){
+    bool left=step>=14 && step<=17;
+    if(left!=gameplayLeft){gameplayEdges(0x4f,left);gameplayLeft=left;}
+    if(step==12 && !(g_gameplayInputActions&1)){
+        gameplayEdges(0x66,true,0x21,true);g_gameplayInputActions|=1;
+    }
+    if(step==23 && !(g_gameplayInputActions&2)){
+        gameplayEdges(0x66,true);g_gameplayInputActions|=2;
+    }
+    if(step==24 && !(g_gameplayInputActions&4)){
+        gameplayEdges(0x18,true);gameplayEdges(0x18,false,0x66,false);g_gameplayInputActions|=4;
+    }
+}
+extern "C" void pop2GameplayPickerShown(){integrationPress(0x44,120);}
+extern "C" void pop2GameplaySaved(uint32_t result){
+    g_gameplaySaveResult=result&65535;g_gameplaySavedAt=NativeInput::ticks();g_integrationPulseRaw=128;
+    pop2GameplayFileCheckpoint();
+}
+extern "C" void pop2GameplayLoaded(uint32_t result){g_gameplayLoadResult=result&65535;pop2GameplayFileCheckpoint();}
+#endif
 extern "C" void pop2IntegrationDeathHook(uint8_t* originalSP){
     if(g_integrationStage==3 && w(originalSP+4)==3 && !g_integrationDeathReturn){
         g_integrationDeathKind=w(originalSP+4);g_integrationDeathReturn=l(originalSP);
@@ -846,9 +893,23 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
     uint16_t trap=w((uint8_t*)pc);
 #ifdef POP2_INTEGRATION_PROBE
 #ifdef POP2_GAMEPLAY_RESTART_PROBE
+#ifdef POP2_GAMEPLAY_SAVE_PROBE
+    if(g_integrationStage==4)return stop(frame,usp,"GAMEPLAY / SAVE LOAD COMPLETE",trap,seg,off);
+#else
     if(g_integrationStage==4)return stop(frame,usp,"GAMEPLAY / RESTART COMPLETE",trap,seg,off);
+#endif
 #else
     if(g_integrationStage==4)return stop(frame,usp,"INTEGRATION / ROUTE COMPLETE",trap,seg,off);
+#endif
+#ifdef POP2_GAMEPLAY_SAVE_PROBE
+    // Observe actual SaveGame/ResumeGame returns to their original dialog
+    // callers. Only diagnostic return addresses change; registers/CCR survive.
+    for(uint32_t at=regs[14],depth=0;depth<32 && validMemory(at,8);++depth){
+        uint32_t returned=l((uint8_t*)at+4),parent=l((uint8_t*)at);
+        if(!g_gameplaySaveReturn && returned==g_coreSegments[2][0]+0xc98){g_gameplaySaveReturn=returned;sl((uint8_t*)at+4,(uint32_t)pop2_gameplay_saved);}
+        if(!g_gameplayLoadReturn && returned==g_coreSegments[2][0]+0xc18){g_gameplayLoadReturn=returned;sl((uint8_t*)at+4,(uint32_t)pop2_gameplay_loaded);}
+        if(parent<=at)break;at=parent;
+    }
 #endif
     // Match the reference opening-text return, before issuing its one Escape.
     // The drawing/unlock callee returns to CODE 15+0404/0410; the parent
@@ -942,6 +1003,9 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
 #endif
             timing[4]=g_timerCallbacks;timing[7]=displayBatchReturn;}
 #endif
+#ifdef POP2_GAMEPLAY_SAVE_PROBE
+        bool loadedFrame=g_gameplayLoadResult==1 && displayBatchReturn==g_coreSegments[2][0]+0x616e;
+#endif
         displayBatchFrame=displayBatchParent=displayBatchReturn=0;
         // As in Alone in the Dark, finish the previous publication before
         // submitting this completed frame. The new picture can then reach
@@ -955,6 +1019,9 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
 #endif
         if(!NativeDisplay::publish(displayBatchScene))return stop(frame,usp,NativeDisplay::error(),trap,seg,off);
         displayBatchScene=false;
+#ifdef POP2_GAMEPLAY_SAVE_PROBE
+        if(loadedFrame){NativeDisplay::wait();++g_gameplayLoadedFrames;g_integrationStage=4;recordIntegrationStage();}
+#endif
 #ifdef POP2_TIMING_PROBE
         g_timingPhase=trap&0xfff;
 #endif
@@ -966,9 +1033,22 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
 #ifdef POP2_UI
     if(NativeInput::error())return stop(frame,usp,NativeInput::error(),trap,seg,off);
     if(NativeUI::handles(trap)) {
+#ifdef POP2_GAMEPLAY_SAVE_PROBE
+        bool gameplayRead=trap==0xa976 && l(frame+2)==g_coreSegments[2][0]+0x5622 && g_integrationStage>=3;
+        uint16_t gameplayStep=w(a5-0x349a);
+        if(gameplayRead)gameplayKeyboard(gameplayStep);
+#endif
         if(!NativeUI::dispatch(trap,regs,usp,consumed))return stop(frame,usp,NativeUI::error(),trap,seg,off);
 #ifdef POP2_GAMEPLAY_RESTART_PROBE
         if(trap==0xa93e && l(usp+2))g_gameplayMenu=l(usp+2);
+#ifdef POP2_GAMEPLAY_SAVE_PROBE
+        if(gameplayRead){
+            if(g_gameplayKeyCount>=128)return stop(frame,usp,"GAMEPLAY / KEY TRACE CAPACITY",trap,seg,off);
+            uint8_t* keys=(uint8_t*)l(usp);volatile uint32_t* row=g_gameplayKeys[g_gameplayKeyCount++];
+            row[0]=gameplayStep;row[1]=keys[15]&8;row[2]=keys[15]&16;row[3]=keys[6]&128;
+            if(gameplayStep==12 && (g_gameplayInputActions&1))gameplayEdges(0x21,false,0x66,false);
+        }
+#endif
 #endif
         if(os){uint16_t sr=w(frame)&~15;uint16_t result=regs[0];if(!result)sr|=4;if(result&0x8000)sr|=8;sw(frame,sr);}
         return (uint32_t)(usp+consumed);

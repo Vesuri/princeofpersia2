@@ -258,6 +258,7 @@ segment,offset,name,evidence,notes
 4,0x3186,AnimCharTap_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 4,0x31E4,SetKidDeathMethod_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 4,0x3264,FirstInRow_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
+4,0x3272,CopyKidToActiveCharacter,DERIVED,Original routine copies the 62-byte kid record at A5 minus 0x50D2 into the active character record
 4,0x32C0,LoadKidwOpp_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 4,0x3348,LoadShadAsOpp_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 4,0x337E,LoadShadwOpp_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point

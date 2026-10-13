@@ -48,7 +48,7 @@ and bounded captures. Original bytes, saved state and captures remain ignored.
 | Levels 1–14, individually | Meaningful gameplay route and original level-exit decision | Incomplete |
 | Main cutscenes, individually | Original natural return and paired visible/state checkpoints | Incomplete |
 | Timed story scenes, individually | Original natural return for each selected scene | Incomplete |
-| Save/load | Save through session command, move, load, restored game state | File-routine fixtures only |
+| Save/load | Save through session command, move, load, restored game state | Two original/native pairs; 22 rejection controls |
 | Death | Original death routine returns after gameplay input | Existing first-room integration route |
 | Restart | Original command followed by completed playable first frame | Original and native repeats pass; 15 rejection controls |
 | Hall of Fame | Show/dismiss and persistent score insertion/readback | File-routine fixtures only |
@@ -66,3 +66,32 @@ The owner-supplied [walkthrough](https://gamefaqs.gamespot.com/pc/564689-prince-
 is for the original 1993 Prince of Persia II: The Shadow and the Flame, IBM version.
 It is a route-planning aid. Its PC level numbering and platform-specific details
 must be checked against the Macintosh original before use as validation evidence.
+
+## Save/load reference
+
+MEASURED: the original session saves `Level 1` beside the application, moves the
+Prince, selects that document through Open, and resumes gameplay. Loading reaches
+copy protection; this fixture supplies the D6-authorized accepted condition, as
+in the existing UI fixture. Both a new first frame and the following gameplay
+frame complete. An explicit original `PBFlushVolSync` then returns successfully.
+The save is a level checkpoint, not an exact-position snapshot.
+
+Two independent original runs reproduce the same saved 100-byte data fork, empty
+resource fork, type/creator, captured game state and pixels. The raw MacBinary
+wrapper is preserved privately; its filesystem timestamps vary between runs.
+`manifest/gameplay-save-reference.sha256` binds the stable evidence.
+
+Two native runs match the saved file, RNG, 62-byte player record, selected level
+state, three completed frame images, AGA bitplanes and palettes. Hardware/heap
+restoration passes. All 22 evidence-corruption controls reject. The diagnostic
+harness replays the original consumed keys by game step: Save at 12, Left on steps 14–17, and
+Open at 24, with the measured Command-key transitions. This replay uses the
+existing native input queue and is excluded from release builds.
+
+`make gameplay-save-check` creates two original references, exports their flushed
+saves, repeats the native route, runs rejection controls and restores the release
+build. All 26 consumed key-state records must match. The 62-byte player record
+is identified by the original record copy at CODE 4+3272; no pointer or
+clock masks are applied to it. Save/load is a session route, not a whole-level
+route. This gate does not yet prove reading this application-folder save after a
+fresh boot; the earlier persistence fixtures use a file in `Data`.

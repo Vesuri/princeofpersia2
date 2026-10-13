@@ -397,10 +397,26 @@ mac.run(function()
    if audio then print('AUDIO_PHASE title');mac.wait(120)end
    if not os.getenv('POP2_DEMO_ROUTE') then mac.press('Space')end
    if gameplay then
-    assert(os.getenv('POP2_GAMEPLAY')=='restart','GAMEPLAY ROUTE')
     assert(mac.wait_for('gameplay-first-frame',function()return gameplay.rooms()==1 end,18000),'GAMEPLAY FIRST FRAME')
-    mac.wait(60);mac.press('r',{mac.CMD})
-    assert(mac.wait_for('gameplay-restart',function()return gameplay.rooms()==2 end,3600),'GAMEPLAY RESTART')
+    if os.getenv('POP2_GAMEPLAY')=='restart' then
+     mac.wait(60);mac.press('r',{mac.CMD})
+    else
+     assert(os.getenv('POP2_GAMEPLAY')=='save-load','GAMEPLAY ROUTE')
+     mac.wait(60);mac.press('s',{mac.CMD})
+     assert(mac.wait_for('save-picker',function()return gameplay.phase()=='save-picker'end,3600),'GAMEPLAY SAVE PICKER')
+     mac.wait(120);dofile('tools/mame_mac_frame.lua').rgb(run..'/save-picker.ppm');mac.press('Return')
+     assert(mac.wait_for('save-complete',function()return gameplay.phase()=='save-return'end,3600),'GAMEPLAY SAVE COMPLETE')
+     mac.wait(30);mac.key_down('Left Arrow');mac.wait(20);mac.key_up('Left Arrow');mac.wait(30)
+     mac.press('o',{mac.CMD})
+     assert(mac.wait_for('load-picker',function()return gameplay.phase()=='load-picker'end,3600),'GAMEPLAY LOAD PICKER')
+     mac.wait(120);dofile('tools/mame_mac_frame.lua').rgb(run..'/load-picker.ppm');mac.press('Down Arrow');mac.press('Return')
+     assert(mac.wait_for('load-complete',function()return gameplay.phase()=='load-return'end,3600),'GAMEPLAY LOAD COMPLETE')
+    end
+    if os.getenv('POP2_GAMEPLAY')=='restart' then
+     assert(mac.wait_for('gameplay-second-frame',function()return gameplay.rooms()==2 end,3600),'GAMEPLAY SECOND FRAME')
+    else
+     assert(mac.wait_for('gameplay-loaded-frame',function()return gameplay.loadedFrames()==1 end,3600),'GAMEPLAY LOADED FRAME')
+    end
     gameplay.finish()
     if audio then audio.finish();print('AUDIO_ROUTE_COMPLETE')end
     finished=true;manager.machine:exit();return

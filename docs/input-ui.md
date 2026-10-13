@@ -102,3 +102,20 @@ an unknown About ID and raw queue overflow. The same checker that accepts a
 complete run rejects missing completion, incorrect dialog results, lost CIA or
 heap restoration, a false Shell success, corrupt KeyMap/pixels/copper and enabled
 sprite DMA. No timeout or absent probe is accepted as a result.
+
+## Session file chooser
+
+D8 replaces the reached Standard File selectors 1 and 2 with the existing Amiga
+overlay and keyboard input queue. Save edits a name of up to 31 printable ASCII
+characters; Open lists saved games with Up/Down selection. Return confirms and
+Escape cancels. Existing save names require a second confirmation. Installed
+assets cannot be overwritten. Unknown selectors, hooks and filters remain named
+stops. The original game still creates, writes and reads its save document.
+
+Both reference ports were inspected first; neither implements these Standard
+File forms. The chooser reuses shared `MacFiles` lookup, ordering and metadata
+and the existing port overlay. The application directory now has a `PROGDIR:`
+backing path, allowing the original's application-folder saves; discovery covers
+that directory as well as `Data`. The paired session gate validates a fresh save
+and subsequent Open, including actual saved bytes and resumed gameplay. See
+[gameplay coverage](gameplay-coverage.md) for completion and limits.

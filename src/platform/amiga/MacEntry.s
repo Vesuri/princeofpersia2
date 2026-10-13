@@ -842,6 +842,30 @@ pop2_integration_room:
 	movem.l (sp)+,d0-d7/a0-a6
 	move.l g_integrationRoomReturn,-(sp)
 	rts
+	.ifdef POP2_GAMEPLAY_SAVE_PROBE
+	.globl pop2_gameplay_saved
+pop2_gameplay_saved:
+	movem.l d0-d7/a0-a6,-(sp)
+	move.w ccr,-(sp)
+	move.l d0,-(sp)
+	jsr pop2GameplaySaved
+	addq.l #4,sp
+	move.w (sp)+,ccr
+	movem.l (sp)+,d0-d7/a0-a6
+	move.l g_gameplaySaveReturn,-(sp)
+	rts
+	.globl pop2_gameplay_loaded
+pop2_gameplay_loaded:
+	movem.l d0-d7/a0-a6,-(sp)
+	move.w ccr,-(sp)
+	move.l d0,-(sp)
+	jsr pop2GameplayLoaded
+	addq.l #4,sp
+	move.w (sp)+,ccr
+	movem.l (sp)+,d0-d7/a0-a6
+	move.l g_gameplayLoadReturn,-(sp)
+	rts
+	.endif
 	.globl pop2_integration_death
 pop2_integration_death:
 	movem.l d0-d7/a0-a6,-(sp)

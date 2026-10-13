@@ -12,6 +12,31 @@ from check_integration_result import crop, require
 from check_display_scenes import decode_planes, decode_copper
 
 
+def paired_frame(run, reference, label, prefix):
+    transfer=(run/'dh1/video-transfer.bin').read_bytes()
+    require(hashlib.sha256(transfer).hexdigest()==pins(ROOT/'manifest/display-inputs.sha256')['video-transfer.bin'],'VIDEO TRANSFER PIN')
+    require(crop((run/(label+'-screen.bin')).read_bytes())==
+            crop((reference/(prefix+'.indices')).read_bytes()),label+' PIXELS')
+    require(decode_planes((run/(label+'-planes.bin')).read_bytes())==crop((reference/(prefix+'.indices')).read_bytes()),label+' AGA PLANES')
+    colors=(run/(label+'-colors.bin')).read_bytes()
+    require(len(colors)==2056,label+' PALETTE EXTENT')
+    rgb=bytearray(768)
+    for i in range(256):
+        entry=colors[8+8*i:16+8*i]
+        index=i if int.from_bytes(colors[4:6],'big')&0x8000 else int.from_bytes(entry[:2],'big')
+        require(index<256,label+' PALETTE INDEX')
+        rgb[3*index:3*index+3]=bytes(transfer[entry[j]] for j in (2,4,6))
+    require(rgb==(reference/(prefix+'.rgb')).read_bytes(),label+' RGB PALETTE')
+    native=(run/(label+'-context.bin')).read_bytes()
+    mac=(reference/(prefix+'-context.bin')).read_bytes()
+    require(len(native)==len(mac)==0x2200,label+' CONTEXT EXTENT')
+    require(native[0x2180:0x21ba]==mac[0x2180:0x21ba],label+' CONTEXT WORDS')
+    native=(run/(label+'-a5.bin')).read_bytes()
+    mac=(reference/(prefix+'-a5.bin')).read_bytes()
+    require(len(native)==len(mac)==22266,label+' A5 EXTENT')
+    require(native[-0x18fc:-0x18f8]==mac[-0x18fc:-0x18f8],label+' RNG')
+
+
 def check(run, reference, setup):
     for name,digest in pins(ROOT/'manifest/gameplay-restart-reference.sha256').items():
         require(hashlib.sha256((reference/name).read_bytes()).hexdigest()==digest,'RESTART REFERENCE PIN '+name)
@@ -37,27 +62,7 @@ def check(run, reference, setup):
     clocks=re.findall(r'^GAMEPLAY SUSPEND calls=1/1 clock=(\d+)/(\d+)$',log,re.M)
     require(len(clocks)==1 and clocks[0][0]==clocks[0][1],'RESTART SUSPENDED CLOCK')
     for ordinal,label in ((1,'first-room'),(2,'restart')):
-        prefix='gameplay-first-frame-'+str(ordinal)
-        require(crop((run/(label+'-screen.bin')).read_bytes())==
-                crop((reference/(prefix+'.indices')).read_bytes()),label+' PIXELS')
-        require(decode_planes((run/(label+'-planes.bin')).read_bytes())==crop((reference/(prefix+'.indices')).read_bytes()),label+' AGA PLANES')
-        colors=(run/(label+'-colors.bin')).read_bytes()
-        require(len(colors)==2056,label+' PALETTE EXTENT')
-        rgb=bytearray(768)
-        for i in range(256):
-            entry=colors[8+8*i:16+8*i]
-            index=i if int.from_bytes(colors[4:6],'big')&0x8000 else int.from_bytes(entry[:2],'big')
-            require(index<256,label+' PALETTE INDEX')
-            rgb[3*index:3*index+3]=bytes(transfer[entry[j]] for j in (2,4,6))
-        require(rgb==(reference/(prefix+'.rgb')).read_bytes(),label+' RGB PALETTE')
-        native=(run/(label+'-context.bin')).read_bytes()
-        mac=(reference/(prefix+'-context.bin')).read_bytes()
-        require(len(native)==len(mac)==0x2200,label+' CONTEXT EXTENT')
-        require(native[0x2180:0x21ba]==mac[0x2180:0x21ba],label+' CONTEXT WORDS')
-        native=(run/(label+'-a5.bin')).read_bytes()
-        mac=(reference/(prefix+'-a5.bin')).read_bytes()
-        require(len(native)==len(mac)==22266,label+' A5 EXTENT')
-        require(native[-0x18fc:-0x18f8]==mac[-0x18fc:-0x18f8],label+' RNG')
+        paired_frame(run, reference, label, 'gameplay-first-frame-'+str(ordinal))
     fields=re.findall(r'^GAMEPLAY DISPLAY planes=([0-9a-f]+) parity=(\d+)$',log,re.M)
     require(len(fields)==1,'RESTART COPPER RECORD')
     require(decode_copper((run/'restart-copper.bin').read_bytes(),int(fields[0][0],16),int(fields[0][1]))==(reference/'gameplay-first-frame-2.rgb').read_bytes(),'RESTART COPPER PALETTE/MODE')

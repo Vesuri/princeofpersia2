@@ -1,6 +1,7 @@
 #ifdef POP2_UI
 #include "NativeUI.h"
 #include "NativeInput.h"
+#include "NativeFiles.h"
 #include "mac/MenuRecords.h"
 #include <graphics/gfxbase.h>
 #include <graphics/text.h>
@@ -10,6 +11,9 @@ volatile uint32_t g_uiOverlay=0,g_uiOverlayCount=0;
 uint8_t g_uiOverlayPixels[640*480];
 __attribute__((noinline)) void pop2UIOverlayShown(){__asm__ volatile("nop" ::: "memory");}
 }
+#ifdef POP2_GAMEPLAY_SAVE_PROBE
+extern "C" void pop2GameplayPickerShown();
+#endif
 namespace NativeUI {
 namespace {
 using H=MacHeap::Handle;
@@ -46,6 +50,86 @@ bool text(const char* value,unsigned x,unsigned y){
         x+=font->tf_XSize;
     }
     return true;
+}
+// D8 owns the file chooser. Both donor ports use game-specific save UI;
+// neither implements this Standard File call. Reuse our existing overlay,
+// input queue and shared MacFiles directory/metadata model.
+bool fileDialog(uint8_t* a,uint32_t& consumed){
+    if(!valid((uint32_t)a,2))return fail("UI / FILE SELECTOR EXTENT");
+    uint16_t selector=w(a);bool saving=selector==1;
+    if(!saving && selector!=2)return fail("UI / FILE SELECTOR");
+    uint32_t bytes=saving?22:28;
+    if(!valid((uint32_t)a,bytes)||!valid(l(a+2),74)||l(a+6))return fail("UI / FILE ARGUMENTS");
+    if(!saving && (w(a+14)!=1 || l(a+16) || !valid(l(a+10),4) || l((uint8_t*)l(a+10))!=0x53415645))return fail("UI / FILE FILTER");
+    char name[32]={};unsigned length=0;
+    if(saving){
+        uint8_t* initial=(uint8_t*)l(a+10);
+        if(!valid((uint32_t)initial,1) || initial[0]>31 || !valid((uint32_t)initial,initial[0]+1))return fail("UI / FILE DEFAULT NAME");
+        length=initial[0];for(unsigned i=0;i<length;++i)name[i]=initial[i+1];
+    }
+    MacFiles& catalog=NativeFiles::catalog();uint32_t choices[MacFiles::maxEntries];unsigned count=0,selected=0;
+    if(!saving)for(int16_t n=1;n<=MacFiles::maxEntries;++n){
+        uint32_t id=0;int16_t error=catalog.indexedFile(MacFiles::applicationWD,catalog.application,n,id);
+        if(error==MacFiles::fnfErr)break;if(error)return fail("UI / FILE DIRECTORY");
+        const auto* entry=catalog.entry(id);
+        if(!entry || !entry->metadataKnown)return fail("UI / FILE METADATA");
+        if(l(entry->metadata.finder)==0x53415645)choices[count++]=id;
+    }
+    NativeInput::flush(0xffff,0);bool dirty=true,accepted=false,done=false,overwrite=false;
+#ifdef POP2_GAMEPLAY_SAVE_PROBE
+    pop2GameplayPickerShown();
+#endif
+    while(!done){
+        if(dirty){
+            for(auto& pixel:g_uiOverlayPixels)pixel=255;
+            if(!text(saving?"SAVE GAME":"OPEN GAME",32,40))return false;
+            if(saving){
+                if(!text("Name:",32,88)||!text(name,32,112)||
+                   !text(overwrite?"Replace existing save? Return: Yes / Escape: No":"Type a name. Backspace deletes.",32,160))return false;
+            }else{
+                if(!count && !text("No saved games.",32,88))return false;
+                unsigned page=(selected/10)*10;
+                for(unsigned i=page;i<count && i<page+10;++i){
+                    if(i==selected && !text(">",32,80+(i-page)*20))return false;
+                    if(!text(catalog.entry(choices[i])->name,48,80+(i-page)*20))return false;
+                }
+            }
+            if(!text(saving?"Return: Save       Escape: Cancel":"Up/Down: Select   Return: Open   Esc: Cancel",32,328))return false;
+            if(!NativeDisplay::showOverlay(g_uiOverlayPixels))return fail(NativeDisplay::error());
+            g_uiOverlay=saving?7001:7002;++g_uiOverlayCount;pop2UIOverlayShown();dirty=false;
+        }
+        if(NativeInput::error())return fail(NativeInput::error());
+        InputState::Event event;if(!NativeInput::event(8,true,NativeInput::ticks(),event))continue;
+        uint8_t key=event.message;
+        if(key==27){if(overwrite){overwrite=false;dirty=true;}else done=true;continue;}
+        if(key==13){
+            if(!saving){if(count){accepted=done=true;}continue;}
+            if(!length)continue;
+            const auto* existing=catalog.child(catalog.application,name);
+            if(existing){
+                // Only save documents may be replaced; installed assets remain immutable.
+                if(existing->directory || !existing->metadataKnown || l(existing->metadata.finder)!=0x53415645)continue;
+                if(!overwrite){overwrite=true;dirty=true;continue;}
+            }else{MacFiles::Entry candidate;if(catalog.planCreate(MacFiles::applicationWD,catalog.application,name,candidate))return fail("UI / SAVE DESTINATION");}
+            accepted=done=true;continue;
+        }
+        if(saving && !overwrite){
+            if(key==8 && length){name[--length]=0;dirty=true;}
+            else if(key>=32 && key<127 && key!=':' && key!='/' && length<31){name[length++]=key;name[length]=0;dirty=true;}
+        }else if(!saving && count){
+            if(key==30 && selected){--selected;dirty=true;}
+            if(key==31 && selected+1<count){++selected;dirty=true;}
+        }
+    }
+    uint8_t* out=(uint8_t*)l(a+2);out[0]=accepted?1:0;
+    if(accepted){
+        for(unsigned i=1;i<74;++i)out[i]=0;
+        if(!saving){const auto* entry=catalog.entry(choices[selected]);length=0;while(entry->name[length]){name[length]=entry->name[length];++length;}sl(out+2,0x53415645);}
+        sw(out+6,MacFiles::applicationWD);out[10]=length;for(unsigned i=0;i<length;++i)out[11+i]=name[i];
+    }
+    g_uiOverlay=0;NativeInput::flush(0xffff,0);
+    if(!NativeDisplay::hideOverlay())return fail(NativeDisplay::error());
+    consumed=bytes;return true;
 }
 bool replacement(uint16_t selector,uint32_t* regs,uint8_t* args){
     char message[513];uint16_t kind=0;
@@ -86,11 +170,12 @@ bool prepare(MacHeap& owner,uint8_t* shadow,NativeDisplay::Valid validator,Nativ
 bool handles(uint16_t t){
  switch(t){case 0xa8fe:case 0xa912:case 0xa930:case 0xa9cc:case 0xa97b:case 0xa850:case 0xa852:case 0xa853:
  case 0xa851:case 0xa9b9:case 0xa856:case 0xa063:case 0xa032:case 0xa9c0:case 0xa93c:case 0xa949:case 0xa94d:case 0xa937:
- case 0xa972:case 0xa974:case 0xa976:case 0xa970:case 0xa971:case 0xa860:case 0xa938:case 0xa939:case 0xa93a:case 0xa944:case 0xa945:case 0xa946:case 0xa947:case 0xa93e:return true;default:return false;}
+ case 0xa972:case 0xa974:case 0xa976:case 0xa970:case 0xa971:case 0xa860:case 0xa938:case 0xa939:case 0xa93a:case 0xa944:case 0xa945:case 0xa946:case 0xa947:case 0xa93e:case 0xa9ea:return true;default:return false;}
 }
 bool dispatch(uint16_t t,uint32_t* regs,uint8_t* a,uint32_t& consumed){
  consumed=0;
  switch(t){
+ case 0xa9ea:return fileDialog(a,consumed);
  // D8: owned UI has no Macintosh fonts, TextEdit objects or cursor pixels.
  // Initialization records readiness; later unsupported operations remain stops.
  case 0xa8fe:services|=1;return true;
