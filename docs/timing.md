@@ -174,6 +174,14 @@ Use the actual selected CPU preset. The current runs correctly fail with
 The owner deferred 68020 support to final item 15. Item 11 now targets
 `a1200-030` and faster configurations; D5 records that current target.
 
+The service-return path skips beam sampling when the VBL queue is empty; first
+installation and final removal still establish/reset the queue epoch. It also
+uses the existing audio pending-work predicate before polling audio. The final
+fixed-68020 A/B before deferral measured 113 versus 112 fields for the same five
+updates, with identical benchmark and death screen/context bytes. That one-field
+difference is not a general speed claim. The complete VBL fixture and all twelve
+rejection controls pass with the change. Further 68020 work is deferred to item 15.
+
 ## Measurement build
 
 The explicit `PROFILE=1 VERIFY=0` build retains integration input, timing records

@@ -1341,10 +1341,13 @@ static uint32_t callbackService(uint32_t* parked) {
 }
 static int selectVBL() {
 #ifdef POP2_INPUT
+    if(g_clockFault){fail("TIME / NONMONOTONIC FIELD CLOCK");return -1;}
+    // Installation establishes the epoch, and removing the last task resets it.
+    // An empty queue needs no beam reads at every service boundary.
+    if(!vblCount)return 0;
     uint32_t ticks=wallTicks();
     if(g_clockFault){fail("TIME / NONMONOTONIC FIELD CLOCK");return -1;}
     vblPass.observe(ticks);
-    if(!vblCount){vblPass.reset(wallTicks());return 0;}
     for(;;) {
         if(!vblPass.active) {
             if(!vblPass.begin(vblCount))return 0;
@@ -1408,7 +1411,7 @@ extern "C" uint32_t pop2UserDispatch(uint32_t* parked) {
     uint8_t* resumed=(uint8_t*)pop2Dispatch(regs,frame,usp);
     g_coreServiceActive=0;
 #ifdef POP2_AUDIO
-    if(!didStop){
+    if(!didStop && NativeAudio::servicePending()){
         if(!NativeAudio::sync())resumed=(uint8_t*)stop(frame,resumed,NativeAudio::error(),0,0,0);
         uint32_t callback=0,context=0,cs=0,co=0;
         if(!didStop && NativeAudio::callback(callback,context)){
