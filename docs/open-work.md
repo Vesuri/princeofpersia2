@@ -1,17 +1,9 @@
 # Open work
 
-Owner-approved order: performance (13), then timing (11), gameplay validation
-(12), and release (14). Items remain open until their acceptance gates pass.
-Timing prerequisites already in progress support performance measurements
-without completing item 11.
+Owner-approved order: timing (11), gameplay validation (12), and release (14).
+Items remain open until their acceptance gates pass. The completed performance
+gate covers `a1200-030`; deferred 68020 measurements belong to the timing gate.
 
-13. **Performance.** Owner-directed current target: `a1200-030` only. Fix its
-    performance first, using Kalms C2P on dirty rectangles in one end-of-frame
-    conversion pass. Profile the end-to-end build before optimising and use
-    matched workloads. Defer 68020 measurements and optimisation until this is
-    established. Set the Fast RAM requirement (D5); the deferred 68020 work
-    remains part of the later timing gate.
-    Acceptance: matched-workload measurements for each change, A/B against parent.
 11. **Timing.** 60 Hz ticks from PAL fields, Time Manager and VBL tasks at safe
     user-mode points, completed frames paced at vertical blank. Inspect and reuse
     Alone in the Dark's queued VBL passes through the shared workflow; replace the

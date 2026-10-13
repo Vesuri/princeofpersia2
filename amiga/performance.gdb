@@ -7,6 +7,8 @@ commands
  end
  printf "PROFILE C2P passes=%lu rects=%lu pixels=%lu unbatched=%lu\n",g_c2pPasses-$startPasses,g_c2pRects-$startRects,g_c2pPixels-$startPixels,g_c2pUnbatched-$startUnbatched
  dump binary memory @RUN@/profile-end-screen.bin g_integrationScreen g_integrationScreen+307200
+ set $completeBuffer=display.pixels_[display.pending_ ? (display.front_^1) : display.front_]
+ dump binary memory @RUN@/profile-end-planes.bin $completeBuffer $completeBuffer+196608
  printf "PROFILE INPUT right_reads=%lu\n",g_integrationRightReads
  set $context=*(unsigned long*)(g_coreA5-0x5014)
  dump binary memory @RUN@/profile-end-context.bin $context $context+0x2200
@@ -104,6 +106,7 @@ commands
   dump binary memory @RUN@/death-context.bin $context $context+0x2200
   dump binary memory @RUN@/death-a5.bin g_coreA5-g_coreBelow g_coreA5
   dump binary memory @RUN@/death-screen.bin g_integrationScreen g_integrationScreen+307200
+  dump binary memory @RUN@/death-planes.bin g_displayPlanes g_displayPlanes+196608
  end
  continue
 end

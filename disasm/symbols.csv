@@ -110,6 +110,7 @@ segment,offset,name,evidence,notes
 2,0x6056,FirstRoomDisplayCheckpoint,MEASURED,Post-FirstFrame checkpoint with D4 low word FFFE
 2,0x6060,FirstFrame_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x60EE,DoCleanCut_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
+2,0x616E,FrameAdvCallerReturn,MEASURED,Original CODE 2+616A calls FrameAdv; live LINK chain encloses health-bar and scene drawing
 2,0x674C,FrameAdv,DERIVED,Original LINK entry ending at named RTS 0x68B2; gameplay frame timing boundary
 2,0x68B4,FrameAdv_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x696C,ResetFrameVars_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point

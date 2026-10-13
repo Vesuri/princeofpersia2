@@ -7,6 +7,7 @@ from pathlib import Path
 from check_core_result import restored
 from check_integration_result import crop, reference_state
 from check_display_scenes import decode_planes
+from extract_original_data import ROOT, pins
 
 
 def require(ok, reason):
@@ -37,10 +38,26 @@ def window(log):
     return after-before
 
 
+def route(log):
+    rows = re.findall(r'^PROFILE ROUTE C2P frames=(\d+) passes=(\d+) rects=(\d+) pixels=(\d+) unbatched=(\d+)$',log,re.M)
+    require(len(rows) == 1, 'FULL ROUTE C2P RECORD')
+    frames, passes, rectangles, pixels, unbatched = map(int,rows[0])
+    require(frames >= 5 and 0 < passes <= frames and rectangles >= passes and pixels > 0, 'FULL ROUTE FRAME-END PASSES')
+    require(unbatched == 0, 'FULL ROUTE UNBATCHED CONVERSION')
+    return frames, passes
+
+
+def parent_identity(actual):
+    expected = pins(ROOT/'manifest/performance-parent.sha256')
+    require(set(expected) == {'parent-profile.elf','parent-profile.exe','parent-context.bin','parent-screen.bin','parent-death-context.bin','parent-death-screen.bin'}, 'PARENT PIN COVERAGE')
+    require(actual == expected, 'PINNED PARENT BUILD AND STATE')
+
+
 def check(run, reference, setup, compare=None, controls=False):
     reference_state(reference)
     log = (run/'gdb-out.log').read_text()
     fields = window(log)
+    route_frames, route_passes = route(log)
     # Profiling deliberately omits exit CODE/heap audits; require that explicit
     # mode, while checking actual machine settings and restored hardware.
     restored(run, log, setup, heap_checked=False)
@@ -67,10 +84,21 @@ def check(run, reference, setup, compare=None, controls=False):
     require(len(state) == 0x2200, 'END CONTEXT EXTENT')
     screen = (run/'profile-end-screen.bin').read_bytes()
     require(len(screen) == 640*480, 'END SCREEN EXTENT')
+    require(decode_planes((run/'profile-end-planes.bin').read_bytes()) == crop(screen), 'END WINDOW DIRTY PLANES')
+    require(decode_planes((run/'death-planes.bin').read_bytes()) == crop((run/'death-screen.bin').read_bytes()), 'END ROUTE DIRTY PLANES')
     if compare:
+        files = {'parent-profile.elf':compare/'PrinceOfPersia2.elf',
+                 'parent-profile.exe':compare/'dh1/PrinceOfPersia2',
+                 'parent-context.bin':compare/'profile-end-context.bin',
+                 'parent-screen.bin':compare/'profile-end-screen.bin',
+                 'parent-death-context.bin':compare/'death-context.bin',
+                 'parent-death-screen.bin':compare/'death-screen.bin'}
+        parent_identity({name:hashlib.sha256(path.read_bytes()).hexdigest() for name,path in files.items()})
         require(screen == (compare/'profile-end-screen.bin').read_bytes(), 'MATCHED END SCREEN')
         require(re.findall(r'^PROFILE C2P .*$',log,re.M) == re.findall(r'^PROFILE C2P .*$',(compare/'gdb-out.log').read_text(),re.M), 'MATCHED DIRTY WORK')
         require(state == (compare/'profile-end-context.bin').read_bytes(), 'MATCHED END CONTEXT')
+        for name in ('death-context.bin','death-screen.bin'):
+            require((run/name).read_bytes() == (compare/name).read_bytes(), 'MATCHED ROUTE END '+name)
         require(window((compare/'gdb-out.log').read_text()) > 0, 'COMPARISON WINDOW')
     if controls:
         mutations = [('rows=1 right_reads=0','rows=2 right_reads=0'),
@@ -89,8 +117,25 @@ def check(run, reference, setup, compare=None, controls=False):
                 continue
             raise RuntimeError('PERFORMANCE / ACCEPTED ALTERED WINDOW')
         window(log)
-        print(f'PERFORMANCE CONTROLS PASS: {len(mutations)} altered windows rejected')
+        for old,new in [('PROFILE ROUTE C2P','MISSING ROUTE C2P'),('unbatched=0','unbatched=1')]:
+            require(old in log, 'ACTIVE ROUTE CONTROL')
+            try:
+                route(log.replace(old,new))
+            except RuntimeError:
+                continue
+            raise RuntimeError('PERFORMANCE / ACCEPTED ALTERED ROUTE')
+        expected = pins(ROOT/'manifest/performance-parent.sha256')
+        parent_identity(expected)
+        for name in expected:
+            bad = dict(expected);bad[name] = ('0' if bad[name][0] != '0' else '1')+bad[name][1:]
+            try:
+                parent_identity(bad)
+            except RuntimeError:
+                continue
+            raise RuntimeError('PERFORMANCE / ACCEPTED ALTERED PARENT')
+        print(f'PERFORMANCE CONTROLS PASS: {len(mutations)+2+len(expected)} altered window/route/parent records rejected')
     print(f'PERFORMANCE WINDOW PASS: five updates, {fields} PAL fields, {fields*4} ms/update; end context SHA256 {hashlib.sha256(state).hexdigest()}')
+    print(f'PERFORMANCE ROUTE PASS: {route_passes} conversion passes over {route_frames} updates; none outside frame end')
     print('Instrumented measurement only; title pairing, exit CODE/heap audits and full timing acceptance are not established.')
 
 

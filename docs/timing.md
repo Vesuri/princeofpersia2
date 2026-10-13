@@ -133,42 +133,21 @@ fault, but observed 31 ticks and 31 dormant-task decrements. The checker require
 a completion marker alone nor the earlier field-only results validate the new
 clock. Current fixture checkers also reject nonzero clock faults.
 
-The owner approved performance item 13 before finishing timing item 11 and
-gameplay item 12. The existing diagnostic measurements are preliminary evidence;
-release baselines on fixed 68020 and 68030, matched A/B measurements, and measured
-Fast RAM requirements remain necessary for item 13.
+The owner selected `a1200-030` for current performance work and deferred further
+68020 work until that is established. The current 68030 Time Manager and VBL
+fixtures pass their pinned original contracts, user-mode ABI checks, CODE/heap
+audits and hardware restoration; each rejects twelve altered-evidence controls.
+The fixed-68020 issue above and full game-step cadence remain open in item 11.
 
 ## Measurement build
 
-The Amiga makefile accepts explicit `PROFILE=1 VERIFY=0` with integration and
-timing probe defines. This follows the other ports' separation of probes from
-verification: original input seams, timing records and phase samples remain,
-but runtime SHA-256, trap tracing and expensive verification counters must be
-absent from the linked binary. The link audit enforces that absence. Timing
-records report zero in the unavailable trap-count column. These measurements
-are still instrumented; they are not unmodified release throughput.
+The explicit `PROFILE=1 VERIFY=0` build retains integration input, timing records
+and phase samples, while omitting runtime hashing, trap tracing and expensive
+verification counters. The link audit enforces this boundary. Ordinary release
+has neither measurement nor verification probes. `VERIFY=1` remains required for
+the correctness fixtures; profiling does not replace their exit CODE/heap audits.
 
-`VERIFY=1` remains required for correctness fixtures. The profiling build does
-not perform their exit CODE/heap audits and cannot pass those gates in their
-place. Ordinary `make release` retains neither measurement nor verification
-probes, and the interactive launcher rejects a profiling build.
-
-A diagnostic 68030 baseline uses the shared 50 MHz, 8 MB Fast RAM preset with
-data cache and cycle-exact emulation enabled. The five updates after the
-first-room checkpoint took 25 PAL fields (100 ms per update), with zero Right
-reads in that window. First-room pixels, AGA planes, context words and RNG match
-the pinned Macintosh reference; the route completed with no clock fault and
-restored hardware. Title phase 64 is not paired with a validated original
-capture, so full integration remains unverified. This baseline used `VERIFY=1`
-and cannot be compared as release throughput against the new profiling mode.
-
-The first fixed-68020 `PROFILE=1 VERIFY=0` run completed the route with no
-clock fault. Its five-update window took 120 PAL fields (480 ms per update),
-consumed no Right input, and ended with the same complete context bytes as the
-diagnostic 68030 window. Title phase 16 pixels/colors and first-room
-pixels/planes/context words/RNG match the pinned originals. The frozen executable
-contains neither runtime SHA-256 nor verification traces/counters. This mode
-correctly fails the full integration checker because exit CODE/heap audits are
-disabled; the targeted comparisons above are not a replacement for that gate.
-A matching 68030 profiling-mode baseline is still needed before comparing CPU
-performance. Ordinary release was rebuilt and passed its no-verification audit.
+See [performance measurements](performance.md) for the 68030 matched workload,
+parent comparison, dirty-rectangle conversion checks and measured RAM requirement.
+Those bounded measurements do not establish title phase pairing, all-scene
+cadence, full-game coverage or real-hardware performance.

@@ -777,12 +777,14 @@ extern "C" void pop2IntegrationTitleHook(uint8_t* originalSP){
 extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
     uint32_t pc=l(frame+2),seg=0,off=0;
     if(usp<stack || usp>stack+65536-4)return stop(frame,usp,"STACK / TRAP ARGUMENT EXTENT",0,seg,off);
-    bool codeCaller=location(pc,seg,off);
 #ifdef POP2_UI
     bool cachedCaller=pc>=(uint32_t)pop2_cached_services && pc<(uint32_t)pop2_cached_services_end && !((pc-(uint32_t)pop2_cached_services)&3);
 #else
     bool cachedCaller=false;
 #endif
+    // Native cached veneers cannot belong to an original CODE segment.
+    // Their original return owner is still checked below.
+    bool codeCaller=!cachedCaller && location(pc,seg,off);
     bool tableCaller=pc>=(uint32_t)a5+app.world().jumpOffset && pc<(uint32_t)a5+app.world().jumpOffset+app.world().jumpBytes;
     bool fixtureCaller=(pc>=(uint32_t)pop2_audio_lookup && pc<(uint32_t)pop2_audio_fixture_end) || (pc>=(uint32_t)pop2_ui_fixture && pc<(uint32_t)pop2_ui_fixture_end) || (pc>=(uint32_t)pop2_display_scene_init && pc<(uint32_t)pop2_display_scene_end) || (pc>=(uint32_t)pop2_display_fixture && pc<(uint32_t)pop2_display_fixture_end) || (pc>=(uint32_t)pop2_identity_fixture && pc<(uint32_t)pop2_identity_fixture_end) ||
         (pc>=(uint32_t)pop2_file_fixture && pc<(uint32_t)pop2_file_fixture_end) ||
@@ -945,6 +947,29 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
         return stop(frame,usp,"UI / STARTUP CHECKPOINT",trap,seg,off);
 #endif
     if(NativeDisplay::handles(trap)) {
+        // FrameAdv can update the health display before calling DrawWorld.
+        // Its leaf callees do not add LINK frames: identify FrameAdv by its
+        // byte-verified caller return, before DrawWorld's GetGWorld.
+        // As in the donor's frame guard, retain the owning LINK frame, parent
+        // and return address until that original invocation has completed.
+        if(!displayBatchFrame && !g_timerCallbackActive && g_coreSegments[2][0]) {
+            uint32_t base=g_coreSegments[2][0],at=regs[14];
+            for(unsigned depth=0;depth<16 && !(at&1) && at>=(uint32_t)usp && at<=(uint32_t)stack+65536-8;++depth) {
+                uint32_t parent=l((uint8_t*)at),ret=l((uint8_t*)at+4);
+                if(ret==base+0x616e) {
+                    if(parent<=at || parent>(uint32_t)stack+65536-8 || (parent&1) ||
+                       g_coreSegments[2][1]<0x68b4 || l((uint8_t*)base+0x616a)!=0x4eba05e0 ||
+                       l((uint8_t*)base+0x674c)!=0x4e56fff8 ||
+                       w((uint8_t*)base+0x68b2)!=0x4e75)
+                        return stop(frame,usp,"FRAME / FRAMEADV OWNER",trap,seg,off);
+                    if(!NativeDisplay::publish())return stop(frame,usp,NativeDisplay::error(),trap,seg,off);
+                    displayBatchFrame=at;displayBatchParent=parent;displayBatchReturn=ret;
+                    break;
+                }
+                if(parent<=at)break;
+                at=parent;
+            }
+        }
         // The scene renderer itself is a leaf. Its caller owns the LINK frame
         // which also encloses the later dirty-rectangle screen-copy pass.
         if(trap==0xab1d && seg==17 && off==0x4d18 && g_coreSegments[3][0]) {

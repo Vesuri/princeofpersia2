@@ -37,37 +37,53 @@ reference, `--setup a1200-030`, optional `--compare` with a baseline run, and
 `--controls`. Its controls reject altered completion, input, clock, restoration
 and C2P evidence. Restore ordinary play with `make release` afterwards.
 
-## Measured baseline
+## Measured performance
 
-The five-update 68030 window takes 25 PAL fields, or 100 ms per update including
-pacing. This includes an initial longer step; the separate timer record shows
-55 five-tick intervals, one six-tick interval and one ten-tick interval over the
-recorded route. This does not establish all-scene cadence.
+MEASURED: the pinned parent (`baf9642`) takes 26 PAL fields for the five-update
+window, or 104 ms/update including pacing. The final build takes 24 fields,
+or 96 ms/update. Both perform five conversion passes, ten dirty rectangles and
+179,328 converted pixels, with zero input in that window. Complete endpoint
+screen and context bytes match. `manifest/performance-parent.sha256` pins the
+parent executable, symbols and both benchmark and route endpoint captures.
 
-The instrumented C2P baseline has exactly five conversion passes, ten dirty
-rectangles and 179,328 converted pixels over those five updates. No pass occurs
-outside frame-end publication. A pass may call the Kalms rectangle routine more
-than once, once for each rectangle; it does not redraw the full screen merely to
-make one rectangle call. C2P and synchronization use the existing Kalms adapter
-and the shared blitter path, following Alone in the Dark. Vette likewise converts
-at its completed-frame boundary.
+The parent's full-route field sampler records 243 observations: 99 in original
+game execution, 36 in TickCount, 32 in frame-end C2P, 22 in SystemTask and 17 in
+SectRect. These are periodic phase samples, not instruction counts or exclusive
+service costs. They identify dispatch/polling and conversion as relevant work.
 
-The required acceptance still includes the final comparison against the parent
-commit and wider confirmation of frame-boundary behavior. Title phase pairing
-and full timing correctness remain separate unfinished gates.
+The dispatcher now skips the original CODE-segment search for known cached native
+service veneers; their original return-owner checks remain active. The isolated
+change measured 24 fields against the parent's 26, with identical benchmark
+screen, context and conversion work. The final frame-owner fix retains that
+24-field result. These are short, field-quantized emulator windows; they do not
+establish a general percentage speedup or all-scene frame rate.
 
-## Dispatcher candidate
+## Frame-end conversion
 
-The candidate makes known cached-service veneers bypass the original CODE-segment lookup. Their
-return addresses still undergo the original owner check; trap behavior and
-service implementations are unchanged. The first matched 68030 A/B window
-changes from 25 to 24 PAL fields (100 to 96 ms/update). End screen/context bytes
-and conversion work match exactly: five passes, ten rectangles, 179,328 pixels,
-zero unbatched passes. Eight altered-evidence controls are rejected.
+The renderer uses Mikael Kalms's `c2p1x1_8_c5_gen` adapter on normalized dirty
+rectangles, with the shared blitter synchronization path used by Alone in the
+Dark. Vette also defers conversion to completed frames. One publication pass may
+call the rectangle routine several times; unchanged screen areas are not
+converted merely to make one rectangle call.
 
-This is one short, field-quantized comparison. Repeatability and broader
-correctness validation remain necessary before accepting a general performance
-claim or completing item 13.
+MEASURED: the original health-meter path can draw before DrawWorld. Its leaf
+callees do not create LINK frames, so identifying the owner only from DrawWorld's
+GetGWorld misses that drawing. The port now recognizes FrameAdv's live frame by
+its caller return at CODE 2+616E, guarding the original call, entry and return
+instructions. It retains the owner, parent and return address until that
+invocation finishes. The existing DrawWorld guard also covers initial rendering.
+
+The full tested route has 57 updates and 57 conversion passes, 109 rectangles
+and 830,016 converted pixels, with no conversion outside frame end. The diagnostic
+route before the owner correction had 58 passes for the same 57 updates,
+rectangles, pixels and final screen/context bytes. Both final endpoints also
+match the pinned parent. Converted bitplanes match the chunky image at the
+benchmark endpoint and death checkpoint. Sixteen altered window, route and
+parent-identity records are rejected by the checker.
+
+This establishes batching for the measured gameplay route, not coverage of all
+levels or cutscenes. Title pairing, broader cadence and gameplay coverage remain
+in their separate open items.
 
 ## Memory and correctness
 
@@ -78,9 +94,9 @@ exception. Effective emulator settings confirm both memory sizes. D5 therefore
 requires 8 MB Fast RAM; this is the supported configuration, not a claim that
 every intermediate memory size was tested.
 
-Profiling checkpoints leave 3,166,576 bytes of Fast RAM free at the opening/title
-and 3,098,312 bytes at the first room/death; the latter largest contiguous block
-is 3,096,912 bytes. Chip RAM has 1,147,864 bytes free. These are checkpoint
+Profiling checkpoints leave 3,166,232 bytes of Fast RAM free at the opening/title
+and 3,097,968 bytes at the first room/death; the latter largest contiguous block
+is 3,096,592 bytes. Chip RAM has 1,147,864 bytes free. These are checkpoint
 snapshots, not continuous high-water measurements or full-game coverage.
 
 The current 68030 Time Manager and VBL fixtures match their pinned Macintosh
