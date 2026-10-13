@@ -291,3 +291,22 @@ export in the ignored `gameplay-save-load-keys-1` reference folder. The existing
 an equivalent pinned export. Saves restore a level checkpoint, not an exact
 position. Import staging and scripted inputs require an explicit verification
 build; ordinary release startup does not scan save hashes.
+
+### Level-three original repeatability
+
+MEASURED: `gameplay-level3-fresh-1` and `gameplay-level3-fresh-2` execute the
+authored route from fresh Macintosh startup without emulator restores. All 181
+gameplay checkpoints match in full context, six actor records, RNG, counters,
+indexed pixels and palette. Both consume the same 2770 keyboard records and
+reach level 4, room 1, at step 2767. Story selectors 7, 4, 9, 100 and 10 each
+have ordered entry and return records. This establishes scene completion on
+the original, not paired cutscene rendering on Amiga.
+
+`tools/check_gameplay_level2_reference.py --level 3 FIRST SECOND` checks the
+complete route, natural transitions and scene completion. Its companion
+rejection test accepts the same option and rejects 25 corruptions or invalid
+run pairs, including a missing scene return and altered late-level evidence.
+`manifest/gameplay-level3-reference.sha256` pins the first run's captures,
+actions and log. `tools/replay_gameplay_route.py --through-level 3` replays
+the authored route for further original repetitions. Native level-three
+validation remains open; the earlier level-one RNG mismatches remain failures.

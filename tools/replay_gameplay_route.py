@@ -1,4 +1,4 @@
-"""Replay authored routes through level one or two in a fresh original run."""
+"""Replay authored routes through levels one through three in a fresh original run."""
 import argparse
 import hashlib
 from pathlib import Path
@@ -70,7 +70,7 @@ def compare(run, reference, sequence, *, reference_sequence=None):
 
 
 def verify_reference(reference, level=1):
-    if level not in (1, 2):
+    if level not in (1, 2, 3):
         raise ValueError('ROUTE / UNSUPPORTED REFERENCE LEVEL')
     for name, expected in pins(ROOT / f'manifest/gameplay-level{level}-reference.sha256').items():
         with (reference / name).open('rb') as stream:
@@ -80,13 +80,13 @@ def verify_reference(reference, level=1):
 
 
 def replay(run, schedule, reference=None, through_level=1):
-    if through_level not in (1, 2):
+    if through_level not in (1, 2, 3):
         raise ValueError('ROUTE / UNSUPPORTED LAST LEVEL')
     rows = inputs(schedule)
     transitions = {len(rows): 2}
-    if through_level == 2:
-        rows += inputs(ROOT / 'tools/gameplay_routes/level2.tsv')
-        transitions[len(rows)] = 3
+    for target in range(2, through_level + 1):
+        rows += inputs(ROOT / f'tools/gameplay_routes/level{target}.tsv')
+        transitions[len(rows)] = target + 1
     if reference:
         verify_reference(reference, through_level)
     initial = wait(run, 0, 600)
@@ -113,13 +113,13 @@ def replay(run, schedule, reference=None, through_level=1):
             compare(run, reference, sequence)
         print(f'ROUTE CHECKPOINT {sequence}/{len(rows)} '
               f'level={current["level"]} step={current["step"]}', flush=True)
-    if through_level == 2:
+    if through_level >= 2:
         sequence = len(rows) + 1
         temporary = run / 'route-command.tmp'
         temporary.write_text(f'{sequence} finish\n')
         temporary.replace(run / 'route-command.txt')
         final = wait(run, sequence, 30)
-        if final.get('reason') != 'discovery-finished' or final.get('level') != '3':
+        if final.get('reason') != 'discovery-finished' or final.get('level') != str(through_level + 1):
             raise ValueError('ROUTE / DISCOVERY FINISH NOT REACHED')
     print(f'ROUTE INPUT REPLAY COMPLETE checkpoints={len(rows)}', flush=True)
     # run_reference.py independently requires normal emulator exit, the unique
@@ -132,6 +132,6 @@ if __name__ == '__main__':
     parser.add_argument('--schedule', type=Path,
                         default=ROOT / 'tools/gameplay_routes/level1.tsv')
     parser.add_argument('--reference', type=Path)
-    parser.add_argument('--through-level', type=int, choices=(1, 2), default=1)
+    parser.add_argument('--through-level', type=int, choices=(1, 2, 3), default=1)
     args = parser.parse_args()
     replay(args.run, args.schedule, args.reference, args.through_level)
