@@ -75,7 +75,8 @@ bool callback(uint32_t& code,uint32_t& context){
     if(callbackRead==callbackWrite)return false;
     auto c=callbacks[(callbackRead++)&31];code=c.code;context=c.context;return true;
 }
-bool dispatch(uint32_t selector,uint32_t argument,uint32_t& result){
+bool dispatch(uint32_t selector,uint32_t argument,uint32_t& result,bool& retry){
+    retry=false;
     if(!sync())return false;result=0;engine.selected=-1;
     if(selector!=21 && !engine.voices.initialized)return fail("AUDIO / NOT INITIALIZED");
     unsigned extent=selector==9 || selector==12 ? 10 : selector==21 ? 6 : selector==27 ? 8 : selector==17 || selector==18 || selector==20 ? 38 : 0;
@@ -117,13 +118,18 @@ bool dispatch(uint32_t selector,uint32_t argument,uint32_t& result){
     case 16:engine.clock=argument;break;
     case 17:{
         if(suspended)return fail("AUDIO / EFFECT DURING SUSPEND");
+        // MIDI Synth 3.45 +37AC completes the old effect before reading
+        // the replacement descriptor. Its callback may change that descriptor.
+        // Return through the existing user-mode callback trampoline, then
+        // retry this call with the original stack arguments still in place.
+        if(!effectStop(true))return false;
+        if(callbackRead!=callbackWrite){retry=true;return true;}
         uint32_t source=longword(p),size=longword(p+4),rate=longword(p+8);
         if(!valid(source,size))return fail("AUDIO / EFFECT SOURCE EXTENT");
         if(longword(p+12) || longword(p+16))return fail("AUDIO / UNMEASURED EFFECT LOOP");
         PaulaSample::Layout layout;uint16_t period=0;uint32_t ticks=0;
         why=SoundEffect::describe((const uint8_t*)source,size,rate,0,0,layout,period,ticks,3546895);
         if(why)return fail(why);
-        if(!effectStop(true))return false;
         why=engine.effectOn((const uint8_t*)source,size,rate,word(p+24));if(why)return fail(why);
         int channel=engine.voices.allocatePaula();if(channel<0)return fail("AUDIO / EFFECT PAULA ALLOCATION");
         PaulaAudio::stop(channel);detach(channel);PaulaSample::convert(layout,PaulaAudio::buffer(channel));

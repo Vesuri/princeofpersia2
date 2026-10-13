@@ -156,3 +156,37 @@ Vette's Bogas wrappers and Alone in the Dark's Halestorm dispatch were inspected
 first; neither supplies this game's selector-10/11 contract. Existing shared Paula
 helpers remain in use. Suspending active voices remains a named stop until its
 original behaviour and Paula rendering have been measured.
+
+
+## Effect replacement callbacks
+
+MEASURED: MIDI Synth 3.45 at driver offset +37AC completes an old effect before
+reading its replacement descriptor. An original completion callback can change
+that descriptor. The native dispatch now stops the old effect, runs its callback
+through the existing user-mode trampoline, and retries the same call before
+reading the replacement parameters. Vette and Alone in the Dark were inspected;
+neither provides this descriptor/callback contract. Shared Paula helpers and the
+existing callback trampoline remain in use.
+
+Two independent original fixtures (`audio-callback-order-1` and
+`audio-callback-order-2`) replace an authored effect with ID 5. The old callback
+changes the replacement to ID 7. The original then reports 7 active and 5 stopped,
+with one callback. Native `.run-xisZJy` matches both originals: seven completed
+calls including initialization, one callback, two Paula starts, preserved
+registers and restored hardware. The earlier native control `.run-jxqOlL` reads
+ID 5 before the callback and is rejected. All 18 evidence-corruption controls
+pass. The fixture allocates sample memory before resolving its resource pointer,
+so heap compaction cannot invalidate that pointer.
+
+The original fixture requires `POP2_AUDIO=fixture POP2_AUDIO_CALLBACK_ORDER=1`;
+the native fixture requires `VERIFY=1`, `POP2_AUDIO_PROBE` and
+`POP2_AUDIO_ORDER_PROBE`. It is excluded from ordinary release builds. Recheck
+the completed pair and rejection controls with:
+
+```sh
+python3 tools/test_audio_callback_order.py amiga/.run-xisZJy \
+  ref/mame/runs/audio-callback-order-1
+```
+
+This establishes replacement callback ordering. It does not resolve the remaining
+ambient-audio timing difference observed during level-one gameplay.

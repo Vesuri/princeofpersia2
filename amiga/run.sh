@@ -115,6 +115,8 @@ if [ "${CORE:-0}" = 1 ]; then
     else
       python3 ../tools/check_integration_result.py "$RUN" "$INTEGRATION_REFERENCE" "$INTEGRATION_TITLE_REFERENCE" --setup "$AMIGA_SETUP"
     fi
+  elif [ "${AUDIO_ORDER_PROBE:-0}" = 1 ]; then
+    python3 ../tools/check_audio_callback_order.py "$RUN" "$AUDIO_ORDER_REFERENCE"
   elif [ "${AUDIO_PROBE:-0}" = 1 ]; then
     python3 ../tools/check_audio_result.py "$RUN"
   elif [ "${AUDIO_STARTUP:-0}" = 1 ]; then

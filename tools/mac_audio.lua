@@ -5,6 +5,7 @@ local dbg=manager.machine.debugger
 local run=assert(os.getenv('POP2_REFERENCE_RUN'))
 local install,probe,driver,death,deathProbe
 local fixture,fixtureReturn,fixtureProbe,fixtureStack,fixtureIndex,fixtureCases
+local callbackOrder=os.getenv('POP2_AUDIO_CALLBACK_ORDER')=='1'
 local function dump(path,address,size)
  local f=assert(io.open(run..'/'..path,'wb'))
  for i=0,size-1 do f:write(string.char(mem:readv_u8(address+i)))end
@@ -29,7 +30,7 @@ function M.map(seg,base,guard,metadata)
 end
 local function fixtureCall()
  local row=fixtureCases[fixtureIndex];assert(row,'AUDIO FIXTURE CASE')
- local args=fixtureStack+128
+ local args=row.args or fixtureStack+128
  for i,v in ipairs(row)do if i>1 then mem:writev_u16(args+2*(i-2),v)end end
  mem:writev_u32(fixtureStack,fixtureReturn);mem:writev_u32(fixtureStack+4,row[1]);mem:writev_u32(fixtureStack+8,args)
  dump('audio-fixture-before-'..fixtureIndex..'.bin',driver+0x4600,0x32f0)
@@ -40,7 +41,22 @@ end
 function M.startFixture(checkpoint)
  assert(driver and not fixture,'AUDIO FIXTURE START')
  fixture=true;fixtureReturn=checkpoint;fixtureStack=(cpu.state.SP.value&0xffffff)-4096;fixtureIndex=1
- fixtureCases={{6}}
+ if callbackOrder then
+  -- Authored fixture: replacing an active effect must run its callback before
+  -- reading the replacement descriptor. The callback changes that descriptor.
+  local old,new,query,pcm,callback=fixtureStack+128,fixtureStack+192,fixtureStack+256,fixtureStack+384,fixtureStack+512
+  for i=0,63 do mem:writev_u8(old+i,0);mem:writev_u8(new+i,0);mem:writev_u8(query+i,0);mem:writev_u8(pcm+i,0x80)end
+  for _,packet in ipairs({old,new})do
+   mem:writev_u32(packet,pcm);mem:writev_u32(packet+4,64);mem:writev_u32(packet+8,0x2b110000)
+  end
+  mem:writev_u16(old+24,3);mem:writev_u32(old+30,callback);mem:writev_u32(old+34,new)
+  mem:writev_u16(new+24,5);mem:writev_u16(query+24,7)
+  -- move.l 4(sp),a0; move.w #7,24(a0); addq.l #1,40(a0); rts.
+  local words={0x206f,0x0004,0x317c,0x0007,0x0018,0x52a8,0x0028,0x4e75}
+  for i,v in ipairs(words)do mem:writev_u16(callback+2*(i-1),v)end
+  fixtureCases={{22},{17,args=old},{17,args=new},{20,args=query},{20,args=query},{22}}
+ else
+  fixtureCases={{6}}
  for note=60,65 do fixtureCases[#fixtureCases+1]={9,0,note,20000,80,0}end
  fixtureCases[#fixtureCases+1]={12,0,62,0,0,0}
  fixtureCases[#fixtureCases+1]={9,0,66,20000,80,0}
@@ -52,6 +68,7 @@ function M.startFixture(checkpoint)
  for i=1,3 do fixtureCases[#fixtureCases+1]={256}end
  fixtureCases[#fixtureCases+1]={12,0,60,0,0,0}
  for i=1,8 do fixtureCases[#fixtureCases+1]={256}end
+ end
  -- Allocation fixture only: mask interrupts so sample completion cannot
  -- turn an occupied voice into a free one between adjacent calls.
  cpu.state.SR.value=cpu.state.SR.value|0x700
@@ -74,9 +91,22 @@ function M.poll()
   local row=fixtureCases[fixtureIndex]
   print(string.format('AUDIO_FIXTURE_RESULT index=%d selector=%d note=%d d0=%08X',fixtureIndex,row[1],row[3] or 0,cpu.state.D0.value))
   dump('audio-fixture-after-'..fixtureIndex..'.bin',driver+0x4600,0x32f0)
+  if callbackOrder then
+   local new,query=fixtureStack+192,fixtureStack+256
+   if fixtureIndex>=3 then
+    assert(mem:readv_u16(new+24)==7 and u(new+40)==1,'AUDIO CALLBACK ORDER MUTATION')
+   end
+   if fixtureIndex==4 then
+    assert(cpu.state.D0.value==0,'AUDIO CALLBACK ORDER NEW ID NOT PLAYING')
+    mem:writev_u16(query+24,5)
+   elseif fixtureIndex==5 then
+    assert(cpu.state.D0.value==1,'AUDIO CALLBACK ORDER OLD ID STILL PLAYING')
+   end
+   print(string.format('AUDIO_CALLBACK_ORDER index=%d id=%d callbacks=%d result=%08X',fixtureIndex,mem:readv_u16(new+24),u(new+40),cpu.state.D0.value))
+  end
   fixtureIndex=fixtureIndex+1
   if fixtureIndex>#fixtureCases then
-   cpu.debug:bpclear(fixtureProbe);print('AUDIO_FIXTURE_COMPLETE calls='..#fixtureCases)
+   cpu.debug:bpclear(fixtureProbe);print((callbackOrder and 'AUDIO_CALLBACK_ORDER_COMPLETE calls=' or 'AUDIO_FIXTURE_COMPLETE calls=')..#fixtureCases)
    manager.machine:exit();dbg.execution_state='run'
   else fixtureCall()end
   return true

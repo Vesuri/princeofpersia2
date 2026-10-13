@@ -789,7 +789,12 @@ pop2_audio_invoke:
 	.globl pop2_audio_test_callback
 pop2_audio_test_callback:
 	move.l 4(sp),a0
+	.ifdef POP2_AUDIO_ORDER_PROBE
+	move.w #7,24(a0)
+	addq.l #1,40(a0)
+	.else
 	addq.l #1,(a0)
+	.endif
 	addq.l #1,g_audioCallbacks
 	move.l #0x12345678,d0
 	move.l #0x76543210,d1

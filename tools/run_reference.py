@@ -82,7 +82,7 @@ def run(name=None, control=None):
             if log.count(marker)!=1:raise ValueError('REFERENCE / DISPOSE FIXTURE RESULT')
     if env.get('POP2_AUDIO'):
         log=(destination/'session.log').read_text()
-        marker='AUDIO_FIXTURE_COMPLETE calls=27' if env['POP2_AUDIO']=='fixture' else 'AUDIO_CUTSCENE_COMPLETE' if env['POP2_AUDIO']=='cutscene' else 'AUDIO_DEMO_COMPLETE' if env.get('POP2_DEMO_ROUTE') else 'AUDIO_ROUTE_COMPLETE' if env.get('POP2_DISPLAY_ROUTE') else 'AUDIO_OBSERVER_COMPLETE'
+        marker='AUDIO_CALLBACK_ORDER_COMPLETE calls=6' if env.get('POP2_AUDIO_CALLBACK_ORDER')=='1' else 'AUDIO_FIXTURE_COMPLETE calls=27' if env['POP2_AUDIO']=='fixture' else 'AUDIO_CUTSCENE_COMPLETE' if env['POP2_AUDIO']=='cutscene' else 'AUDIO_DEMO_COMPLETE' if env.get('POP2_DEMO_ROUTE') else 'AUDIO_ROUTE_COMPLETE' if env.get('POP2_DISPLAY_ROUTE') else 'AUDIO_OBSERVER_COMPLETE'
         if log.count(marker+'\n')!=1 or 'FAIL REFERENCE' in log:
             raise ValueError('REFERENCE / AUDIO COMPLETION MISSING')
         from driver_image import decrypt, expand

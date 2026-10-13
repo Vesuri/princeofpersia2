@@ -618,6 +618,12 @@ void execute() {
 #endif
 #ifdef POP2_AUDIO_PROBE
     NativeAudio::replay(true);
+#ifdef POP2_AUDIO_ORDER_PROBE
+    // Allocate before resolving Jnth: newPtr may relocate unlocked resources.
+    uint8_t* pcm=heap.newPtr(64,true);
+    if(!pcm){fail("AUDIO / CALLBACK ORDER MEMORY");didStop=true;}
+    if(pcm)for(unsigned i=0;i<64;++i)pcm[i]=0x80;
+#endif
 #ifdef POP2_AUDIO_BAD_RESOURCE
     g_audioLookupType=0x4d445256;
 #endif
@@ -625,6 +631,34 @@ void execute() {
 #ifdef POP2_AUDIO_BAD_THUNK
     if(!didStop){((uint8_t*)g_audioEntry)[1]^=1;flushCode();}
 #endif
+#ifdef POP2_AUDIO_ORDER_PROBE
+    // Authored replacement-effect fixture, paired with mac_audio.lua.
+    uint8_t* replacement=audioPacket+64;
+    const uint32_t selectors[]={21,22,17,17,20,20,22};g_audioCalls=7;
+    for(unsigned index=0;index<7 && !didStop;++index){
+        if(index==0){sw(audioPacket,5);sw(audioPacket+2,5);sw(audioPacket+4,1);}
+        if(index==2){
+            for(unsigned i=0;i<128;++i)audioPacket[i]=0;
+            for(unsigned n=0;n<2;++n){uint8_t* packet=audioPacket+n*64;
+                sl(packet,(uint32_t)pcm);sl(packet+4,64);sl(packet+8,0x2b110000);}
+            sw(audioPacket+24,3);sl(audioPacket+30,(uint32_t)pop2_audio_test_callback);
+            sl(audioPacket+34,(uint32_t)replacement);sw(replacement+24,5);
+        }
+        if(index==4 || index==5)sw(audioPacket+24,index==4?7:5);
+        g_audioSelector=selectors[index];g_audioArgument=(uint32_t)(index==3?replacement:audioPacket);
+        pop2_call_mac((void*)pop2_audio_invoke,a5,stack+65536);
+        bool preserved=true;for(unsigned reg=0;reg<13;++reg)if(g_audioBefore[reg]!=g_audioAfter[reg])preserved=false;
+        if(!didStop){if(preserved)++g_audioABI;else {fail("AUDIO / ABI REGISTERS");didStop=true;}}
+        auto* row=g_audioRows[index];row[0]=g_audioResult;row[1]=NativeAudio::state().effectID;
+        row[2]=w(replacement+24);row[3]=l(replacement+40);row[4]=g_audioCallbacks;row[5]=g_audioABI;
+        if(!didStop)++g_audioDone;
+    }
+    if(!didStop){
+        bool matched=g_audioDone==7 && g_audioCallbacks==1 && l(replacement+40)==1 && w(replacement+24)==7
+            && g_audioRows[4][0]==0 && g_audioRows[5][0]==1;
+        fail(matched?"AUDIO / CALLBACK ORDER COMPLETE":"AUDIO / CALLBACK ORDER MISMATCH");didStop=true;
+    }
+#else
     const uint32_t audioCount=l(audioReplay+4);g_audioCalls=audioCount;
     for(unsigned index=0;index<audioCount && !didStop;++index){
         const uint8_t* r=audioReplay+12+index*64;
@@ -655,6 +689,7 @@ void execute() {
         if(!didStop)++g_audioDone;
     }
     if(!didStop){fail("AUDIO / FIXTURE COMPLETE");didStop=true;}
+#endif
 #endif
 #ifdef POP2_RESOURCE_PROBE
     if(!didStop)pop2_call_mac((void*)pop2_resource_fixture,a5,stack+65536);
@@ -964,7 +999,9 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
 #ifdef POP2_GAMEPLAY_RESTART_PROBE
         g_gameplayAudioSelector=l(usp+4);
 #endif
-        if(!NativeAudio::dispatch(l(usp+4),l(usp+8),regs[0]))return stop(frame,usp,NativeAudio::error(),trap,seg,off);
+        bool retry=false;
+        if(!NativeAudio::dispatch(l(usp+4),l(usp+8),regs[0],retry))return stop(frame,usp,NativeAudio::error(),trap,seg,off);
+        if(retry){sl(frame+2,pc);return (uint32_t)usp;}
 #ifdef POP2_GAMEPLAY_RESTART_PROBE
         if(g_gameplayAudioSelector==10){++g_gameplaySuspendCalls;g_gameplaySuspendClock=NativeAudio::state().clock;}
         if(g_gameplayAudioSelector==11){++g_gameplayResumeCalls;g_gameplayResumeClock=NativeAudio::state().clock;}

@@ -9,7 +9,8 @@ void take();
 void restore();
 bool sync();
 bool servicePending();
-bool dispatch(uint32_t selector,uint32_t argument,uint32_t& result);
+// retry resumes the same caller after queued original callbacks have run.
+bool dispatch(uint32_t selector,uint32_t argument,uint32_t& result,bool& retry);
 bool callback(uint32_t& code,uint32_t& context);
 const char* error();
 const HalestormEngine& state();
