@@ -426,8 +426,10 @@ segment,offset,name,evidence,notes
 6,0x1E6A,DoAdvance_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 6,0x1EF6,DoEngarde_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 6,0x2156,DoKidEngarde_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
+6,0x22F2,CheckKidSwordTurnInput,DERIVED,Backward direction with Shift action latch selects sword turn and changes opponent side; original discovery confirms both turn directions
 6,0x24AE,OppToFight_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 6,0x2586,OnAlert_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
+6,0x2638,SelectSwordTurnSequence,DERIVED,Selects original turn animation by character type; called by backward-plus-Shift input branch at CODE 6+2332
 6,0x281E,DoStrike_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 6,0x29EC,CrushChar_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 6,0x2AB8,CrushOppInfo_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point

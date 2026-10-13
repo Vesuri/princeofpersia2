@@ -45,7 +45,8 @@ and bounded captures. Original bytes, saved state and captures remain ignored.
 
 | Entry | Required positive endpoint | Paired coverage |
 |---|---|---|
-| Levels 1–14, individually | Meaningful gameplay route and original level-exit decision | Incomplete |
+| Level 1 | Meaningful gameplay route and original level-exit decision | Original fresh-run repeats pass; native pair pending |
+| Levels 2–14, individually | Meaningful gameplay route and original level-exit decision | Incomplete |
 | Main cutscenes, individually | Original natural return and paired visible/state checkpoints | Incomplete |
 | Timed story scenes, individually | Original natural return for each selected scene | Incomplete |
 | Save/load | Save through session command, move, load, restored game state | Two original/native pairs; 22 rejection controls |
@@ -107,7 +108,9 @@ frame count (1–600), and comma-separated keys, for example `1 30 left`.
 Use an atomic rename when replacing the command file. `none` releases all keys.
 Available keys include arrows, Shift, Control, Space, Return, Escape, Command and R.
 Control selects the original sword action; Shift is the distinct careful-movement
-and grabbing action. The controller uses ordinary ADB input and logs the actual
+and grabbing action. While armed, Shift plus the backward direction turns the
+Prince without sheathing (CODE 6+22F2 input branch; DERIVED and confirmed by
+original captures in both directions). The controller uses ordinary ADB input and logs the actual
 KeyMap consumed by the original, rather than assuming each requested key was read.
 
 The headless debugger resumes after its callback returns. While awaiting a host
@@ -162,9 +165,40 @@ CODE 21 `osGetTime` (0x6A68/0x6A70; DERIVED). Context, indexed screen and palett
 continued to match through approach checkpoint 45. Thus the 30-step restore test
 is bounded evidence, not a claim of indefinite full-memory replay equivalence.
 
-MEASURED: the same discovery session crossed the first rooftop gap with 12
-Left+Up steps from step 384, and the next gap with 3 Left then 14 Left+Up steps
-from step 412. Captures at steps 396 and 429 show the Prince alive on the far
-rooftops. A subsequent pursuer was defeated with an 8-step Control input from
-step 467. The following room's combat remains unresolved; these are route
-fragments, not level completion or native acceptance.
+## Level 1 original completion
+
+MEASURED: `gameplay-level1-complete-1` and `gameplay-level1-complete-2` each
+execute a fresh fixed-seed route from the first room through combat, rooftop
+jumps, the raised-roof climb, controlled descent, docks and ship grab. Each
+observes one entry and natural return of `PlayNIS` selector 9, then the completed
+first frame of level 2, room 2. Both emulators exit normally and their reference
+launchers pass. No emulator restores or gameplay-state edits occur in these
+fresh runs; the existing owner-authorized D6 protection seam remains available.
+
+The authored schedule in `tools/gameplay_routes/level1.tsv` contains 95 keyboard
+actions. The initial checkpoint and all 95 action endpoints match between the
+two fresh runs: full 0x2200-byte context, six 62-byte actor records, RNG,
+level/room/step counters, indexed screen and palette. The final first frame is
+at completed gameplay step 1001. All 1002 consumed KeyMap records also match.
+Full A5 dumps are retained and pinned for the
+canonical first reference, but full-A5 repeatability is not claimed because
+platform timer bookkeeping can differ. These runs prove original level-1
+completion and repeatability, not an Amiga pair or cutscene pixel coverage.
+
+`manifest/gameplay-level1-reference.sha256` pins the canonical first run's
+captures, input actions and completion log by name and hash only. Run the
+original controller as above with a fresh name, then feed it from another shell:
+
+```sh
+python3 tools/replay_gameplay_route.py ref/mame/runs/NAME \
+  --reference ref/mame/runs/gameplay-level1-complete-1
+```
+
+The replay verifies canonical reference pins before comparison, uses ordinary
+ADB keys, requires every intermediate completed-step interval, and rejects an
+unreached next-level endpoint. The reference launcher separately requires normal
+exit and a unique positive completion marker. `python3 tools/test_gameplay_route.py`
+checks 14 evidence-corruption/extent/pin rejections, six malformed schedules and
+an unreached endpoint, with passing controls before corruption checks. The
+completed reference disk images are compressed with SHA-256 round-trip checks;
+all original captures and emulator state remain ignored.
