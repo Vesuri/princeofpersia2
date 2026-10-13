@@ -94,7 +94,7 @@ def run(name=None, control=None):
     if env.get('POP2_GAMEPLAY'):
         log=(destination/'session.log').read_text()
         endpoint='first_frames=2' if env['POP2_GAMEPLAY']=='restart' else 'loaded_frames=1'
-        marker='GAMEPLAY_ROUTE_COMPLETE level=1 next=2' if env['POP2_GAMEPLAY']=='route' else 'GAMEPLAY_REFERENCE_COMPLETE route='+env['POP2_GAMEPLAY']+' '+endpoint
+        marker='GAMEPLAY_DISCOVERY_COMPLETE' if env.get('POP2_ROUTE_DISCOVERY')=='1' and env['POP2_GAMEPLAY']=='route' else 'GAMEPLAY_ROUTE_COMPLETE level=1 next=2' if env['POP2_GAMEPLAY']=='route' else 'GAMEPLAY_REFERENCE_COMPLETE route='+env['POP2_GAMEPLAY']+' '+endpoint
         if log.count(marker+'\n')!=1 or 'FAIL REFERENCE' in log:
             raise ValueError('REFERENCE / GAMEPLAY COMPLETION MISSING')
     if env.get('POP2_TITLE_STATE'):

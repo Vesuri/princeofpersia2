@@ -46,7 +46,8 @@ and bounded captures. Original bytes, saved state and captures remain ignored.
 | Entry | Required positive endpoint | Paired coverage |
 |---|---|---|
 | Level 1 | Meaningful gameplay route and original level-exit decision | Original fresh-run repeats pass; native pair pending |
-| Levels 2–14, individually | Meaningful gameplay route and original level-exit decision | Incomplete |
+| Level 2 | Meaningful gameplay route and original level-exit decision | Original fresh-run repeats pass; native pair pending |
+| Levels 3–14, individually | Meaningful gameplay route and original level-exit decision | Incomplete |
 | Main cutscenes, individually | Original natural return and paired visible/state checkpoints | Incomplete |
 | Timed story scenes, individually | Original natural return for each selected scene | Incomplete |
 | Save/load | Save through session command, move, load, restored game state | Two original/native pairs; 22 rejection controls |
@@ -202,3 +203,62 @@ checks 14 evidence-corruption/extent/pin rejections, six malformed schedules and
 an unreached endpoint, with passing controls before corruption checks. The
 completed reference disk images are compressed with SHA-256 round-trip checks;
 all original captures and emulator state remain ignored.
+
+## Continuing discovery sessions
+
+`POP2_ROUTE_DISCOVERY=1` keeps the original route controller open across level
+boundaries. Its separate `N finish` command terminates a discovery session with
+`GAMEPLAY_DISCOVERY_COMPLETE`; this marker is not a level-completion gate.
+Existing `N save SLOT` and `N load SLOT` commands preserve the current level in
+the controller as well as the captured CPU/game state. The ordinary level-one
+reference mode still exits only after its original next-level decision.
+
+MEASURED: `gameplay-level2-discovery-1` reproduces all 96 pinned level-one
+checkpoints before saving the level-two shipwreck entry. Restoring that save
+reproduces full captured A5/context, screen indices and palette exactly; two
+30-step continuations also match all four captures. This checkpoint supports
+beach and cave-entrance retries; level-two original completion is now repeated
+as described below. Its native pair remains unverified.
+
+MEASURED: the continuing discovery run completes the level-two stone puzzle
+and reaches level 3, room 1, at game step 1360 (`route-144`). It uses only
+original gameplay inputs and the existing D6 protection seam; checkpoint
+restores support retries. `tools/gameplay_routes/level2.tsv` records the
+successful 19-action path. The level-three first frame is saved as
+`level3-start` in that still-open session. This is discovery evidence, separate
+from the fresh repeats below. The native pair remains required for level-two
+acceptance.
+
+## Level 2 original completion
+
+MEASURED: `gameplay-level2-fresh-1` and `gameplay-level2-fresh-2` each replay
+level one from a fresh boot, then the 19 authored level-two actions, without
+emulator saves or restores. Both reach the original level-three first frame
+at step 1360, room 1, and exit normally through the discovery finish command.
+All 96 level-one checkpoints still match the pinned reference. The 20 level-two
+entry/action checkpoints match between fresh runs: complete 0x2200-byte context,
+six actor records, RNG, level/room/step counters, screen indices and palette.
+All 1362 consumed key maps match. Step 1001 is read twice across the level
+boundary; the input evidence preserves both reads.
+
+`manifest/gameplay-level2-reference.sha256` pins the first fresh run's captures,
+actions and completion log. Full A5 captures are retained, but only the stated
+fields are compared for repeatability. Reproduce the original route with a
+fresh discovery run, then feed it from another shell:
+
+```sh
+POP2_GAMEPLAY=route POP2_DISPLAY_ROUTE=1 POP2_ROUTE_DISCOVERY=1 \
+  python3 tools/run_reference.py --name NAME
+python3 tools/replay_gameplay_route.py ref/mame/runs/NAME --through-level 2 \
+  --reference ref/mame/runs/gameplay-level2-fresh-1
+```
+
+`tools/check_gameplay_level2_reference.py FIRST SECOND` requires both fresh
+routes, their authored actions, completed frame intervals, actual input reads,
+natural level transitions and paired state/pixels. The companion
+`tools/test_gameplay_level2_reference.py FIRST SECOND` passes 17 rejection
+controls for completion, restores, transitions, input, capture state, pixels,
+truncated evidence and reuse of a single run. The route-replayer unit tests
+also reject missing level transitions and an unreached finish. Completed disk
+images are compressed with verified round trips. Saves and captures stay ignored.
+This proves original level-two repeatability, not its Amiga pair.

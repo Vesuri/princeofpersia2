@@ -43,6 +43,27 @@ class RouteEvidenceTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'NEXT LEVEL NOT REACHED'):
                     replay(run, schedule)
 
+    def test_two_level_replay(self):
+        with tempfile.TemporaryDirectory(dir=ROOT / 'tmp') as directory:
+            run = Path(directory)
+            states = [dict(sequence='0', level='1', reason='first-frame', frames='0'),
+                      dict(sequence='1', level='2', reason='next-level', frames='8'),
+                      dict(sequence='2', level='3', reason='next-level', frames='14'),
+                      dict(sequence='3', level='3', reason='discovery-finished', frames='14')]
+            for state in states:
+                state['step'] = state['frames']
+            for bad_index in (None, 1, 2, 3):
+                replies = [row.copy() for row in states]
+                if bad_index is not None:
+                    replies[bad_index]['reason'] = 'completed-frames'
+                with patch('replay_gameplay_route.inputs', side_effect=[[(8, 'left')], [(6, 'right')]]), patch('replay_gameplay_route.wait', side_effect=replies), patch('replay_gameplay_route.status', side_effect=states[:2]):
+                    if bad_index is None:
+                        replay(run, run / 'authored.tsv', through_level=2)
+                        self.assertEqual((run / 'route-command.txt').read_text(), '3 finish\n')
+                    else:
+                        with self.subTest(endpoint=bad_index), self.assertRaises(ValueError):
+                            replay(run, run / 'authored.tsv', through_level=2)
+
     def test_capture_rejections(self):
         with tempfile.TemporaryDirectory(dir=ROOT / 'tmp') as directory:
             reference = Path(directory) / 'reference'

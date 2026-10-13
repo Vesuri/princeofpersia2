@@ -1,0 +1,21 @@
+# Authored discovery route from the original level-two first frame.
+# Two fresh original repeats pass; native pairing remains required.
+30	none
+24	left
+90	none
+16	left
+4	left,shift
+8	left,up
+8	none
+12	right,shift
+3	none
+12	right,shift
+3	none
+12	right,shift
+20	left
+10	right
+12	down
+6	right,down
+30	left
+24	up
+60	left

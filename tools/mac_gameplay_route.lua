@@ -9,7 +9,8 @@ local dbg=manager.machine.debugger
 local run=assert(os.getenv('POP2_REFERENCE_RUN'))
 local points={};local rooms=0;local frames=0;local remaining=0;local sequence=0
 local waiting=false;local complete=false;local currentNIS={}
-local checkpoints={};local heldKeys='none'
+local checkpoints={};local heldKeys='none';local lastLevel=0
+local discovery=os.getenv('POP2_ROUTE_DISCOVERY')=='1'
 local names={left='Left Arrow',right='Right Arrow',up='Up Arrow',down='Down Arrow',shift='Shift',control='Control',space='Space',enter='Return',escape='Esc',command=mac.CMD,r='r'}
 local function release()for _,name in pairs(names)do mac.key_up(name)end end
 local function dump(path,address,size)
@@ -56,6 +57,15 @@ end
 local function command()
  local f=io.open(run..'/route-command.txt','r');if not f then return end
  local text=f:read('a');f:close()
+ local finishId=text:match('^(%d+) finish%s*$')
+ if finishId then
+  finishId=tonumber(finishId)
+  if finishId<=sequence then return end
+  assert(discovery and finishId==sequence+1 and #currentNIS==0,'GAMEPLAY DISCOVERY FINISH CONTEXT')
+  sequence=finishId;release();capture('discovery-finished');complete=true;waiting=false
+  local log=assert(io.open(run..'/route-actions.txt','a'));log:write(text);log:close()
+  print('GAMEPLAY_DISCOVERY_COMPLETE');manager.machine:exit();dbg.execution_state='run';return
+ end
  local stateId,operation,slot=text:match('^(%d+) (save) ([%w%-]+)%s*$')
  if not stateId then stateId,operation,slot=text:match('^(%d+) (load) ([%w%-]+)%s*$')end
  if stateId then
@@ -65,7 +75,7 @@ local function command()
   local path=run..'/states/maciici/'..slot..'.sta'
   if operation=='save' then
    local existing=io.open(path,'rb');if existing then existing:close();error('GAMEPLAY STATE ALREADY EXISTS')end
-   local saved={signature=signature(),frames=frames,rooms=rooms,keys=heldKeys}
+   local saved={signature=signature(),frames=frames,rooms=rooms,keys=heldKeys,lastLevel=lastLevel}
    dbg:command('statesave '..slot)
    local state=assert(io.open(path,'rb'),'GAMEPLAY STATE FILE MISSING')
    assert(state:seek('end')>1000,'GAMEPLAY STATE FILE EXTENT');state:close()
@@ -75,7 +85,7 @@ local function command()
    local saved=assert(checkpoints[slot],'GAMEPLAY STATE UNKNOWN CHECKPOINT')
    dbg:command('stateload '..slot)
    assert(signature()==saved.signature,'GAMEPLAY STATE RESTORE MISMATCH')
-   frames=saved.frames;rooms=saved.rooms;remaining=0;apply_keys(saved.keys)
+   frames=saved.frames;rooms=saved.rooms;lastLevel=saved.lastLevel;remaining=0;apply_keys(saved.keys)
   end
   sequence=stateId
   local log=assert(io.open(run..'/route-actions.txt','a'));log:write(text);log:close()
@@ -127,12 +137,14 @@ function M.poll()
  elseif label=='first' and cpu.state.D0.value&65535==0xfffe then
   rooms=rooms+1
   local level=mem:readv_u16(a5-0x4fd2)
-  if level==2 then
+  if level==2 and not discovery then
    release();capture('next-level');complete=true
    print('GAMEPLAY_ROUTE_COMPLETE level=1 next=2');manager.machine:exit();dbg.execution_state='run';return true
   end
-  assert(level==1,'GAMEPLAY ROUTE UNEXPECTED LEVEL '..level)
-  capture('first-frame');waiting=true;await_command();return true
+  assert(level==1 or (discovery and level>=1 and level<=14),'GAMEPLAY ROUTE UNEXPECTED LEVEL '..level)
+  local changed=lastLevel~=0 and level~=lastLevel;lastLevel=level
+  if changed then release();remaining=0 end
+  capture(changed and 'next-level' or 'first-frame');waiting=true;await_command();return true
  elseif label=='frame' then
   frames=frames+1
   if cpu.state.D0.value&65535~=0xfffe then

@@ -998,6 +998,7 @@ segment,offset,name,evidence,notes
 17,0x6E82,SetScriptRect_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 17,0x6EE6,SetStatTextCtrl_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 17,0x7090,PaintRLETB_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
+18,0x0050,DsrtCheckExit,DERIVED,Original MacsBug name at 0x016E; checks the six stone states before triggering the exit
 18,0x016E,DsrtCheckExit_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 18,0x042A,IsMarkStonePos_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 18,0x066E,SetupSand_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
@@ -1009,6 +1010,7 @@ segment,offset,name,evidence,notes
 18,0x0B6A,RedrawStone_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 18,0x0C74,RemoveLastStonePeel_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 18,0x0CF4,SinkDsrtStone_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
+18,0x0D3E,TriggerStone,DERIVED,Original MacsBug name at 0x0EC4; updates the original desert stone state
 18,0x0EC4,TriggerStone_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 19,0x02D6,RegisterRuntimeExit,MEASURED,Original writes the A5-relative exit callback slot
 19,0x0478,RuntimeSavedA5,MEASURED,Data slot addressed through return-address getter; eight observed stores
