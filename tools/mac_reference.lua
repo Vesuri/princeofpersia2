@@ -18,11 +18,12 @@ local inputProbe=os.getenv('POP2_INPUT_PROBE') and dofile('tools/mac_input_probe
 local audio=os.getenv('POP2_AUDIO') and dofile('tools/mac_audio.lua') or nil
 local integration=(os.getenv('POP2_INTEGRATION') or os.getenv('POP2_NEWGWORLD') or os.getenv('POP2_TITLE_COPY')) and dofile('tools/mac_integration.lua') or nil
 local timing=os.getenv('POP2_TIMING_TM') and dofile('tools/mac_time_manager.lua') or os.getenv('POP2_TIMING_VBL') and dofile('tools/mac_timing.lua') or nil
+local gameplay=os.getenv('POP2_GAMEPLAY') and dofile('tools/mac_gameplay.lua') or nil
 local inputStage=false
 local ui=os.getenv('POP2_UI') and dofile('tools/mac_ui.lua') or nil
 local display=os.getenv('POP2_DISPLAY') and dofile('tools/mac_display.lua') or nil
 local finished,armed,checkpoint=false,false,nil
-local checkpointProbe
+local checkpointProbe,trapTraceProbe
 local videoTransfer=os.getenv('POP2_VIDEO_TRANSFER') and dofile('tools/mac_video_transfer.lua') or nil
 local displayRoute=os.getenv("POP2_DISPLAY_ROUTE")
 local routeStage,routeProbes,routePoints=nil,{},{}
@@ -72,7 +73,7 @@ local function observe()
   -- SP matches each return to its entry, including Gestalt nested by SysEnvirons.
   cpu.debug:bpset(meta.dispatcher.address,cond..' && (w@(d@(sp+2))==0xa1ad || w@(d@(sp+2))==0xa090 || w@(d@(sp+2))==0xa05c)',
    'logerror "SERVICE pc=%08X trap=%04X selector=%08X sp=%08X\\n",d@(sp+2),w@(d@(sp+2)),d0,sp;bpset d@(sp+2)+0x2,1,{logerror "SERVICE_RETURN pc=%08X d0=%08X a0=%08X sp=%08X env=%08X/%08X/%08X/%08X\\n",pc,d0,a0,sp,d@a0,d@(a0+4),d@(a0+8),d@(a0+0xc);g};g')
-  cpu.debug:bpset(meta.dispatcher.address,cond,
+  trapTraceProbe=cpu.debug:bpset(meta.dispatcher.address,cond,
    'logerror "TRAP pc=%08X trap=%04X d0=%08X a0=%08X a1=%08X a5=%08X sp=%08X\\n",d@(sp+2),w@(d@(sp+2)),d0,a0,a1,a5,sp;g')
   armed=true;print('DISPATCHER_ARMED')
  end
@@ -87,6 +88,7 @@ local function observe()
     assert(u(base)==tonumber(info.hex:sub(1,8),16),'SEGMENT HEADER')
     mapped[key]=true
     if mapper then mapper.map(seg,base)end
+    if gameplay then gameplay.map(seg,base,guard,cond)end
     if audio then audio.map(seg,base,guard,meta)end
     print(string.format('MAP seg=%d base=%08X size=%d',seg,base,#info.hex/2))
     -- Timing observations use guest ticks and original routine boundaries.
@@ -168,6 +170,11 @@ emu.register_frame_done(function()
 end)
 emu.register_periodic(function()
  if finished then return end
+ if gameplay then
+  local ok,handled=pcall(gameplay.poll)
+  if not ok then fail(handled);return end
+  if handled then return end
+ end
  if timing then
   local ok,handled=pcall(timing.poll)
   if not ok then fail(handled);return end
@@ -260,7 +267,7 @@ emu.register_periodic(function()
    end
    print('DISPLAY_ROUTE_CAPTURED '..label)
    cpu.debug:bpclear(routeProbes[pc]);routePoints[pc]=nil;routeStage=label
-   if label=='first-room' and not audio then
+   if label=='first-room' and not audio and not gameplay then
     if integration then integration.finish()end
     if display then display.finish()end
     finished=true;manager.machine:exit()
@@ -286,6 +293,7 @@ emu.register_periodic(function()
    frame.rgb(run..'/opening.ppm')
    manager.machine.video:snapshot()
    print('REFERENCE_CAPTURED opening-text-1')
+   if gameplay and trapTraceProbe then cpu.debug:bpclear(trapTraceProbe);trapTraceProbe=nil end
    if integration and os.getenv('POP2_FIXED_PROBE') then
     cpu.debug:bpclear(checkpointProbe);checkpoint=nil;integration.startFixed();return
    end
@@ -388,6 +396,15 @@ mac.run(function()
    assert(mac.wait_for('title',function()return routeStage=='title'end,18000),'DISPLAY TITLE')
    if audio then print('AUDIO_PHASE title');mac.wait(120)end
    if not os.getenv('POP2_DEMO_ROUTE') then mac.press('Space')end
+   if gameplay then
+    assert(os.getenv('POP2_GAMEPLAY')=='restart','GAMEPLAY ROUTE')
+    assert(mac.wait_for('gameplay-first-frame',function()return gameplay.rooms()==1 end,18000),'GAMEPLAY FIRST FRAME')
+    mac.wait(60);mac.press('r',{mac.CMD})
+    assert(mac.wait_for('gameplay-restart',function()return gameplay.rooms()==2 end,3600),'GAMEPLAY RESTART')
+    gameplay.finish()
+    if audio then audio.finish();print('AUDIO_ROUTE_COMPLETE')end
+    finished=true;manager.machine:exit();return
+   end
    if audio then
     assert(mac.wait_for('first-room',function()return routeStage=='first-room'end,18000),'AUDIO GAMEPLAY')
     print('AUDIO_PHASE gameplay')

@@ -11,7 +11,7 @@ NativeAudio::Validate valid=nullptr;
 const char* failure=nullptr;
 volatile uint32_t fieldsClock=0;
 uint32_t observedClock=0;uint16_t fraction=0;
-bool replaying=false;
+bool replaying=false,suspended=false;
 uint32_t musicCallback=0,musicContext=0,effectCallback=0,effectContext=0;
 struct Callback {uint32_t code,context;} callbacks[32]={};unsigned callbackRead=0,callbackWrite=0;
 bool fail(const char* why){failure=why;return false;}
@@ -55,7 +55,7 @@ namespace NativeAudio {
 const char* error(){return failure;}
 const HalestormEngine& state(){return engine;}
 bool prepare(const uint8_t* pitch,HalestormEngine::Lookup lookup,Validate validate){
-    valid=validate;failure=nullptr;engine=HalestormEngine();callbackRead=callbackWrite=0;
+    valid=validate;failure=nullptr;suspended=false;engine=HalestormEngine();callbackRead=callbackWrite=0;
     const char* why=engine.prepare(pitch,lookup);if(why)return fail(why);
     if(!PaulaAudio::prepare())return fail(PaulaAudio::error());return true;
 }
@@ -68,7 +68,7 @@ bool sync(){
     if(failure)return false;if(replaying)return true;
     uint32_t now=fieldsClock,elapsed=now-observedClock;observedClock=now;
     if(elapsed>36000)return fail("AUDIO / CLOCK BACKLOG");
-    while(elapsed--)if(engine.voices.initialized){engine.advance();if(!completed())return false;}
+    while(elapsed--)if(engine.voices.initialized && !suspended){engine.advance();if(!completed())return false;}
     return true;
 }
 bool callback(uint32_t& code,uint32_t& context){
@@ -84,8 +84,18 @@ bool dispatch(uint32_t selector,uint32_t argument,uint32_t& result){
     switch(selector){
     case 6:for(auto& v:engine.voices.music)stopVoice(v);engine.voices.silenceMusic();break;
     case 9:
+        if(suspended)return fail("AUDIO / NOTE DURING SUSPEND");
         why=engine.noteOn(word(p),word(p+2),word(p+4),word(p+6),word(p+8));
         if(why)return fail(why);if(engine.selected>=0 && !musicStart(engine.selected))return false;break;
+    case 10:
+        // MIDI Synth 3.45 +090A removes its output timer. The restart
+        // route first stops every voice; preserve the logical state and
+        // discard wall-clock time while suspended, just like that timer.
+        // Active-voice suspension needs its own original/Paula contract.
+        for(const auto& v:engine.voices.music)if(v.duration>=0 || v.paula>=0)return fail("AUDIO / ACTIVE MUSIC SUSPEND");
+        if(engine.voices.effect.duration>=0 || engine.voices.effect.paula>=0)return fail("AUDIO / ACTIVE EFFECT SUSPEND");
+        suspended=true;break;
+    case 11:suspended=false;break;
     case 12:
         // The original stops wrapping at loopEnd on note-off and reads the
         // remaining source tail. A physical voice follows the same source
@@ -106,6 +116,7 @@ bool dispatch(uint32_t selector,uint32_t argument,uint32_t& result){
     case 15:result=engine.clock;break;
     case 16:engine.clock=argument;break;
     case 17:{
+        if(suspended)return fail("AUDIO / EFFECT DURING SUSPEND");
         uint32_t source=longword(p),size=longword(p+4),rate=longword(p+8);
         if(!valid(source,size))return fail("AUDIO / EFFECT SOURCE EXTENT");
         if(longword(p+12) || longword(p+16))return fail("AUDIO / UNMEASURED EFFECT LOOP");

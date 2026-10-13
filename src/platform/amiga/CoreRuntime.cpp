@@ -65,6 +65,13 @@ static void recordIntegrationStage(){
     pop2IntegrationStage();
 }
 #endif
+#ifdef POP2_GAMEPLAY_RESTART_PROBE
+#if !defined(POP2_VERIFY) || !defined(POP2_INTEGRATION_PROBE)
+#error Gameplay restart probe requires explicit verification and integration input
+#endif
+volatile uint32_t g_gameplayRooms=0,g_gameplayAudioSelector=0,g_gameplayMenu=0;
+volatile uint32_t g_gameplaySuspendCalls=0,g_gameplayResumeCalls=0,g_gameplaySuspendClock=0,g_gameplayResumeClock=0;
+#endif
 #ifdef POP2_TIMING_TM_PROBE
 #if !defined(POP2_VERIFY) || !defined(POP2_INTEGRATION_PROBE) || defined(POP2_TIMING_VBL_PROBE)
 #error Time Manager fixture requires verification and a separate original-opening run
@@ -749,7 +756,14 @@ extern "C" void pop2IntegrationOpeningHook(){
 }
 extern "C" void pop2IntegrationRoomHook(){
     g_integrationPulseRaw=128;NativeInput::flush(0xffff,0);NativeDisplay::wait();
+#ifdef POP2_GAMEPLAY_RESTART_PROBE
+    ++g_gameplayRooms;
+    g_integrationStage=g_gameplayRooms==1?3:4;
+    if(g_gameplayRooms==1)integrationPress(0x13,60);
+    recordIntegrationStage();
+#else
     g_integrationRightAt=NativeInput::ticks()+120;g_integrationStage=3;recordIntegrationStage();
+#endif
 }
 extern "C" void pop2IntegrationDeathHook(uint8_t* originalSP){
     if(g_integrationStage==3 && w(originalSP+4)==3 && !g_integrationDeathReturn){
@@ -831,7 +845,11 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
         return stop(frame,usp,"TRAP / UNKNOWN CALLER",0,seg,off);
     uint16_t trap=w((uint8_t*)pc);
 #ifdef POP2_INTEGRATION_PROBE
+#ifdef POP2_GAMEPLAY_RESTART_PROBE
+    if(g_integrationStage==4)return stop(frame,usp,"GAMEPLAY / RESTART COMPLETE",trap,seg,off);
+#else
     if(g_integrationStage==4)return stop(frame,usp,"INTEGRATION / ROUTE COMPLETE",trap,seg,off);
+#endif
     // Match the reference opening-text return, before issuing its one Escape.
     // The drawing/unlock callee returns to CODE 15+0404/0410; the parent
     // frame identifies TEXT 6978/1. Unlock can return without calling a service.
@@ -849,7 +867,10 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
             if(parent<=at)break;at=parent;
         }
     }
-    if(seg==17 && off==0x313e && g_integrationStage<3 && !g_integrationRoomReturn &&
+    if(seg==17 && off==0x313e &&
+#ifndef POP2_GAMEPLAY_RESTART_PROBE
+       g_integrationStage<3 && !g_integrationRoomReturn &&
+#endif
        validMemory(regs[14],8) && l((uint8_t*)regs[14]+4)==g_coreSegments[2][0]+0x6054 && uint16_t(regs[4])==0xfffe){
         g_integrationRoomReturn=l((uint8_t*)regs[14]+4);
         sl((uint8_t*)regs[14]+4,(uint32_t)pop2_integration_room);
@@ -879,7 +900,14 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
         bool fromFixture=caller>=(uint32_t)pop2_audio_lookup && caller<(uint32_t)pop2_audio_fixture_end;
         if(!location(caller,callerSeg,callerOff) && !fromFixture)return stop(frame,usp,"AUDIO / JNTH RETURN OWNER",trap,seg,off);
         if(!validMemory((uint32_t)usp,12))return stop(frame,usp,"AUDIO / ABI STACK",trap,seg,off);
+#ifdef POP2_GAMEPLAY_RESTART_PROBE
+        g_gameplayAudioSelector=l(usp+4);
+#endif
         if(!NativeAudio::dispatch(l(usp+4),l(usp+8),regs[0]))return stop(frame,usp,NativeAudio::error(),trap,seg,off);
+#ifdef POP2_GAMEPLAY_RESTART_PROBE
+        if(g_gameplayAudioSelector==10){++g_gameplaySuspendCalls;g_gameplaySuspendClock=NativeAudio::state().clock;}
+        if(g_gameplayAudioSelector==11){++g_gameplayResumeCalls;g_gameplayResumeClock=NativeAudio::state().clock;}
+#endif
         return (uint32_t)usp;
     }
 #endif
@@ -939,6 +967,9 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
     if(NativeInput::error())return stop(frame,usp,NativeInput::error(),trap,seg,off);
     if(NativeUI::handles(trap)) {
         if(!NativeUI::dispatch(trap,regs,usp,consumed))return stop(frame,usp,NativeUI::error(),trap,seg,off);
+#ifdef POP2_GAMEPLAY_RESTART_PROBE
+        if(trap==0xa93e && l(usp+2))g_gameplayMenu=l(usp+2);
+#endif
         if(os){uint16_t sr=w(frame)&~15;uint16_t result=regs[0];if(!result)sr|=4;if(result&0x8000)sr|=8;sw(frame,sr);}
         return (uint32_t)(usp+consumed);
     }

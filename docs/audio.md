@@ -13,7 +13,8 @@ paired with original Macintosh title, gameplay, natural death and uninterrupted
 opening-cutscene events. Its startup regression deliberately stops at a test-only
 144-call checkpoint before `Palette2CTab`; that service is implemented in the
 ordinary build. These audio fixtures do not establish timing or performance.
-Item 11's game pacing and scheduler fidelity remain open.
+The timing gate passes on the current `a1200-030` target; see
+[timing](timing.md) for its scope.
 
 ## Inputs and reuse
 
@@ -140,3 +141,18 @@ an original full-image probe-guard rejection. The portable regression suite and
 synthetic sanitizer tests for period arithmetic, odd-loop phase, stride and buffer
 bounds pass. The ordinary audio build retains the 144-call startup boundary and
 restores the OS. The detailed receipt is in ignored `tmp/audio-gate-*/report.json`.
+
+## Session restart
+
+MEASURED: the ordinary Command-R route stops music and effects, then calls driver
+selectors 10 and 11. In the original MIDI Synth 3.45 these remove and restart the
+output timer (+$090A and +$0914). The driver clock remains unchanged between the
+paired calls. The native implementation preserves the stopped logical voices and
+discards elapsed wall-clock ticks while suspended. The matched restart returns
+to a completed playable frame with the same RNG, selected game state and pixels.
+See [gameplay coverage](gameplay-coverage.md).
+
+Vette's Bogas wrappers and Alone in the Dark's Halestorm dispatch were inspected
+first; neither supplies this game's selector-10/11 contract. Existing shared Paula
+helpers remain in use. Suspending active voices remains a named stop until its
+original behaviour and Paula rendering have been measured.

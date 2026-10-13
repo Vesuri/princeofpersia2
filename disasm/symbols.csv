@@ -62,6 +62,7 @@ segment,offset,name,evidence,notes
 2,0x33B8,HandleEvent_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x34C4,HandleMouseDown_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x3546,IsDAWindow_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
+2,0x3554,HandleMenuChoice,DERIVED,LINK entry reached by original menu dispatch and ending at named RTS before 0x35DE
 2,0x35DE,HandleMenuChoice_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x362C,HandleAppleChoice_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x3758,HandleFileChoice_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
@@ -106,8 +107,10 @@ segment,offset,name,evidence,notes
 2,0x58DA,IsRightKeyPressed_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x59E8,PrinceCopy_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x5AE0,Start_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
+2,0x5AEA,RestartGame,DERIVED,LINK entry reached by Start at 0x5AD2 and ending at named RTS 0x5CD0
 2,0x5CD2,RestartGame_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x6056,FirstRoomDisplayCheckpoint,MEASURED,Post-FirstFrame checkpoint with D4 low word FFFE
+2,0x6058,FirstFrameResultCheckpoint,MEASURED,Original completed first-frame result in D0 before register restoration; observed on start and Command-R restart
 2,0x6060,FirstFrame_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x60EE,DoCleanCut_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x616E,FrameAdvCallerReturn,MEASURED,Original CODE 2+616A calls FrameAdv; live LINK chain encloses health-bar and scene drawing

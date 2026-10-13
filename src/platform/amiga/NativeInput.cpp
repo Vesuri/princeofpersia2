@@ -75,7 +75,10 @@ void field(uint32_t ticks) {
  for(unsigned group=0;group<4;++group){
   uint32_t keys=g_integrationKeys[group],pulse=g_integrationPulseRaw;
   if(pulse<128 && pulse/32==group && int32_t(ticks-g_integrationPulseStart)>=0 && int32_t(g_integrationPulseEnd-ticks)>0)keys|=1UL<<(pulse%32);
-#ifndef POP2_INTEGRATION_NO_RIGHT
+#ifdef POP2_GAMEPLAY_RESTART_PROBE
+  if(pulse==0x13 && group==3 && int32_t(ticks-(g_integrationPulseStart-2))>=0 && int32_t(g_integrationPulseEnd-ticks)>0)keys|=1UL<<(0x66%32);
+#endif
+#if !defined(POP2_INTEGRATION_NO_RIGHT) && !defined(POP2_GAMEPLAY_RESTART_PROBE)
   if(g_integrationStage==3 && int32_t(ticks-g_integrationRightAt)>=0 && group==2)keys|=1UL<<(0x4e%32);
 #endif
   uint32_t changed=keys^observed[group];
