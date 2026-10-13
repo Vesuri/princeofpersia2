@@ -6,8 +6,8 @@ order. Inspection, extraction, a verified Macintosh reference and a static/live 
 Core, file/resource, display, UI and audio service gates exist. The native startup
 integration gate reaches the first playable room with matching reference pixels
 and state and verified gameplay input. Earlier service fixtures use explicit
-checkpoints and do not independently establish gameplay. Timing and later
-validation remain open.
+checkpoints and do not independently establish gameplay. Timing passes on the owner-selected `a1200-030` target. Gameplay, release
+and deferred CPU validation remain open.
 
 ## Rules
 

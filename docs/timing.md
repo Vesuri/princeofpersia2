@@ -1,10 +1,9 @@
 # Timing
 
-The original five-tick gameplay cadence passes on `a1200-030`, including the
-first step. Time Manager and VBL service fixtures also pass on that target.
-Item 11 remains open because its current queue entry additionally requires faster
-CPU configurations; the 68040 preset still has measured overruns. The owner
-has deferred all further 68020 work to final item 15.
+Item 11 is complete for the owner-selected `a1200-030` target. The original
+five-tick gameplay cadence passes, including the first step; Time Manager and
+VBL service fixtures pass too. The owner deferred 68040 validation to release
+item 14 and 68020 work to final item 15. Neither CPU is covered by this completion.
 
 ## Clock and callback services
 
