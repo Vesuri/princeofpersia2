@@ -42,7 +42,7 @@ def run(name=None, control=None):
     args=[str(mame),'maciici','-noreadconfig','-ramsize','8M','-nbc','mdc48',
           '-hard',str(destination/'volume.hd'),'-rompath','ref/mame/roms',
           '-nvram_directory',str(destination/'nvram'),'-cfg_directory',str(destination/'cfg'),
-          '-snapshot_directory',str(destination/'snap'),'-video','none','-sound','none','-window',
+          '-snapshot_directory',str(destination/'snap'),'-state_directory',str(destination/'states'),'-video','none','-sound','none','-window',
           '-nothrottle','-skip_gameinfo','-debug','-debugger','none','-oslog','-nosamples',
           '-autoboot_delay','0','-autoboot_script',str(destination/'syntax.lua'),'-seconds_to_run','3600' if env.get('POP2_GAMEPLAY')=='route' else '600' if env.get('POP2_AUDIO')=='cutscene' or env.get('POP2_NATURAL_OPENING') or env.get('POP2_GAMEPLAY') else '240' if env.get('POP2_AUDIO') else '180']
     pidfile=destination/'mame.pid'

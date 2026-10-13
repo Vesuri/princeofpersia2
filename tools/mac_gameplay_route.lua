@@ -9,6 +9,7 @@ local dbg=manager.machine.debugger
 local run=assert(os.getenv('POP2_REFERENCE_RUN'))
 local points={};local rooms=0;local frames=0;local remaining=0;local sequence=0
 local waiting=false;local complete=false;local currentNIS={}
+local checkpoints={};local heldKeys='none'
 local names={left='Left Arrow',right='Right Arrow',up='Up Arrow',down='Down Arrow',shift='Shift',control='Control',space='Space',enter='Return',escape='Esc',command=mac.CMD,r='r'}
 local function release()for _,name in pairs(names)do mac.key_up(name)end end
 local function dump(path,address,size)
@@ -34,16 +35,60 @@ function M.map(seg,base,guard,condition)
   cpu.debug:bpset(base+point[1],condition,'logerror "GAMEPLAY_ROUTE_STOP\\n"')
  end
 end
+local function readbytes(address,size)
+ local bytes={}
+ for i=0,size-1 do bytes[#bytes+1]=string.char(mem:readv_u8(address+i))end
+ return table.concat(bytes)
+end
+local function signature()
+ local a5=cpu.state.A5.value&0xffffff
+ local parts={readbytes(a5-22266,22266),readbytes(mem:readv_u32(a5-0x5014)&0xffffff,0x2200)}
+ for _,name in ipairs({'D0','D1','D2','D3','D4','D5','D6','D7','A0','A1','A2','A3','A4','A5','A6','SP','SR','PC'})do
+  parts[#parts+1]=string.pack('>I4',cpu.state[name].value&0xffffffff)
+ end
+ return table.concat(parts)
+end
+local function apply_keys(keys)
+ release()
+ if keys~='none' then for key in keys:gmatch('[^,]+')do mac.key_down(assert(names[key],'GAMEPLAY ROUTE UNKNOWN KEY'))end end
+ heldKeys=keys
+end
 local function command()
  local f=io.open(run..'/route-command.txt','r');if not f then return end
  local text=f:read('a');f:close()
+ local stateId,operation,slot=text:match('^(%d+) (save) ([%w%-]+)%s*$')
+ if not stateId then stateId,operation,slot=text:match('^(%d+) (load) ([%w%-]+)%s*$')end
+ if stateId then
+  stateId=tonumber(stateId)
+  if stateId<=sequence then return end
+  assert(stateId==sequence+1 and #slot<=48 and #currentNIS==0,'GAMEPLAY STATE COMMAND CONTEXT')
+  local path=run..'/states/maciici/'..slot..'.sta'
+  if operation=='save' then
+   local existing=io.open(path,'rb');if existing then existing:close();error('GAMEPLAY STATE ALREADY EXISTS')end
+   local saved={signature=signature(),frames=frames,rooms=rooms,keys=heldKeys}
+   dbg:command('statesave '..slot)
+   local state=assert(io.open(path,'rb'),'GAMEPLAY STATE FILE MISSING')
+   assert(state:seek('end')>1000,'GAMEPLAY STATE FILE EXTENT');state:close()
+   assert(signature()==saved.signature,'GAMEPLAY STATE SAVE MUTATED CHECKPOINT')
+   checkpoints[slot]=saved
+  else
+   local saved=assert(checkpoints[slot],'GAMEPLAY STATE UNKNOWN CHECKPOINT')
+   dbg:command('stateload '..slot)
+   assert(signature()==saved.signature,'GAMEPLAY STATE RESTORE MISMATCH')
+   frames=saved.frames;rooms=saved.rooms;remaining=0;apply_keys(saved.keys)
+  end
+  sequence=stateId
+  local log=assert(io.open(run..'/route-actions.txt','a'));log:write(text);log:close()
+  print('GAMEPLAY_STATE_'..operation:upper()..' slot='..slot)
+  capture('state-'..operation)
+  return
+ end
  local id,count,keys=text:match('^(%d+) (%d+) ([%w,%-]+)%s*$')
  assert(id,'GAMEPLAY ROUTE COMMAND FORMAT')
  id=tonumber(id);count=tonumber(count)
  if id<=sequence then return end
  assert(id==sequence+1 and count>=1 and count<=600,'GAMEPLAY ROUTE COMMAND ORDER/EXTENT')
- release()
- if keys~='none' then for key in keys:gmatch('[^,]+')do mac.key_down(assert(names[key],'GAMEPLAY ROUTE UNKNOWN KEY'))end end
+ apply_keys(keys)
  sequence=id;remaining=count;waiting=false
  local log=assert(io.open(run..'/route-actions.txt','a'));log:write(text);if text:sub(-1)~='\n' then log:write('\n')end;log:close()
  print(string.format('GAMEPLAY_ROUTE_ACTION sequence=%d frames=%d keys=%s',id,count,keys))

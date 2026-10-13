@@ -127,3 +127,30 @@ native replay before they can become acceptance evidence. Two discovery runs
 reproduce identical full initial A5/context, screen and palette captures and the
 same first 30 consumed keys: the initial read is unpressed, followed by 29 Left
 reads. This observed ADB delay must be preserved in a native replay.
+
+### Discovery save states
+
+At a paused gameplay boundary, `N save SLOT` saves an emulator checkpoint and
+`N load SLOT` restores it; `N` is the next command sequence number. Slots use
+letters, digits and hyphens, up to 48 characters. Existing slots are never
+overwritten. States stay in the ignored run folder under `states/maciici/`.
+Loading requires a slot created in the same running controller session, outside
+an active cutscene. Sequence numbers continue increasing after a restore, so
+captures and command history are retained.
+
+The controller uses immediate debugger save/load operations at the stopped CPU
+boundary, verifies restored CPU registers and full A5/context bytes, and restores
+its frame counters and held keys. This is a discovery shortcut for movement and
+combat retries. Do not cross game-save or other disk writes when restoring:
+emulator state does not roll back the disk image. Ordinary game saves remain
+level checkpoints. Successful routes still require fresh fixed-seed original
+replay and paired native execution for acceptance.
+
+MEASURED: `gameplay-checkpoints-1` saved the initial room, ran 30 completed Left
+steps, restored the initial checkpoint, and repeated those steps. Saving and
+loading preserved identical full A5/context, indexed screen and palette captures;
+the repeated continuation also matched all four captures exactly. The original
+save and load checks additionally matched CPU registers. Separately,
+`gameplay-level1-discovery-4` and `gameplay-level1-discovery-5` reproduced all 45
+checkpoints through the rooftop approach with identical A5/context, screen and
+palette. Neither result establishes level-1 completion.
