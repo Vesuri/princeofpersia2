@@ -13,7 +13,7 @@ public:
     void wait() {while(pending_) {__asm__ volatile("nop" ::: "memory");}}
     void release();
     bool publish(const uint8_t* chunky,const Planar8::Rect& viewport,
-                 const Planar8::Rect* dirty,uint16_t count,const uint32_t* rgb);
+                 const Planar8::Rect* dirty,uint16_t count,const uint32_t* rgb,bool prepareScene=false);
     static constexpr uint16_t copperMoves=16+13+AgaPalette::moves+1;
 private:
     uint8_t* pixels_[2]={};
@@ -23,6 +23,7 @@ private:
     uint32_t lastFrameField_=0;
     Planar8::Rect viewport_={};
     Planar8::Rect sync_[64];uint16_t syncCount_=0;
+    void synchronize(const Planar8::Rect& r,uint16_t back);
     void lists(uint16_t buffer,const uint32_t* rgb);
 };
 #endif

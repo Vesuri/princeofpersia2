@@ -210,6 +210,7 @@ uint8_t addressMode=0;
 uint8_t* vblTasks[8]={};unsigned vblCount=0;
 VBLPasses vblPass;
 uint32_t displayBatchFrame=0,displayBatchParent=0,displayBatchReturn=0;
+bool displayBatchScene=false;
 uint32_t callbackKind=0; // 1: Time Manager, 2: virtual VBL pass.
 uint32_t wallTicks() {
 #ifdef POP2_INPUT
@@ -924,7 +925,8 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
 #ifdef POP2_TIMING_PROBE
         g_timingPhase=0x1002;
 #endif
-        if(!NativeDisplay::publish())return stop(frame,usp,NativeDisplay::error(),trap,seg,off);
+        if(!NativeDisplay::publish(displayBatchScene))return stop(frame,usp,NativeDisplay::error(),trap,seg,off);
+        displayBatchScene=false;
 #ifdef POP2_TIMING_PROBE
         g_timingPhase=trap&0xfff;
 #endif
@@ -963,7 +965,7 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
                        w((uint8_t*)base+0x68b2)!=0x4e75)
                         return stop(frame,usp,"FRAME / FRAMEADV OWNER",trap,seg,off);
                     if(!NativeDisplay::publish())return stop(frame,usp,NativeDisplay::error(),trap,seg,off);
-                    displayBatchFrame=at;displayBatchParent=parent;displayBatchReturn=ret;
+                    displayBatchFrame=at;displayBatchParent=parent;displayBatchReturn=ret;displayBatchScene=false;
                     break;
                 }
                 if(parent<=at)break;
@@ -982,6 +984,10 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
                     return stop(frame,usp,"FRAME / BEGIN CONTRACT",trap,seg,off);
                 if(!NativeDisplay::publish())return stop(frame,usp,NativeDisplay::error(),trap,seg,off);
                 displayBatchFrame=owner;displayBatchParent=l((uint8_t*)owner);displayBatchReturn=l((uint8_t*)owner+4);
+                // A standalone DrawWorld prepares a scene before animation.
+                // Finish its large buffer synchronization at this boundary;
+                // FrameAdv and ordinary full-screen animation remain deferred.
+                displayBatchScene=true;
             }
         }
         if(!NativeDisplay::dispatch(trap,regs,usp,consumed))return stop(frame,usp,NativeDisplay::error(),trap,seg,off);

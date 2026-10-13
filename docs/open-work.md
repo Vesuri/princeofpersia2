@@ -14,7 +14,7 @@ current target is 68030 or better; the owner deferred 68020 support to the end.
     cutscenes, save/load, death, restart, Hall of Fame and the ending.
     Acceptance: coverage matrix with positive completion records for every entry.
 14. **WHDLoad and release.** Installer that decodes the user's archive and verifies
-    SHA-256; KickEmu slave with `WHDLF_EmulLineA`, 68020 and AGA checks; 68040 MMU
+    SHA-256; KickEmu slave with `WHDLF_EmulLineA`, CPU compatibility and AGA checks; 68040 MMU
     test; deterministic LHA.
     Acceptance: the playbook §14 release checklist, including real hardware.
 15. **Deferred 68020 support.** After the preceding items, measure and optimize

@@ -68,7 +68,7 @@ void PrinceScreen::field() {
     if(changed) {++g_displayFrames;pending_=0;pop2DisplayPublished();}
 }
 bool PrinceScreen::publish(const uint8_t* chunky,const Planar8::Rect& viewport,
-                           const Planar8::Rect* dirty,uint16_t count,const uint32_t* rgb) {
+                           const Planar8::Rect* dirty,uint16_t count,const uint32_t* rgb,bool prepareScene) {
     if(!started_ || !chunky || !rgb || !Planar8::viewportValid(viewport) || (count && !dirty))return false;
     while(pending_) {__asm__ volatile("nop" ::: "memory");}
     Planar8::Rect work[64];uint16_t n=0;
@@ -80,21 +80,7 @@ bool PrinceScreen::publish(const uint8_t* chunky,const Planar8::Rect& viewport,
     }
     uint16_t back=front_^1;
     for(unsigned i=0;i<syncCount_;++i)if(Planar8::syncNeeded(sync_[i],work,n)) {
-        auto r=sync_[i];
-        // Alone in the Dark's pointer-free synchronization path, using the
-        // shared blitter service. No buffer swap occurs until pending_ is set.
-        const uint16_t widthBytes=uint16_t(r.right-r.left)/8;
-        AmigaHardware::setDMAChannels(DMAF_BLITTER,true);
-        for(int16_t y=r.top;y<r.bottom;) {
-            const uint16_t lines=r.bottom-y>127?127:r.bottom-y;
-            const uint32_t offset=uint32_t(y)*Planar8::rowBytes+r.left/8;
-            AmigaHardware::blitterCopy((uint16_t*)(pixels_[front_]+offset),
-                (uint16_t*)(pixels_[back]+offset),widthBytes/2,lines*8,
-                Planar8::planeRow-widthBytes,Planar8::planeRow-widthBytes,
-                0,0xffff,0xffff,0xffff);
-            AmigaHardware::blitterDrain();
-            y+=lines;
-        }
+        synchronize(sync_[i],back);
     }
 #ifdef POP2_TIMING_PROBE
     if(n){++g_c2pPasses;g_c2pRects+=n;if(g_timingPhase!=0x1002)++g_c2pUnbatched;}
@@ -109,7 +95,33 @@ bool PrinceScreen::publish(const uint8_t* chunky,const Planar8::Rect& viewport,
         sync_[i]=r;
     }
     syncCount_=n;viewport_=viewport;valid_=true;lists(back,rgb);
-    __asm__ volatile("" ::: "memory");pending_=1;return true;
+    __asm__ volatile("" ::: "memory");pending_=1;
+    uint32_t changedPixels=0;
+    for(unsigned i=0;i<n;++i)changedPixels+=uint32_t(work[i].right-work[i].left)*(work[i].bottom-work[i].top);
+    if(prepareScene && changedPixels>uint32_t(Planar8::width)*Planar8::height/2) {
+        // Finish a large scene replacement in both buffers before returning to
+        // the game. Deferring this copy would charge the following small update
+        // for the scene load. Copy only after VBI makes the old front inactive.
+        wait();
+        for(unsigned i=0;i<syncCount_;++i)synchronize(sync_[i],front_^1);
+        syncCount_=0;
+    }
+    return true;
+}
+void PrinceScreen::synchronize(const Planar8::Rect& r,uint16_t back) {
+    // Alone in the Dark's synchronization path, using the shared blitter.
+    const uint16_t widthBytes=uint16_t(r.right-r.left)/8;
+    AmigaHardware::setDMAChannels(DMAF_BLITTER,true);
+    for(int16_t y=r.top;y<r.bottom;) {
+        const uint16_t lines=r.bottom-y>127?127:r.bottom-y;
+        const uint32_t offset=uint32_t(y)*Planar8::rowBytes+r.left/8;
+        AmigaHardware::blitterCopy((uint16_t*)(pixels_[front_]+offset),
+            (uint16_t*)(pixels_[back]+offset),widthBytes/2,lines*8,
+            Planar8::planeRow-widthBytes,Planar8::planeRow-widthBytes,
+            0,0xffff,0xffff,0xffff);
+        AmigaHardware::blitterDrain();
+        y+=lines;
+    }
 }
 // Same completed-frame rule as Alone in the Dark: publication must finish,
 // and an unchanged scene must still cross a vertical blank before reuse.

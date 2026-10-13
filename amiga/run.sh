@@ -131,5 +131,5 @@ if [ "${CORE:-0}" = 1 ]; then
     python3 ../tools/check_core_result.py "$RUN"
   fi
 else
-  python3 ../tools/scaffold_result.py "$RUN"
+  python3 ../tools/scaffold_result.py "$RUN" --setup "$AMIGA_SETUP"
 fi

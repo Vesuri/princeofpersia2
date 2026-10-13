@@ -246,7 +246,7 @@ bool PlatformAmiga::run() {
         if(step==1)for(unsigned y=101;y<139;++y)for(unsigned x=123;x<210;++x)displayChunky[y*640+x]^=0x6d;
         if(step==2)for(unsigned i=0;i<256;++i)displayRGB[i]^=0xa537c1;
         if(step==3) {viewport={47,65,431,577};}
-        if(!display.publish(displayChunky,viewport,step==1?&dirty:nullptr,step==1?1:0,displayRGB)) {g_scaffoldError=6;break;}
+        if(!display.publish(displayChunky,viewport,step==1?&dirty:nullptr,step==1?1:0,displayRGB,step==0)) {g_scaffoldError=6;break;}
         while(g_displayFrames<=step) {__asm__ volatile("nop" ::: "memory");}
         uint32_t fields=g_scaffoldFields;
         while(g_scaffoldFields-fields<4) {__asm__ volatile("nop" ::: "memory");}

@@ -136,7 +136,7 @@ bool hideOverlay() {
 void attach(PrinceScreen* screen,const uint8_t* lookup) {output=screen;transfer=lookup;}
 void wait() {if(output)output->wait();}
 void paceFrame() {if(output)output->paceFrame();}
-bool publish() {
+bool publish(bool prepareScene) {
     g_integrationScreen=(uint32_t)pixels;g_integrationColors=(uint32_t)colors;
     if(!output || (!dirtyCount && !paletteDirty))return true;
     if(!transfer)return fail("DISPLAY / VIDEO TRANSFER MISSING");
@@ -150,7 +150,7 @@ bool publish() {
         const uint8_t* color=*colors+8+i*8;
         rgb[i]=uint32_t(transfer[color[2]])<<16|uint32_t(transfer[color[4]])<<8|transfer[color[6]];
     }
-    if(!output->publish(pixels,viewport,dirty,dirtyCount,rgb))return fail("DISPLAY / PUBLICATION");
+    if(!output->publish(pixels,viewport,dirty,dirtyCount,rgb,prepareScene))return fail("DISPLAY / PUBLICATION");
     dirtyCount=0;paletteDirty=false;return true;
 }
 bool handles(uint16_t trap) {

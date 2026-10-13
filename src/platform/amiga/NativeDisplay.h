@@ -11,7 +11,7 @@ bool initWindowManager();
 bool showOverlay(const uint8_t* image);
 bool hideOverlay();
 void attach(PrinceScreen* output,const uint8_t* transfer);
-bool publish();
+bool publish(bool prepareScene=false);
 void wait();
 void paceFrame();
 bool handles(uint16_t trap);

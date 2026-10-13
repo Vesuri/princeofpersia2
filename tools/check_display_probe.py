@@ -3,8 +3,8 @@ import argparse,re,struct
 from pathlib import Path
 from scaffold_result import check as check_restored
 
-def check(run):
-    check_restored(run)
+def check(run,setup="a1200-fast"):
+    check_restored(run,setup)
     log=(run/'gdb-out.log').read_text()
     rows=re.findall(r'DISPLAY_FRAME id=(\d+) planes=([0-9a-f]+) copper=([0-9a-f]+) parity=(\d+) line=(\d+) fields=(\d+) frames=(\d+) late=(\d+)',log)
     assert len(rows)==4,'DISPLAY / FOUR COMPLETED FRAMES REQUIRED'
@@ -45,4 +45,6 @@ def check(run):
         assert all(regs[k]==v for k,v in expected.items()),'DISPLAY / MODE'
     print('DISPLAY PROBE PASS: four full decoded frames, dirty preservation, RGB24, viewport and field pointers')
 if __name__=='__main__':
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('run',type=Path);a=p.parse_args();check(a.run)
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('run',type=Path)
+    p.add_argument('--setup',default='a1200-fast',choices=['a1200-fast','a1200-030','a1200-040'])
+    a=p.parse_args();check(a.run,a.setup)

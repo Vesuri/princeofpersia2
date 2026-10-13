@@ -40,8 +40,8 @@ and C2P evidence. Restore ordinary play with `make release` afterwards.
 ## Measured performance
 
 MEASURED: the pinned parent (`baf9642`) takes 26 PAL fields for the five-update
-window, or 104 ms/update including pacing. The final build takes 24 fields,
-or 96 ms/update. Both perform five conversion passes, ten dirty rectangles and
+window, or 104 ms/update including pacing. The current build takes 20 fields,
+or 80 ms/update. Both perform five conversion passes, ten dirty rectangles and
 179,328 converted pixels, with zero input in that window. Complete endpoint
 screen and context bytes match. `manifest/performance-parent.sha256` pins the
 parent executable, symbols and both benchmark and route endpoint captures.
@@ -51,12 +51,13 @@ game execution, 36 in TickCount, 32 in frame-end C2P, 22 in SystemTask and 17 in
 SectRect. These are periodic phase samples, not instruction counts or exclusive
 service costs. They identify dispatch/polling and conversion as relevant work.
 
-The dispatcher now skips the original CODE-segment search for known cached native
-service veneers; their original return-owner checks remain active. The isolated
-change measured 24 fields against the parent's 26, with identical benchmark
-screen, context and conversion work. The final frame-owner fix retains that
-24-field result. These are short, field-quantized emulator windows; they do not
-establish a general percentage speedup or all-scene frame rate.
+The dispatcher resolves known cached native service veneers before searching
+original CODE segments; original return-owner checks remain active. Large
+standalone scene synchronization finishes before returning to the game, so the
+first small animation update does not inherit that copy. This moves work into
+scene preparation rather than reducing total copying; see [timing](timing.md).
+These short, field-quantized emulator windows do not establish a general
+percentage speedup or all-scene frame rate.
 
 ## Frame-end conversion
 
@@ -73,11 +74,9 @@ its caller return at CODE 2+616E, guarding the original call, entry and return
 instructions. It retains the owner, parent and return address until that
 invocation finishes. The existing DrawWorld guard also covers initial rendering.
 
-The full tested route has 57 updates and 57 conversion passes, 109 rectangles
-and 830,016 converted pixels, with no conversion outside frame end. The diagnostic
-route before the owner correction had 58 passes for the same 57 updates,
-rectangles, pixels and final screen/context bytes. Both final endpoints also
-match the pinned parent. Converted bitplanes match the chunky image at the
+The current tested route has 59 updates and 59 conversion passes, 113 rectangles
+and 850,272 converted pixels, with no conversion outside frame end. Benchmark
+and death screen/context bytes match the pinned parent. Converted bitplanes match the chunky image at the
 benchmark endpoint and death checkpoint. Sixteen altered window, route and
 parent-identity records are rejected by the checker.
 
@@ -94,9 +93,9 @@ exception. Effective emulator settings confirm both memory sizes. D5 therefore
 requires 8 MB Fast RAM; this is the supported configuration, not a claim that
 every intermediate memory size was tested.
 
-Profiling checkpoints leave 3,166,232 bytes of Fast RAM free at the opening/title
-and 3,097,968 bytes at the first room/death; the latter largest contiguous block
-is 3,096,592 bytes. Chip RAM has 1,147,864 bytes free. These are checkpoint
+Profiling checkpoints leave 3,165,864 bytes of Fast RAM free at the opening/title
+and 3,097,600 bytes at the first room/death; the latter largest contiguous block
+is 3,096,224 bytes. Chip RAM has 1,147,864 bytes free. These are checkpoint
 snapshots, not continuous high-water measurements or full-game coverage.
 
 The current 68030 Time Manager and VBL fixtures match their pinned Macintosh
