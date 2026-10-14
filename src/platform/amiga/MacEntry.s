@@ -847,6 +847,37 @@ pop2_integration_room:
 	movem.l (sp)+,d0-d7/a0-a6
 	move.l g_integrationRoomReturn,-(sp)
 	rts
+	.ifdef POP2_GAMEPLAY_ROUTE_PROBE
+	.globl pop2_gameplay_route_hall
+pop2_gameplay_route_hall:
+	movem.l d0-d7/a0-a6,-(sp)
+	move.w ccr,-(sp)
+	jsr pop2GameplayRouteHall
+	move.w (sp)+,ccr
+	movem.l (sp)+,d0-d7/a0-a6
+	move.l g_routeHallReturn,-(sp)
+	rts
+	.globl pop2_gameplay_route_ending
+pop2_gameplay_route_ending:
+	movem.l d0-d7/a0-a6,-(sp)
+	move.w ccr,-(sp)
+	jsr pop2GameplayRouteEnding
+	move.w (sp)+,ccr
+	movem.l (sp)+,d0-d7/a0-a6
+	move.l g_routeEndingReturn,-(sp)
+	rts
+	.globl pop2_gameplay_route_frame
+pop2_gameplay_route_frame:
+	movem.l d0-d7/a0-a6,-(sp)
+	move.w ccr,-(sp)
+	move.l d0,-(sp)
+	jsr pop2GameplayRouteFrame
+	addq.l #4,sp
+	move.w (sp)+,ccr
+	movem.l (sp)+,d0-d7/a0-a6
+	move.l g_routeReturn,-(sp)
+	rts
+	.endif
 	.ifdef POP2_GAMEPLAY_SAVE_PROBE
 	.globl pop2_gameplay_saved
 pop2_gameplay_saved:

@@ -9,6 +9,7 @@
 #define AMIGAXDEV_REGION_UNION 1
 #include "mac/RegionOps.h"
 #include "mac/RectBounds.h"
+#include "mac/BitmapRegion.h"
 #include "mac/BitmapFont.h"
 #include "mac/BitmapText8.h"
 #include "mac/AnimatePalette8.h"
@@ -45,25 +46,28 @@ void dispose(World& v) {
 World* create(const uint8_t* bounds,bool screen=false) {
     GWorld8::Rect r={int16_t(w(bounds)),int16_t(w(bounds+2)),int16_t(w(bounds+4)),int16_t(w(bounds+6))};
     int32_t width=int32_t(r.right)-r.left,height=int32_t(r.bottom)-r.top;
-    // MEASURED noNewDevice requests share the main CLUT and a 528-byte stride:
-    // main buffer 512x384, opening text 510x87, title buffer 510x384.
-    if(r.top || r.left || !(((width==512 || width==510) && height==384)||(width==510 && height==87))) {
+    // MEASURED startup and later cutscene noNewDevice allocations.
+    GWorld8::Layout layout;
+    if(!GWorld8::layout(r,layout,16)) {
         fail("DISPLAY / NEWGWORLD BOUNDS");return nullptr;
     }
     World* v=nullptr;for(auto& candidate:worlds)if(!candidate.port) {v=&candidate;break;}
     if(!v){fail("DISPLAY / GWORLD CAPACITY");return nullptr;}
     v->port=heap->newPtr(screen?156:108,true);
     if(!v->port){fail("DISPLAY / NEWGWORLD MEMORY");return nullptr;}
-    v->pm=heap->newHandle(50,true);if(!screen)v->pixels=heap->newHandle(528*height,false);
+    v->pm=heap->newHandle(50,true);if(!screen)v->pixels=heap->newHandle(layout.pixelBytes,false);
     v->vis=heap->newHandle(10,true);v->clip=heap->newHandle(10,true);v->vars=heap->newHandle(46,true);
     for(unsigned i=0;i<3;++i)v->patterns[i]=heap->newHandle(28,true);
     if(!v->pm || (!screen && !v->pixels) || !v->vis || !v->clip || !v->vars || !v->patterns[0] || !v->patterns[1] || !v->patterns[2]) {dispose(*v);fail("DISPLAY / NEWGWORLD MEMORY");return nullptr;}
-    GWorld8::Layout layout={528,uint32_t(528*height)};
     GWorld8::pixmap(*v->pm,(uint32_t)v->pixels,(uint32_t)colors,r,layout);
     sw(*v->vis,10);GWorld8::rect(*v->vis+2,r);
     sw(*v->clip,10);GWorld8::rect(*v->clip+2,{-32767,-32767,32767,32767});
     GWorld8::port(v->port,(uint32_t)v->pm,(uint32_t)v->vars,(uint32_t)v->vis,(uint32_t)v->clip,
                  (uint32_t)v->patterns[0],(uint32_t)v->patterns[1],(uint32_t)v->patterns[2],r);
+    // Owned type-zero monochrome patterns: white background, solid black
+    // pen/fill. As in the donor GWorld setup, defaults must work before a
+    // caller ever sends PenNormal. Keep the bitmap in PixPat's pat1Data field.
+    for(unsigned i=0;i<8;++i){(*v->patterns[1])[20+i]=255;(*v->patterns[2])[20+i]=255;}
     v->isScreen=screen;
     if(screen) {
         GWorld8::Layout physical={640,640*480};
@@ -154,6 +158,7 @@ bool publish(bool prepareScene) {
     dirtyCount=0;paletteDirty=false;return true;
 }
 bool handles(uint16_t trap) {
+    if(trap==0xa8a6 || trap==0xa8d7 || trap==0xa8e0 || trap==0xa8d3)return true;
     return trap==0xa88b || trap==0xa88d || trap==0xa88c || trap==0xa893 || trap==0xa884 || trap==0xa8a8 || trap==0xa8a9 || trap==0xa8ab || trap==0xa8ae || trap==0xa8aa || trap==0xa861 || trap==0xa8d8 || trap==0xa8d9 || trap==0xa8df || trap==0xa8e5 || trap==0xa879 || trap==0xa87a || trap==0xa90d || trap==0xa90a || trap==0xa887 || trap==0xa888 || trap==0xa88a || trap==0xa8a2 || trap==0xa87b || trap==0xa8a7 || trap==0xa91c || trap==0xa889 || trap==0xa89e || trap==0xa863 || trap==0xa8a3 || trap==0xaaa0 || trap==0xa91f || trap==0xa924 || trap==0xaa46 || trap==0xaa91 || trap==0xaa9c || trap==0xaa9e || trap==0xaa95 || trap==0xaa94 || trap==0xaa9a || trap==0xaa14 || trap==0xaa15 || trap==0xa915 || trap==0xa916 || trap==0xa91b || trap==0xa877 || trap==0xa878 || trap==0xa8ec || trap==0xa86e || trap==0xaa2a || trap==0xab1d || trap==0xa873 || trap==0xa874;
 }
 bool dispatch(uint16_t trap,uint32_t* regs,uint8_t* args,uint32_t& consumed) {
@@ -210,6 +215,12 @@ bool dispatch(uint16_t trap,uint32_t* regs,uint8_t* args,uint32_t& consumed) {
         if(!RectBounds::intersect(pointer(l(args),8),pointer(l(args+8),8),pointer(l(args+4),8),nonempty))return fail("DISPLAY / SECTRECT EXTENT");
         args[12]=nonempty?1:0;consumed=12;return true;
     }
+    if(trap==0xa8a6){
+        if(!pointer((uint32_t)args,10))return fail("DISPLAY / EQUALRECT ARGUMENTS");
+        bool same=false;
+        if(!RectBounds::equal(pointer(l(args),8),pointer(l(args+4),8),same))return fail("DISPLAY / EQUALRECT EXTENT");
+        args[8]=same?1:0;consumed=8;return true;
+    }
     if(trap==0xa861){
         if(!thePort)return fail("DISPLAY / RANDOM BEFORE INITGRAF");
         uint32_t seed=l(thePort-126),product=16807UL*uint16_t(seed);
@@ -220,6 +231,44 @@ bool dispatch(uint16_t trap,uint32_t* regs,uint8_t* args,uint32_t& consumed) {
     if(trap==0xa8d8){
         H h=heap->newHandle(10,true);if(!h)return fail("REGION / NEW MEMORY");
         sw(*h,10);sl(args,(uint32_t)h);regs[0]=0;regs[8]=(uint32_t)*h+10;return true;
+    }
+    if(trap==0xa8d7){
+        if(!pointer((uint32_t)args,10))return fail("REGION / BITMAP ARGUMENTS");
+        const uint8_t* map=pointer(l(args),14);H out=(H)l(args+4);
+        if(!map || !heap->isHandle(out) || !*out)return fail("REGION / BITMAP OWNER");
+        int32_t height=int16_t(w(map+10))-int16_t(w(map+6));uint16_t stride=w(map+4),size=0;
+        if(height<0 || !stride || stride&0xc000)return fail("REGION / BITMAP LAYOUT");
+        uint32_t bytes=uint32_t(height)*stride;
+        if(!BitmapRegion::encode(pointer(l(map),bytes),bytes,stride,map+6,regionWorkspace,sizeof regionWorkspace,size))return fail("REGION / BITMAP FORM");
+        if(heap->setHandleSize(out,size))return fail("REGION / BITMAP MEMORY");
+        CopyBits8::copySpan(regionWorkspace,*out,size);sw(args+8,0);consumed=8;return true;
+    }
+    if(trap==0xa8d3){
+        World* v=thePort?byPort(l(thePort)):nullptr;H h=(H)l(args);uint16_t size=0;
+        if(!v || !heap->isHandle(h) || !*h || heap->handleSize(h)>32766 ||
+           (!v->isScreen && !v->locked) || w(*v->vis)!=10 || w(v->port+66) ||
+           l(v->port+92) || l(v->port+96) || l(v->port+80)>255)return fail("REGION / PAINT OWNER");
+        if((w(v->port+56)!=0 && w(v->port+56)!=8) || w(*v->patterns[1]))return fail("REGION / PAINT PEN");
+        for(unsigned i=0;i<8;++i)if((*v->patterns[1])[20+i]!=255)return fail("REGION / PAINT PATTERN");
+        if(heap->handleSize(v->clip)>32766 || !RegionOps::combine(*h,heap->handleSize(h),*v->clip,heap->handleSize(v->clip),
+            RegionOps::Intersection,regionWorkspace,sizeof regionWorkspace,size))return fail("REGION / PAINT CLIP");
+        uint8_t drawn[8];
+        if(!FillRect8::solid(v->isScreen?pixels:*v->pixels,v->isScreen?640*480:heap->handleSize(v->pixels),
+            w(*v->pm+4)&0x3fff,*v->pm+6,v->port+16,*v->vis+2,*v->clip+2,*h+2,
+            uint8_t(l(v->port+80)),drawn,regionWorkspace,size))return fail("REGION / PAINT FORM");
+        if(v->isScreen)changed(*v,drawn);consumed=4;regs[0]=0;return true;
+    }
+    if(trap==0xa8e0){
+        if(!pointer((uint32_t)args,8))return fail("REGION / OFFSET ARGUMENTS");
+        H h=(H)l(args+4);uint16_t size=0;
+        if(!heap->isHandle(h) || !*h || heap->handleSize(h)>32766)return fail("REGION / OFFSET OWNER");
+        int16_t dv=int16_t(w(args)),dh=int16_t(w(args+2));
+        if(dv==32767 || dh==32767)return fail("REGION / OFFSET RANGE");
+        uint8_t from[8]={0,0,0,0,0,1,0,1},to[8];
+        sw(to,uint16_t(dv));sw(to+2,uint16_t(dh));sw(to+4,uint16_t(dv+1));sw(to+6,uint16_t(dh+1));
+        if(!RegionOps::map(*h,heap->handleSize(h),from,to,regionWorkspace,sizeof regionWorkspace,size))return fail("REGION / OFFSET FORM");
+        if(heap->setHandleSize(h,size))return fail("REGION / OFFSET MEMORY");
+        CopyBits8::copySpan(regionWorkspace,*h,size);consumed=8;return true;
     }
     if(trap==0xa8d9){
         H h=(H)l(args);if(!heap->isHandle(h) || heap->disposeHandle(h))return fail("REGION / DISPOSE OWNER");
@@ -292,7 +341,7 @@ bool dispatch(uint16_t trap,uint32_t* regs,uint8_t* args,uint32_t& consumed) {
         if(trap==0xa89e) {
             sw(v->port+52,1);sw(v->port+54,1);sw(v->port+56,8);
             uint8_t* pattern=*v->patterns[1];sw(pattern,0);
-            for(unsigned i=0;i<8;++i)pattern[16+i]=255;
+            for(unsigned i=0;i<8;++i)pattern[20+i]=255;
             regs[0]=0;return true;
         }
         if(trap==0xa863) {
@@ -304,7 +353,7 @@ bool dispatch(uint16_t trap,uint32_t* regs,uint8_t* args,uint32_t& consumed) {
         if(w(*v->clip)!=10 || w(*v->vis)!=10)return fail("DISPLAY / FILL COMPLEX REGION");
         if(trap==0xa8a2){
             if(w(v->port+56)!=8 || w(*v->patterns[1]))return fail("DISPLAY / PAINT PEN FORM");
-            for(unsigned i=0;i<8;++i)if((*v->patterns[1])[16+i]!=255)return fail("DISPLAY / PAINT PATTERN");
+            for(unsigned i=0;i<8;++i)if((*v->patterns[1])[20+i]!=255)return fail("DISPLAY / PAINT PATTERN");
         }
         const uint8_t* rect=pointer(l(args),8);uint8_t drawn[8];
         if(!rect || (!v->isScreen && !v->locked))return fail("DISPLAY / ERASE RECT OWNER");
@@ -436,7 +485,6 @@ bool dispatch(uint16_t trap,uint32_t* regs,uint8_t* args,uint32_t& consumed) {
         const uint8_t* from=pointer(l(args+10),8);const uint8_t* to=pointer(l(args+6),8);
         if(!source || !destination)return fail("DISPLAY / COPYBITS BITMAP OWNER");
         if(!from || !to)return fail("DISPLAY / COPYBITS RECT EXTENT");
-        if(source==destination)return fail("DISPLAY / COPYBITS OVERLAP");
         World* current=thePort?byPort(l(thePort)):nullptr;
         if(!current)return fail("DISPLAY / COPYBITS CURRENT PORT");
         const bool currentDestination=current==destination;

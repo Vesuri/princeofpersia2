@@ -24,6 +24,7 @@
 #endif
 #include "framework/AmigaHardware.h"
 #include "mac/MacHeap.h"
+#include "mac/HandleCopy.h"
 #include "mac/OriginalApplication.h"
 #include "mac/SHA256.h"
 #include "mac/Identity.h"
@@ -34,6 +35,9 @@
 #ifdef POP2_DISPLAY_FRAMES_PROBE
 #include "../../../build/display/DisplayFrames.h"
 #endif
+#endif
+#ifdef POP2_GAMEPLAY_ROUTE_PROBE
+#include "../../../build/gameplay/RouteInputs.h"
 #endif
 #ifdef POP2_FILE_REPLAY
 #include "../../../build/core/FileReplay.h"
@@ -81,6 +85,37 @@ volatile uint32_t g_gameplaySaveResult=0,g_gameplayLoadResult=0,g_gameplaySavedA
 volatile uint32_t g_gameplayInputActions=0,g_gameplayKeyCount=0,g_gameplayKeys[128][4]={};
 void pop2_gameplay_saved();void pop2_gameplay_loaded();
 __attribute__((noinline)) void pop2GameplayFileCheckpoint(){__asm__ volatile("nop" ::: "memory");}
+#endif
+#if defined(POP2_ROUTE_NO_TRAP_TRACE) && !defined(POP2_GAMEPLAY_ROUTE_PROBE)
+#error Trap-trace control requires the explicit gameplay route fixture
+#endif
+#ifdef POP2_GAMEPLAY_ROUTE_PROBE
+#if !defined(POP2_VERIFY) || !defined(POP2_INTEGRATION_PROBE) || defined(POP2_GAMEPLAY_RESTART_PROBE)
+#error Route probe requires separate verification and integration input
+#endif
+uint32_t g_routeReturn=0;
+uint32_t g_routeEndingReturn=0;
+uint32_t g_routeHallReturn=0;
+volatile uint32_t g_routeReserve[4]={};
+volatile uint32_t g_routeHallComplete=0;
+#ifdef POP2_ROUTE_RESOURCE_TRACE
+volatile uint32_t g_routeHandleCount=0,g_routeHandles[256][8],g_routeFreedUnlocks=0;
+#endif
+volatile uint32_t g_routeFrames=0,g_routeCheckpoint=0,g_routeKeys=0,g_routeRooms=0;
+volatile uint32_t g_routeLastResult=0,g_routeComplete=0;
+const char* g_routeError=0;
+#ifdef POP2_ROUTE_AUDIO_TRACE
+volatile uint32_t g_routeAudioCount=0;
+uint32_t g_routeAudio[8192][10]={};
+#endif
+#ifdef POP2_ROUTE_RANDOM_TRACE
+volatile uint32_t g_routeRandom[5];
+__attribute__((noinline)) void pop2GameplayRouteRandom(){__asm__ volatile("nop" ::: "memory");}
+#endif
+void pop2_gameplay_route_frame();
+void pop2_gameplay_route_ending();
+void pop2_gameplay_route_hall();
+__attribute__((noinline)) void pop2GameplayRouteCheckpoint(){__asm__ volatile("nop" ::: "memory");}
 #endif
 #ifdef POP2_TIMING_TM_PROBE
 #if !defined(POP2_VERIFY) || !defined(POP2_INTEGRATION_PROBE) || defined(POP2_TIMING_VBL_PROBE)
@@ -799,9 +834,95 @@ extern "C" void pop2IntegrationOpeningHook(){
     integrationPress(0x45,0);
 #endif
 }
+#ifdef POP2_GAMEPLAY_ROUTE_PROBE
+static uint8_t routeHeld=0;
+static bool routeKeyboard(uint16_t step){
+    if(g_routeKeys>=sizeof(routeKeys)/sizeof(routeKeys[0]) || routeKeys[g_routeKeys].step!=step)
+        return fail("GAMEPLAY ROUTE / KEY STEP");
+    const uint8_t raw[]={0x4f,0x4e,0x4c,0x4d,0x60,0x63};
+    uint8_t held=routeKeys[g_routeKeys].mask,changed=held^routeHeld;
+    for(unsigned i=0;i<6;++i)if(changed&(1<<i))NativeInput::inject(raw[i],(held&(1<<i))!=0);
+    if(changed){uint32_t tick=NativeInput::ticks();while(NativeInput::ticks()==tick){}}
+    routeHeld=held;
+    if(NativeInput::error())return fail(NativeInput::error());
+    return true;
+}
+static void routeCapture(unsigned ordinal){
+    g_routeCheckpoint=ordinal;pop2GameplayRouteCheckpoint();
+#if POP2_GAMEPLAY_ROUTE_LEVEL == 0
+    // Explicit verification-only interventions at the same stopped boundary as
+    // the reference. Capture before and after; reject unexpected prior state.
+    while(ordinal+1<sizeof(routeCheckpoints)/sizeof(routeCheckpoints[0]) &&
+          routeCheckpoints[ordinal+1].automatic){
+        ++ordinal;
+        const auto& point=routeCheckpoints[ordinal];
+        if(point.step!=g_routeFrames || point.keys!=g_routeKeys){
+            g_routeError="GAMEPLAY ASSIST / BOUNDARY";return;
+        }
+        for(const auto& write:routeAssists)if(write.ordinal==ordinal){
+            if(w(a5-write.offset)!=write.before){g_routeError="GAMEPLAY ASSIST / BEFORE VALUE";return;}
+        }
+        for(const auto& write:routeAssists)if(write.ordinal==ordinal){
+            sw(a5-write.offset,write.after);
+            if(w(a5-write.offset)!=write.after){g_routeError="GAMEPLAY ASSIST / WRITE";return;}
+        }
+        if(point.level!=w(a5-0x4fd2) || point.room!=w(a5-0x4fc2)){
+            g_routeError="GAMEPLAY ASSIST / AFTER BOUNDARY";return;
+        }
+        g_routeCheckpoint=ordinal;pop2GameplayRouteCheckpoint();
+    }
+#endif
+    if(ordinal+1==sizeof(routeCheckpoints)/sizeof(routeCheckpoints[0]))g_routeComplete=1;
+}
+extern "C" void pop2GameplayRouteFrame(uint32_t result){
+    ++g_routeFrames;g_routeLastResult=result&65535;
+    // The guarded FrameAdv owner has returned. Finish its one publication
+    // before observing AGA output; clear ownership to avoid a second publish.
+    if(displayBatchFrame){
+        displayBatchFrame=displayBatchParent=displayBatchReturn=0;
+        NativeDisplay::paceFrame();
+        if(!NativeDisplay::publish(displayBatchScene)){g_routeError=NativeDisplay::error();return;}
+        displayBatchScene=false;
+    }
+    if(g_routeFrames!=w(a5-0x349a)){g_routeError="GAMEPLAY ROUTE / FRAME STEP";return;}
+    unsigned next=g_routeCheckpoint+1;
+    if(next<sizeof(routeCheckpoints)/sizeof(routeCheckpoints[0]) &&
+       int(next)!=routeEndingOrdinal &&
+       !routeCheckpoints[next].first && g_routeFrames==routeCheckpoints[next].step){
+        auto& expected=routeCheckpoints[next];
+        if((result&65535)!=0xfffe || w(a5-0x4fd2)!=expected.level ||
+           w(a5-0x4fc2)!=expected.room || g_routeKeys!=expected.keys){
+            g_routeError="GAMEPLAY ROUTE / FRAME RESULT";return;
+        }
+        NativeDisplay::wait();routeCapture(next);
+    }
+}
+extern "C" void pop2GameplayRouteHall(){g_routeHallComplete=1;}
+extern "C" void pop2GameplayRouteEnding(){
+    unsigned next=g_routeCheckpoint+1;
+    if(int(next)!=routeEndingOrdinal || next>=sizeof(routeCheckpoints)/sizeof(routeCheckpoints[0])){
+        g_routeError="GAMEPLAY ENDING / CHECKPOINT ORDER";return;
+    }
+    const auto& expected=routeCheckpoints[next];
+    if(g_routeFrames!=expected.step || g_routeKeys!=expected.keys ||
+       w(a5-0x4fd2)!=expected.level || w(a5-0x4fc2)!=expected.room){
+        g_routeError="GAMEPLAY ENDING / STATE";return;
+    }
+    NativeDisplay::wait();routeCapture(next);
+}
+#endif
 extern "C" void pop2IntegrationRoomHook(){
     g_integrationPulseRaw=128;NativeInput::flush(0xffff,0);NativeDisplay::wait();
-#ifdef POP2_GAMEPLAY_RESTART_PROBE
+#ifdef POP2_GAMEPLAY_ROUTE_PROBE
+    ++g_routeRooms;
+    unsigned ordinal=g_routeRooms==1?0:g_routeCheckpoint+1;
+    if(ordinal>=sizeof(routeCheckpoints)/sizeof(routeCheckpoints[0])){g_routeError="GAMEPLAY ROUTE / FIRST FRAME COUNT";return;}
+    auto& expected=routeCheckpoints[ordinal];
+    if(!expected.first || g_routeFrames!=expected.step || w(a5-0x4fd2)!=expected.level ||
+       w(a5-0x4fc2)!=expected.room || g_routeKeys!=expected.keys){g_routeError="GAMEPLAY ROUTE / FIRST FRAME";return;}
+    if(g_routeRooms==1){g_integrationStage=3;recordIntegrationStage();}
+    routeCapture(ordinal);
+#elif defined(POP2_GAMEPLAY_RESTART_PROBE)
     ++g_gameplayRooms;
 #ifdef POP2_GAMEPLAY_SAVE_PROBE
     g_integrationStage=g_gameplayRooms==1?3:5;
@@ -852,7 +973,11 @@ extern "C" void pop2GameplaySaved(uint32_t result){
 extern "C" void pop2GameplayLoaded(uint32_t result){g_gameplayLoadResult=result&65535;pop2GameplayFileCheckpoint();}
 #endif
 extern "C" void pop2IntegrationDeathHook(uint8_t* originalSP){
-    if(g_integrationStage==3 && w(originalSP+4)==3 && !g_integrationDeathReturn){
+    if(g_integrationStage==3 && w(originalSP+4)==3 && !g_integrationDeathReturn
+#ifdef POP2_GAMEPLAY_ROUTE_PROBE
+       && false
+#endif
+       ){
         g_integrationDeathKind=w(originalSP+4);g_integrationDeathReturn=l(originalSP);
         sl(originalSP,(uint32_t)pop2_integration_death_return);
     }
@@ -930,6 +1055,40 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
     if(!codeCaller && !tableCaller && !fixtureCaller && !cachedCaller && !audioCaller && pc!=(uint32_t)pop2_old_loadseg && pc!=(uint32_t)pop2_old_exit)
         return stop(frame,usp,"TRAP / UNKNOWN CALLER",0,seg,off);
     uint16_t trap=w((uint8_t*)pc);
+#ifdef POP2_GAMEPLAY_ROUTE_PROBE
+    if(g_routeError)return stop(frame,usp,g_routeError,trap,seg,off);
+#ifdef POP2_GAMEPLAY_HALL_PROBE
+    if(g_routeHallComplete)return stop(frame,usp,"GAMEPLAY ROUTE / HALL COMPLETE",trap,seg,off);
+    if(g_routeComplete && !g_routeHallReturn){
+        for(uint32_t at=regs[14],depth=0;depth<32 && validMemory(at,10);++depth){
+            uint32_t parent=l((uint8_t*)at),returned=l((uint8_t*)at+4);
+            if(returned==g_coreSegments[2][0]+0x45c2){
+                if(w((uint8_t*)at+8)!=w(a5-0x4fce) || w((uint8_t*)returned)!=0x544f)
+                    return stop(frame,usp,"GAMEPLAY HALL / OWNER",trap,seg,off);
+                g_routeHallReturn=returned;sl((uint8_t*)at+4,(uint32_t)pop2_gameplay_route_hall);break;
+            }
+            if(parent<=at)break;at=parent;
+        }
+    }
+#else
+    if(g_routeComplete)return stop(frame,usp,routeCompleteReason,trap,seg,off);
+#endif
+    if(routeEndingOrdinal>=0 && !g_routeEndingReturn && g_coreSegments[2][0]){
+        // Original session's winning branch calls NIS(11), then returns here.
+        // Observe that return without changing the original victory decision.
+        for(uint32_t at=regs[14],depth=0;depth<32 && validMemory(at,10);++depth){
+            uint32_t parent=l((uint8_t*)at),returned=l((uint8_t*)at+4);
+            if(returned==g_coreSegments[2][0]+0x45b8){
+                if(w((uint8_t*)at+8)!=11 || w(a5-0x4f92)!=15 ||
+                   l((uint8_t*)g_coreSegments[2][0]+0x45a4)!=0x0c44000e){
+                    return stop(frame,usp,"GAMEPLAY ENDING / OWNER",trap,seg,off);
+                }
+                g_routeEndingReturn=returned;sl((uint8_t*)at+4,(uint32_t)pop2_gameplay_route_ending);break;
+            }
+            if(parent<=at)break;at=parent;
+        }
+    }
+#endif
 #ifdef POP2_INTEGRATION_PROBE
 #ifdef POP2_GAMEPLAY_RESTART_PROBE
 #ifdef POP2_GAMEPLAY_SAVE_PROBE
@@ -972,7 +1131,7 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
         }
     }
     if(seg==17 && off==0x313e &&
-#ifndef POP2_GAMEPLAY_RESTART_PROBE
+#if !defined(POP2_GAMEPLAY_RESTART_PROBE) && !defined(POP2_GAMEPLAY_ROUTE_PROBE)
        g_integrationStage<3 && !g_integrationRoomReturn &&
 #endif
        validMemory(regs[14],8) && l((uint8_t*)regs[14]+4)==g_coreSegments[2][0]+0x6054 && uint16_t(regs[4])==0xfffe){
@@ -988,7 +1147,7 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
     g_timingPhase=trap&0xfff;
 #endif
     if(codeCaller) {
-#ifdef POP2_VERIFY
+#if defined(POP2_VERIFY) && !defined(POP2_ROUTE_NO_TRAP_TRACE)
         uint32_t* row=g_coreTrace[(g_coreCount++)%traceCapacity];row[0]=seg;row[1]=off;row[2]=trap;
 #endif
     } else if(!builtin && !fixtureCaller && !audioCaller && !(pc>=(uint32_t)a5+app.world().jumpOffset && pc<(uint32_t)a5+app.world().jumpOffset+app.world().jumpBytes && trap==0xa9f0))
@@ -1010,6 +1169,18 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
         bool retry=false;
         if(!NativeAudio::dispatch(l(usp+4),l(usp+8),regs[0],retry))return stop(frame,usp,NativeAudio::error(),trap,seg,off);
         if(retry){sl(frame+2,pc);return (uint32_t)usp;}
+#if defined(POP2_GAMEPLAY_ROUTE_PROBE) && defined(POP2_ROUTE_AUDIO_TRACE)
+        uint32_t selector=l(usp+4);
+        if(g_integrationStage==3 && (selector==9 || selector==12 || selector==17 || selector==18 || selector==20)){
+            if(g_routeAudioCount==8192)return stop(frame,usp,"GAMEPLAY ROUTE / AUDIO TRACE CAPACITY",trap,seg,off);
+            auto& state=NativeAudio::state();auto* row=g_routeAudio[g_routeAudioCount++];
+            row[0]=w(a5-0x349a);row[1]=selector;row[2]=state.clock;
+            row[3]=w((uint8_t*)l(usp+8)+(selector==9 || selector==12 ? 0 : 24));
+            row[4]=regs[0];row[5]=state.cursors[5].position;
+            row[6]=state.voices.effect.duration>=0;row[7]=wallTicks();
+            row[8]=callerSeg;row[9]=callerOff;
+        }
+#endif
 #ifdef POP2_GAMEPLAY_RESTART_PROBE
         if(g_gameplayAudioSelector==10){++g_gameplaySuspendCalls;g_gameplaySuspendClock=NativeAudio::state().clock;}
         if(g_gameplayAudioSelector==11){++g_gameplayResumeCalls;g_gameplayResumeClock=NativeAudio::state().clock;}
@@ -1023,9 +1194,10 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
     }
 #ifdef POP2_UI
     if(trap==0xaffd){
-        if(!codeCaller || seg!=17 || (off!=0x245e && off!=0x6d42))return stop(frame,usp,"UI / REPLACEMENT CALLER",trap,seg,off);
+        uint16_t expected=seg==17 && off==0x245e?1:seg==17 && off==0x6d42?2:seg==2 && off==0x2220?3:0;
+        if(!codeCaller || !expected)return stop(frame,usp,"UI / REPLACEMENT CALLER",trap,seg,off);
         uint16_t selector=w((uint8_t*)pc+2);
-        if(selector!=(off==0x245e?1:2))return stop(frame,usp,"UI / REPLACEMENT SELECTOR",trap,seg,off);
+        if(selector!=expected)return stop(frame,usp,"UI / REPLACEMENT SELECTOR",trap,seg,off);
         if(!NativeUI::replacement(selector,regs,usp+4))return stop(frame,usp,NativeUI::error(),trap,seg,off);
         sl(frame+2,pc+4);return (uint32_t)usp;
     }
@@ -1078,12 +1250,23 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
 #ifdef POP2_UI
     if(NativeInput::error())return stop(frame,usp,NativeInput::error(),trap,seg,off);
     if(NativeUI::handles(trap)) {
+#ifdef POP2_GAMEPLAY_ROUTE_PROBE
+        bool routeRead=trap==0xa976 && l(frame+2)==g_coreSegments[2][0]+0x5622 && g_integrationStage==3;
+        if(routeRead && !routeKeyboard(w(a5-0x349a)))return stop(frame,usp,g_coreReason,trap,seg,off);
+#endif
 #ifdef POP2_GAMEPLAY_SAVE_PROBE
         bool gameplayRead=trap==0xa976 && l(frame+2)==g_coreSegments[2][0]+0x5622 && g_integrationStage>=3;
         uint16_t gameplayStep=w(a5-0x349a);
         if(gameplayRead)gameplayKeyboard(gameplayStep);
 #endif
         if(!NativeUI::dispatch(trap,regs,usp,consumed))return stop(frame,usp,NativeUI::error(),trap,seg,off);
+#ifdef POP2_GAMEPLAY_ROUTE_PROBE
+        if(routeRead){
+            uint8_t* keys=(uint8_t*)l(usp);
+            for(unsigned i=0;i<16;++i)if(keys[i]!=routeKeys[g_routeKeys].keys[i])return stop(frame,usp,"GAMEPLAY ROUTE / KEY MAP",trap,seg,off);
+            ++g_routeKeys;
+        }
+#endif
 #ifdef POP2_GAMEPLAY_RESTART_PROBE
         if(trap==0xa93e && l(usp+2))g_gameplayMenu=l(usp+2);
 #ifdef POP2_GAMEPLAY_SAVE_PROBE
@@ -1128,6 +1311,9 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
                        w((uint8_t*)base+0x68b2)!=0x4e75)
                         return stop(frame,usp,"FRAME / FRAMEADV OWNER",trap,seg,off);
                     if(!NativeDisplay::publish())return stop(frame,usp,NativeDisplay::error(),trap,seg,off);
+#ifdef POP2_GAMEPLAY_ROUTE_PROBE
+                    g_routeReturn=ret;ret=(uint32_t)pop2_gameplay_route_frame;sl((uint8_t*)at+4,ret);
+#endif
                     displayBatchFrame=at;displayBatchParent=parent;displayBatchReturn=ret;displayBatchScene=false;
                     break;
                 }
@@ -1154,6 +1340,16 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
             }
         }
         if(!NativeDisplay::dispatch(trap,regs,usp,consumed))return stop(frame,usp,NativeDisplay::error(),trap,seg,off);
+#if defined(POP2_GAMEPLAY_ROUTE_PROBE) && defined(POP2_ROUTE_RANDOM_TRACE)
+        if(trap==0xa861 && g_integrationStage==3){
+            uint16_t step=w(a5-0x349a);
+            if((step>=523 && step<=551) || (step>=819 && step<=865) || (step>=1490 && step<=1545)){
+                g_routeRandom[0]=step;g_routeRandom[1]=l(a5-0x18fc);
+                g_routeRandom[2]=w(usp);g_routeRandom[3]=off+2;
+                g_routeRandom[4]=l((uint8_t*)regs[14]+4);pop2GameplayRouteRandom();
+            }
+        }
+#endif
         if(!displayBatchFrame && !NativeDisplay::publish())return stop(frame,usp,NativeDisplay::error(),trap,seg,off);
         return (uint32_t)(usp+consumed);
     }
@@ -1370,7 +1566,26 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
         break;
     }
     case 0xa02a:case 0xa024: {
-        auto h=(MacHeap::Handle)regs[8];if(!heap.isHandle(h)){fail("HEAP / UNKNOWN HANDLE");goto failed;}
+#ifdef POP2_ROUTE_RESOURCE_TRACE
+        if(seg==15 && off>=0x2700 && off<0x2a00){
+            volatile uint32_t* row=g_routeHandles[(g_routeHandleCount++)%256];
+            row[0]=trap;row[1]=seg;row[2]=off;row[3]=regs[8];
+            row[4]=validMemory(regs[8],4)?l((uint8_t*)regs[8]):0xffffffff;
+            row[5]=l(a5-0x2454);row[6]=l(a5-0x2450);row[7]=l(a5-0x244c);
+        }
+#endif
+        auto h=(MacHeap::Handle)regs[8];
+        if(trap==0xa02a && seg==15 && (off==0x29aa || off==0x29c2 || off==0x29da) && heap.isFreeHandleSlot(h)) {
+            // MEASURED ending/scene-20 cleanup: disposed palette aliases return
+            // memWZErr and preserves the free slot. Other unmeasured invalid
+            // calls remain loud stops; freed-slot errors depend on Mac layout.
+#ifdef POP2_ROUTE_RESOURCE_TRACE
+            ++g_routeFreedUnlocks;
+#endif
+            regs[0]=int32_t(MacHeap::memWZErr);sw(low+0x220,MacHeap::memWZErr);
+            sw(frame,(w(frame)&~15)|8);return (uint32_t)usp;
+        }
+        if(!heap.isHandle(h)){fail("HEAP / UNKNOWN HANDLE");goto failed;}
         error=trap==0xa02a?heap.setState(h,heap.state(h)&~0x80):heap.setHandleSize(h,regs[0]);
         regs[0]=(int32_t)error;break;
     }
@@ -1389,7 +1604,25 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
     }
 #endif
     case 0xa040: // ResrvMem: reserve contiguous space in the current zone.
-        error=heap.largestBlock()>=regs[0] ? 0 : MacHeap::memFullErr;regs[0]=(int32_t)error;break;
+#ifdef POP2_GAMEPLAY_ROUTE_PROBE
+        g_routeReserve[0]=regs[0];g_routeReserve[1]=heap.largestBlock();
+#endif
+        // Reserve requires the same compaction/purge path as allocation, not a
+        // snapshot of the current free-block layout. Shared heap preserves
+        // locked handles and non-purgeable data while making this space.
+        error=heap.purge(regs[0]);regs[0]=(int32_t)error;
+#ifdef POP2_GAMEPLAY_ROUTE_PROBE
+        g_routeReserve[2]=heap.largestBlock();g_routeReserve[3]=uint16_t(error);
+#endif
+        break;
+    case 0xa9e1: {
+        auto source=(MacHeap::Handle)regs[8];
+        if(!heap.isHandle(source) || !*source){fail("HEAP / HANDTOHAND SOURCE");goto failed;}
+        MacHeap::Handle result=nullptr;error=HandleCopy::copy(heap,source,result);
+        if(error){fail("HEAP / HANDTOHAND ALLOCATION");goto failed;}
+        regs[8]=(uint32_t)result;regs[0]=0;
+        sw(low+0x220,0);sw(frame,(w(frame)&~31)|4);break;
+    }
     case 0xa025: {
         auto h=(MacHeap::Handle)regs[8];if(!heap.isHandle(h)) { fail("HEAP / UNKNOWN HANDLE");goto failed; }
         regs[0]=heap.handleSize(h);error=heap.error();break;
@@ -1475,7 +1708,7 @@ static uint32_t callbackService(uint32_t* parked) {
     uint8_t* usp=(uint8_t*)parked+66;
     if(usp<stack || usp>stack+65536-4)return 0;
 
-#ifdef POP2_VERIFY
+#if defined(POP2_VERIFY) && !defined(POP2_ROUTE_NO_TRAP_TRACE)
     uint32_t* row=g_coreTrace[(g_coreCount++)%traceCapacity];row[0]=seg;row[1]=off;row[2]=trap;
 #endif
     uint8_t frame[8]={};sw(frame,g_coreServiceSR);sl(frame+2,pc+2);

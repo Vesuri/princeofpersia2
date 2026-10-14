@@ -5,6 +5,13 @@
 #endif
 namespace RectBounds {
 inline uint16_t word(const uint8_t* p) { return uint16_t(uint16_t(p[0])<<8)|p[1]; }
+// EqualRect compares all four coordinates, including empty/inverted bounds.
+inline bool equal(const uint8_t* a,const uint8_t* b,bool& same) {
+    if(!a || !b)return false;
+    same=true;
+    for(unsigned i=0;i<8;++i)if(a[i]!=b[i])same=false;
+    return true;
+}
 // UnionRect compares signed coordinates even for empty/inverted rectangles.
 // Read both inputs completely before writing so either may alias the output.
 inline bool unite(uint8_t* out,const uint8_t* a,const uint8_t* b) {

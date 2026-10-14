@@ -81,7 +81,7 @@ function M.poll()
   local packet=u(cpu.state.SP.value+8)&0xffffff
   local source=u(packet)&0xffffff;local size=u(packet+4)
   assert(source>0x100000 and size>0 and size<=2097152,'AUDIO EFFECT EXTENT')
-  payloads=payloads+1;assert(payloads<=128,'AUDIO EFFECT CAPACITY')
+  payloads=payloads+1;assert(payloads<=(os.getenv('POP2_ROUTE_AUDIO_TRACE') and 512 or 128),'AUDIO EFFECT CAPACITY')
   dump('audio-effect-'..payloads..'.bin',source,size)
   dump('audio-packet-'..payloads..'.bin',packet,38)
   print(string.format('AUDIO_PAYLOAD index=%d source=%08X size=%d',payloads,source,size))

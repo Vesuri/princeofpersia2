@@ -38,7 +38,7 @@ def generate(path):
         lines.append('[%s]={%s},'%(json.dumps(name),entries))
     lines.append('}')
     import os
-    if os.environ.get('POP2_AUDIO'):
+    if os.environ.get('POP2_AUDIO') or os.environ.get('POP2_ROUTE_AUDIO_TRACE'):
         from driver_image import decrypt,expand
         driver=expand(decrypt(next(r.body for r in read_resource_fork(DESTINATION/'Prince of Persia 2.rsrc') if r.kind==b'MDRV' and r.rid==11)))
         if hashlib.sha256(driver).hexdigest()!=pins(ROOT/'manifest/audio-inputs.sha256')['driver-expanded.bin']:raise ValueError('AUDIO / DRIVER PIN')

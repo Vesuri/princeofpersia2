@@ -11,6 +11,21 @@ static std::vector<uint8_t> box(int t,int l,int b,int r) {
 static std::vector<uint8_t> read(const std::string& path) {
     std::ifstream in(path,std::ios::binary);assert(in.good());return {std::istreambuf_iterator<char>(in),{}};
 }
+static void testOverlap() {
+    auto bounds=box(-2,-3,22,29),clip=box(0,0,21,27);
+    for(int dy=-9;dy<=9;++dy)for(int dx=-9;dx<=9;++dx) {
+        std::vector<uint8_t> initial(24*32),actual;
+        for(unsigned i=0;i<initial.size();++i)initial[i]=uint8_t(i*71+i/32);
+        actual=initial;auto expected=initial;
+        auto from=box(3,4,17,21),to=box(3+dy,4+dx,17+dy,21+dx);
+        for(int y=0;y<21;++y)for(int x=0;x<27;++x)
+            if(y>=3+dy && y<17+dy && x>=4+dx && x<21+dx)
+                expected[(y+2)*32+x+3]=initial[(y-dy+2)*32+x-dx+3];
+        uint8_t drawn[8];
+        assert(CopyBits8::copy(actual.data(),actual.size(),32,bounds.data(),actual.data(),actual.size(),32,bounds.data(),from.data(),to.data(),bounds.data(),bounds.data(),clip.data(),drawn));
+        assert(actual==expected);
+    }
+}
 static void testMaskCache() {
     static RegionRows::ValidationCache cache;
     const int16_t words[]={42,0,-2,8,12,0,-2,3,8,12,32767,4,3,8,32767,8,-2,12,32767,32767};
@@ -52,6 +67,7 @@ static void testMaskCache() {
     puts("PASS mask cache: exact-content reuse, every-byte mutation, relocation, capacity, eviction, scaling and atomic rejection");
 }
 int main(int argc,char** argv) {
+    testOverlap();
     testMaskCache();
     // Exercise all longword alignments and tails, retaining sentinels on both
     // sides. This also checks zero-length copies without touching either side.

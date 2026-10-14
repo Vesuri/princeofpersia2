@@ -57,7 +57,7 @@ inline bool spans(const RegionRows::Edges& a,const RegionRows::Edges& b,
         bool next=op==Xor ? inA!=inB : op==Difference ? inA && !inB : inA && inB;
 #endif
         if(next!=previous) {
-            if(out.count==16)return false;
+            if(out.count==RegionRows::Edges::capacity)return false;
             out.x[out.count++]=x;previous=next;
         }
     }

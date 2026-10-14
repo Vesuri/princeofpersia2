@@ -13,6 +13,12 @@ extern "C" {extern volatile uint32_t g_inputVectorRestored;}
 #ifdef POP2_UI_PROBE
 extern "C" {extern volatile uint32_t g_uiOverlay,g_uiOverlayCount;extern volatile uint8_t g_uiProbeReplyRaw;}
 #endif
+#ifdef POP2_GAMEPLAY_HALL_PROBE
+#if !defined(POP2_VERIFY) || !defined(POP2_GAMEPLAY_ROUTE_PROBE)
+#error Hall input requires explicit route verification
+#endif
+extern "C" {extern volatile uint32_t g_uiOverlay,g_uiOverlayCount;}
+#endif
 #ifdef POP2_INTEGRATION_PROBE
 extern "C" {extern volatile uint32_t g_integrationStage,g_integrationRightAt;volatile uint32_t g_integrationEscReads=0,g_integrationRightReads=0,g_integrationSpaceEvents=0,g_integrationKeys[4]={};volatile uint32_t g_integrationPulseRaw=128,g_integrationPulseStart=0,g_integrationPulseEnd=0;}
 #endif
@@ -71,6 +77,16 @@ void field(uint32_t ticks) {
  }
 #endif
 #ifdef POP2_INTEGRATION_PROBE
+#ifdef POP2_GAMEPLAY_HALL_PROBE
+ static uint32_t hallSeen=0,hallKey=0;
+ static const uint8_t hallKeys[]={0x33,0x18,0x22,0x12,0x32,0x44,0x44};
+ if((g_uiOverlay==7003 || g_uiOverlay==7004) && g_uiOverlayCount!=hallSeen){
+  hallSeen=g_uiOverlayCount;
+  if(hallKey<sizeof hallKeys){
+   g_integrationPulseRaw=hallKeys[hallKey++];g_integrationPulseStart=ticks+6;g_integrationPulseEnd=ticks+10;
+  }
+ }
+#endif
  static uint32_t observed[4]={};
  for(unsigned group=0;group<4;++group){
   uint32_t keys=g_integrationKeys[group],pulse=g_integrationPulseRaw;
@@ -78,7 +94,7 @@ void field(uint32_t ticks) {
 #ifdef POP2_GAMEPLAY_RESTART_PROBE
   if(pulse==0x13 && group==3 && int32_t(ticks-(g_integrationPulseStart-2))>=0 && int32_t(g_integrationPulseEnd-ticks)>0)keys|=1UL<<(0x66%32);
 #endif
-#if !defined(POP2_INTEGRATION_NO_RIGHT) && !defined(POP2_GAMEPLAY_RESTART_PROBE)
+#if !defined(POP2_INTEGRATION_NO_RIGHT) && !defined(POP2_GAMEPLAY_RESTART_PROBE) && !defined(POP2_GAMEPLAY_ROUTE_PROBE)
   if(g_integrationStage==3 && int32_t(ticks-g_integrationRightAt)>=0 && group==2)keys|=1UL<<(0x4e%32);
 #endif
   uint32_t changed=keys^observed[group];

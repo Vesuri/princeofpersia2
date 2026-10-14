@@ -1,7 +1,10 @@
 # Gameplay coverage
 
 Item 12 remains open. Completion requires positive original/Amiga pairs for
-all entries below on `a1200-030`. Entry into a level does not prove its route
+all entries below on `a1200-030`, with the owner-authorized D11 exception for
+already recorded torch/RNG differences, which remain in item 16. Completed
+assisted routes and absence of unresolved loud stops are required; exact matches
+are claimed only where observed. Entry into a level does not prove its route
 or completion. Service fixtures do not prove the corresponding session action.
 
 The harness follows Vette's named route/checkpoint approach and Alone in the
@@ -45,8 +48,8 @@ and bounded captures. Original bytes, saved state and captures remain ignored.
 
 | Entry | Required positive endpoint | Paired coverage |
 |---|---|---|
-| Level 1 | Meaningful gameplay route and original level-exit decision | Original fresh-run repeats pass; native pair pending |
-| Level 2 | Meaningful gameplay route and original level-exit decision | Original fresh-run repeats pass; native pair pending |
+| Level 1 | Meaningful gameplay route and original level-exit decision | Completed native/original pair; two pinned RNG exceptions under D11 |
+| Level 2 | Meaningful gameplay route and original level-exit decision | Completed native/original pair; inherited level-one RNG exceptions only |
 | Levels 3–14, individually | Meaningful gameplay route and original level-exit decision | Incomplete |
 | Main cutscenes, individually | Original natural return and paired visible/state checkpoints | Incomplete |
 | Timed story scenes, individually | Original natural return for each selected scene | Incomplete |
@@ -204,6 +207,55 @@ an unreached endpoint, with passing controls before corruption checks. The
 completed reference disk images are compressed with SHA-256 round-trip checks;
 all original captures and emulator state remain ignored.
 
+### Native level-1 comparison in progress
+
+MEASURED: the diagnostic A1200-030 run `.run-rXZcAu` reaches level 2, room 2
+at step 1001, with 1002 matching consumed key maps and successful code, input
+and hardware-restoration audits. All 96 checkpoints match the reference's
+full level context, six actor records, level/room/step counters, displayed
+pixels, eight bitplanes, palette and Copper configuration. The pair is not
+accepted: the QuickDraw random seed differs at checkpoints 64 and 90. In both
+cases the reference is one random draw ahead; later checkpoints match again.
+The cause remains under investigation with explicitly enabled random-call
+observers. No exception has been added to the acceptance checker.
+
+MEASURED: a second original route reproduces the pinned checkpoints with a
+read-only random-call observer. `PlayAmbient` (CODE 5+4F92) consumes the next
+random value at steps 526 and 823; the corresponding native trace consumes
+the same values at steps 544 and 854. The ambient record at A5−3738 also
+differs at the rejected endpoints, then matches again. This is an audio-state
+difference, not merely an unused seed. Audio completion and elapsed clocks
+need comparison before assigning a cause or changing services.
+
+MEASURED: `gameplay-level1-audio-3` completes the original level-1 route with
+its audio observer and retains all 96 pinned route checkpoints. A separate
+original-driver fixture, repeated in `audio-callback-order-1` and
+`audio-callback-order-2`, replaces an active effect
+with an authored descriptor. The old effect's completion callback changes
+the replacement ID from 5 to 7; selector 20 reports 7 playing and 5 stopped,
+with exactly one callback. Native `.run-xisZJy` matches both original runs:
+seven completed calls (including native initialization), one callback, two
+Paula starts, all seven register-preservation checks and restored hardware.
+The checker rejects 18 corrupted completion, callback, ID, query, ABI, build
+identity and hardware records.
+
+The replacement service stops the old effect and runs its callback through
+the existing user-mode trampoline before retrying the original call. It reads
+the replacement descriptor only after that callback returns. The fixture's
+sample allocation precedes resource lookup so it cannot retain a stale pointer
+across heap compaction. The full level-1 replay with this fix (`.run-rUIRoc`) still rejects
+checkpoints 64 and 90 for RNG. All 96 captured pixels, bitplanes, palettes,
+0x2200-byte contexts, actors and level/room/step counters match. The ambient
+random calls occur at native steps 544 and 855, versus original 526 and 823.
+The callback correction therefore does not resolve gameplay timing equivalence.
+
+Recheck the focused pair and its rejection controls with
+`python3 tools/test_audio_callback_order.py amiga/.run-xisZJy ref/mame/runs/audio-callback-order-1`.
+The original fixture is explicitly selected with `POP2_AUDIO=fixture
+POP2_AUDIO_CALLBACK_ORDER=1`; the native fixture requires verification plus
+`POP2_AUDIO_PROBE` and `POP2_AUDIO_ORDER_PROBE`. Ordinary release builds contain
+neither fixture.
+
 ## Continuing discovery sessions
 
 `POP2_ROUTE_DISCOVERY=1` keeps the original route controller open across level
@@ -225,7 +277,7 @@ and reaches level 3, room 1, at game step 1360 (`route-144`). It uses only
 original gameplay inputs and the existing D6 protection seam; checkpoint
 restores support retries. `tools/gameplay_routes/level2.tsv` records the
 successful 19-action path. The level-three first frame is saved as
-`level3-start` in that still-open session. This is discovery evidence, separate
+`level3-start` in that session. This is discovery evidence, separate
 from the fresh repeats below. The native pair remains required for level-two
 acceptance.
 
@@ -263,6 +315,21 @@ also reject missing level transitions and an unreached finish. Completed disk
 images are compressed with verified round trips. Saves and captures stay ignored.
 This proves original level-two repeatability, not its Amiga pair.
 
+
+### Native level-two comparison in progress
+
+MEASURED: `.run-ITSYlT` executes the complete pinned input stream through levels
+one and two on A1200-030, reaching level 3, room 1, at step 1360. It consumes all
+1362 original key maps, including both reads of step 1001, captures all 115
+checkpoints, and restores code, input, heap and hardware successfully. All 20
+level-two entry/action checkpoints match the original context, actors, RNG,
+level/room/step counters, pixels, AGA planes, palette and Copper configuration.
+The combined route remains rejected at the same two level-one RNG checkpoints
+(64 and 90). The checker evaluates later checkpoints while retaining those
+failures. This is one completed native run; repeatability and the unresolved
+level-one ambient timing issue remain open.
+
+
 ### Macintosh save import
 
 MEASURED: `gameplay-import-original-2` and `gameplay-import-original-3` load the
@@ -292,24 +359,21 @@ an equivalent pinned export. Saves restore a level checkpoint, not an exact
 position. Import staging and scripted inputs require an explicit verification
 build; ordinary release startup does not scan save hashes.
 
-### Level-three original repeatability
+The first continuing discovery session ended at its one-hour host deadline;
+its captures and compressed disk are preserved. A new longer bounded session,
+`gameplay-level3-discovery-1`, replays the pinned earlier levels and resumes
+cave-route discovery. `run_reference.py --deadline SECONDS` permits an explicit
+host deadline up to 12 hours; expiration remains failure, never completion.
 
-MEASURED: `gameplay-level3-fresh-1` and `gameplay-level3-fresh-2` execute the
-authored route from fresh Macintosh startup without emulator restores. All 181
-gameplay checkpoints match in full context, six actor records, RNG, counters,
-indexed pixels and palette. Both consume the same 2770 keyboard records and
-reach level 4, room 1, at step 2767. Story selectors 7, 4, 9, 100 and 10 each
-have ordered entry and return records. This establishes scene completion on
-the original, not paired cutscene rendering on Amiga.
+### Level-three discovery completion
 
-`tools/check_gameplay_level2_reference.py --level 3 FIRST SECOND` checks the
-complete route, natural transitions and scene completion. Its companion
-rejection test accepts the same option and rejects 25 corruptions or invalid
-run pairs, including a missing scene return and altered late-level evidence.
-`manifest/gameplay-level3-reference.sha256` pins the first run's captures,
-actions and log. `tools/replay_gameplay_route.py --through-level 3` replays
-the authored route for further original repetitions. Native level-three
-validation remains open; the earlier level-one RNG mismatches remain failures.
+MEASURED: `gameplay-level3-discovery-1` reached the original level-four first
+frame at step 2767, room 1, after level-three exit gameplay and a natural return
+from story selector 10. Checkpoint `route-236` records `reason=next-level`;
+`route-237` preserves the level-four starting state for further discovery.
+This run used emulator checkpoint restores. Its successful branch is recorded
+as 66 ordinary-input intervals in `tools/gameplay_routes/level3.tsv`; abandoned
+attempts are excluded. Fresh replay is verified below; native pairing remains pending.
 
 ### Level-four original repeatability
 
@@ -430,3 +494,274 @@ Restored discovery attempts have sometimes diverged after identical short
 commands when preceding held input differed. The input-continuity investigation
 remains deferred in item 17. Discovery states are navigation aids; only fresh
 repeat runs can establish route acceptance.
+
+### Level-three original repeatability
+
+MEASURED: `gameplay-level3-fresh-1` and `gameplay-level3-fresh-2` execute the
+authored route from fresh Macintosh startup without emulator restores. All 181
+gameplay checkpoints match in full context, six actor records, RNG, counters,
+indexed pixels and palette. Both consume the same 2770 keyboard records and
+reach level 4, room 1, at step 2767. Story selectors 7, 4, 9, 100 and 10 each
+have ordered entry and return records. This establishes scene completion on
+the original, not paired cutscene rendering on Amiga.
+
+`tools/check_gameplay_level2_reference.py --level 3 FIRST SECOND` checks the
+complete route, natural transitions and scene completion. Its companion
+rejection test accepts the same option and rejects 25 corruptions or invalid
+run pairs, including a missing scene return and altered late-level evidence.
+`manifest/gameplay-level3-reference.sha256` pins the first run's captures,
+actions and log. `tools/replay_gameplay_route.py --through-level 3` replays
+the authored route for further original repetitions. Native level-three
+validation remains open; the earlier level-one RNG mismatches remain failures.
+
+### Native level-three comparison in progress
+
+MEASURED: `.run-oMs5lv` on A1200-030 captures checkpoints 0–179 and reaches
+the level-four first-frame hook, but the route gate rejects that entry: native
+step 2766 and 2769 consumed keys differ from the original's step 2767 and
+2770 keys. The run reports `GAMEPLAY ROUTE / FIRST FRAME`; it is not a pass.
+Original-code, input, heap and hardware restoration pass, and the ordinary
+release build is restored afterward.
+
+The first additional level-three mismatch occurs at checkpoint 121. Checkpoints
+114–120 match full context, actors and RNG; the frame verifier passes their
+pixels, planes and palette. At checkpoint 121 all six actor records still match,
+but RNG, three context bytes and torch pixels differ. Later checkpoints retain
+pixel/RNG differences. The prior level-one RNG failures at 64 and 90 also
+remain. This localizes the next investigation; it does not establish a cause
+or accepted level-three or cutscene coverage.
+
+MEASURED: the explicit random-call observer in `gameplay-level3-random-1`
+completes the full three-level route with normal exit and matches all 181
+checkpoints and 2770 keyboard reads despite observing the calls. Within
+steps 1490–1545, the original makes 161 calls from `CaveGetTorchFrame`
+(CODE 8 return offset 3B5C), three from CODE 5 return offset 205E, and one
+from `PlayAmbient` (CODE 5 return offset 50BA) at step 1515. The corresponding
+native trace is still pending. A shifted ambient call is a hypothesis for
+the later torch differences, not an established service diagnosis.
+
+### Assisted entry survey
+
+Owner decision D10 permits logged assistance to bypass gameplay obstacles.
+`POP2_ROUTE_ASSIST=1` additionally requires discovery mode. At a stopped original
+frame, `N assist health VALUE` changes living-player health and maximum health
+(1–12), `N assist x VALUE` changes horizontal position (230–720), and
+`N assist level VALUE` requests the original restart/load path for levels 1–14.
+Every write records its old/new word and has separate before/after captures.
+The level request uses the session fields consumed by CODE 2+6124 and +7148;
+it does not alter the timer. Assistance is excluded from ordinary release.
+
+MEASURED: `gameplay-assisted-survey-3` loads levels 6, 2–5 and 7–14 from a
+fresh level-one start and completes 30 original gameplay frames in each.
+Its 65 logged word writes are checked against complete before/after A5 captures;
+context and pixels remain unchanged across each intervention. The session
+returns normally after an explicit discovery finish. These are assisted entry
+and short gameplay observations, not natural exits or full-game acceptance.
+`manifest/gameplay-assisted-survey.sha256` pins the private evidence by hash.
+The independent `gameplay-assisted-survey-repeat-1` repeats every checkpoint
+in full context, actor records, RNG, counters, pixels and palette. A second repeat
+with the handle observer also matches. Native run `.run-lgnTYZ` reaches 27
+checkpoints, then stops while entering level 5 at CODE 15+29C2, HUnlock, with
+`HEAP / UNKNOWN HANDLE`. Restoration passes. The measured disposed-palette HUnlock is now handled
+only for its verified caller and free master slot: the original returns
+`memWZErr` and preserves that slot. `check_handle_state_contract.py` checks
+both the live scene and the distinct isolated-handle fixture. Native
+`.run-6MxUx9` passes that stop and reaches 51 checkpoints before a same-buffer
+CopyBits stop. `.run-jy7hKD` passes the copies and stops next at
+`DISPLAY / NEWGWORLD BOUNDS` (CODE 17+4E1A). Both restore normally;
+no native survey completion or item-12 acceptance is claimed.
+
+`tools/replay_gameplay_assisted.py RUN` repeats the pinned intervention/input
+sequence. `tools/gameplay_route_inputs.py --level 0` generates its private native
+replay data. The explicit verification route applies writes only at matched
+frame/key/level/room boundaries, checks each original prior value, and captures
+both sides. Invalid intervention ownership, unlogged state changes and altered
+pins reject. Existing unassisted route checks retain their separate expectations.
+
+The original `gameplay-assisted-copy-4` repeats the entire assisted entry
+survey and captures eight same-buffer copies at CODE 17+508A. Their source and
+destination rectangles are disjoint horizontal bands within one 512×384 buffer;
+the previous runtime rejected all same-buffer operations as overlap.
+`tools/check_copybits_overlap.py` checks all output bytes against the shared
+helper, with private evidence pinned in `manifest/gameplay-self-copy.sha256`.
+The shared implementation follows Vette's direction-aware traversal and also
+passes 361 synthetic clipped overlapping copies in both directions. AmigaXDev
+commit `bacd172` retains the current shared helper's clipping and row-loop
+optimizations. Masked, remapped, scaled and unequal-stride aliasing still reject.
+
+Ending discovery reaches and returns from the princess/Jaffar scene (selector
+5). Six-frame alternating turns with health assistance produce the shadow;
+the final-level flame predicate requires health greater than two. This
+is discovery evidence, not ending acceptance. The forced room-3-to-room-4 jump
+in `gameplay-assisted-ending-4` caused the original to malfunction and is
+excluded. Remaining final-room travel must use original transitions; a room
+number change alone does not reconstruct the level's scene state.
+
+`gameplay-assisted-world-1` repeats the assisted survey and captures 48
+successful offscreen allocations. `tools/check_gameplay_worlds.py` checks every
+non-pointer PixMap field in all seven layouts, with the input bytes pinned in
+`manifest/gameplay-worlds.sha256`. Later cutscenes add 510×365, 365×365,
+239×353 and 510×225 to the startup layouts. Their main-device rowBytes are
+respectively 528, 384, 256 and 528. The shared GWorld helper now accepts the
+measured sixteen-byte rounding/slop policy separately from its unchanged
+four-byte keepLocal default. The runtime still rejects unmeasured bounds.
+
+Native `.run-P6joXU` passes the measured allocation requests and next stops at
+CODE 20+085A, `HandToHand` (A9E1). The original authored
+`gameplay-hand-copy-2` fixture copies a locked/purgeable sixteen-byte handle,
+checks every copied byte, distinct master/data addresses, unchanged source,
+new handle size/state, and the result after deliberately setting CCR and
+MemError before the call. It returns D0/MemError zero, CCR Z only and an unlocked
+new handle. `check_handle_copy.py` verifies the pinned fixture; the shared
+`HandleCopy.h` adapter also tests allocation failure without purging the source.
+Unknown/purged source handles and unmeasured allocation errors remain loud stops.
+
+Assisted discovery may opt into `POP2_ROUTE_DIRECT_KEYS=1`. At the observed
+keyboard-read return it supplies and logs the explicitly requested KeyMap,
+avoiding asynchronous ADB hold timing during assisted navigation. This is a
+validation-only input intervention; ordinary play and existing ADB references
+are unchanged. `assist shadow 1` is restricted to a live actor in level 14:
+it sets the measured shadow kind/display attribute and two health points.
+It deliberately does not create the abandoned-body actor, so these runs do not
+claim body re-entry coverage. All interventions still require paired replay.
+
+### Assisted final encounter and ending
+
+MEASURED: `gameplay-assisted-ending-10` starts fresh, uses logged level,
+position and health assistance, clears the crystal doubles and follows original
+room transitions to the final encounter. The original flame attack defeats
+Jaffar. CODE 2+45B0 observes the session result 15; NIS selector 11 enters and
+returns naturally to CODE 2+45B8. The route uses no emulator restores and finishes
+at 385 gameplay steps, with 387 consumed KeyMaps, 81 captured checkpoints and
+41 assisted word writes. `manifest/gameplay-assisted-ending.sha256` pins the
+private evidence. Its final image is black after the cinematic fade; this
+endpoint alone does not establish every intermediate cinematic frame.
+
+The observed flame predicate at CODE 4+2590 requires health **greater than**
+two in the final level (or special state 13). The assistance creates an ordinary
+shadow with two health points; a later logged health increase enables the flame.
+The earlier restored discovery run is not fresh-repeat acceptance. Hall of Fame
+and subsequent session flow remain separate, unfinished checks.
+
+The original `gameplay-assisted-cursor-3` repeats the entry survey and observes
+fourteen successful GetCursor returns and the following HUnlock/HPurge cleanup.
+System 7 returns its ROM-backed wait cursor. D8's transparent Amiga replacement
+uses a heap handle instead: later cutscenes may purge it. GetCursor now reloads
+that owned replacement through the existing heap reallocation service when its
+master becomes empty; unknown handles and wrong-size live handles still stop.
+Native `.run-oWaONb` passed HandToHand and exposed this cursor stop; its restored
+hardware/heap and code/input audits pass. The reload regression is in progress.
+
+The independent `gameplay-assisted-ending-repeat-1` matches all recorded ending
+route checkpoints in pixels, palette, full level context, actors, RNG and counters.
+Native `.run-ZtIfH0` matches the first 62 checked checkpoints before its next stop;
+this is partial route coverage, not an accepted ending pair.
+
+Native `.run-8I8IDt` passes the cursor reload and reaches level ten, then encounters
+EqualRect (A8A6) while entering level eleven. The original
+`gameplay-equal-rect-1` fixture passes 36 true/false cases, including empty,
+inverted and signed-boundary coordinates; it preserves both inputs and the
+Boolean result slot's padding byte. `check_equal_rect.py` checks the pinned
+results and the shared helper with sanitizers. AmigaXDev commit `cfeff00` supplies
+that helper; native regression remains pending.
+
+The final-tower climb in native `.run-ZtIfH0` stops at BitMapToRegion (A8D7,
+CODE 17+5E3A). `gameplay-assisted-bitmap-2` repeats the full ending route and
+captures 300 successful original conversions. `check_bitmap_region.py` matches
+every encoded region byte with the shared helper, plus extent rejection controls.
+The shared row storage now accommodates the intermediate XOR states needed by
+these masks; the latest shared validation cache is retained. AmigaXDev commit
+`7b31ab6` provides the helper and sanitizer tests. The earlier observer run stopped
+at its diagnostic capture limit and is excluded from route completion evidence.
+
+Native `.run-vJ1OWY` passes bitmap conversion and stops at OffsetRgn (A8E0,
+CODE 17+5E68). `gameplay-assisted-offset-1` completes the original ending and
+repeats every pinned route checkpoint; all 300 captured region translations
+byte-match the existing shared `RegionOps::map` helper under sanitizers.
+`manifest/gameplay-offset-region.sha256` pins the call evidence. The native
+adapter uses that mapper; the adjacent PaintRgn path reuses Alone in the Dark's
+shared region-intersection and masked solid-fill approach. Native acceptance
+of those adapters is pending.
+
+`gameplay-assisted-hall-4` positively completes the original ending, name entry,
+confirmation, score write and Hall return, then explicitly flushes the volume.
+The exported file contains name `codex` and score 75. The original retains
+uninitialized name padding, so cross-platform comparisons use count/name/score
+rather than treating padding as meaningful state. The original-written file,
+name-table captures and endpoint log are pinned in
+`manifest/gameplay-hall-reference.sha256`; `check_gameplay_hall.py` verifies them.
+The port-owned name dialog and keyboard-driven native Hall fixture remain under
+validation. This evidence does not yet establish native Hall acceptance or the
+separate show/dismiss/readback gate.
+
+The fresh original `gameplay-assisted-hall-repeat-1` repeats the complete pinned
+ending route and all four Hall endpoints; its accepted and flushed name/score
+match. The native `.run-kn5zMO` passes both region adapters and matches its first
+68 captured checkpoints, then stops at ResrvMem (CODE 2+721C). Its previous
+adapter only compared the current largest free block. It now invokes the shared
+heap's compaction/purge operation, preserving locked and non-purgeable handles;
+the native ending/Hall replay is still pending.
+
+Native `.run-Gxam8n` reserves 128000 bytes successfully: the largest free block
+grows from 8176 to 184872 bytes. Its first 80 captured checkpoints match original
+pixels and full level state, including the final gameplay frames. The ending
+then stops at PaintRect (CODE 15+3CAC) on the newly created port's pen pattern;
+the complete ending and Hall native endpoints remain unaccepted.
+
+The updated entry survey `.run-b29glb` positively completes all 14 loaded levels,
+390 game frames and 403 consumed key maps. All 79 checkpoints match full level
+context, actor/counter state, RNG, indexed pixels, eight bitplanes, palette and
+Copper output; code, input, heap and hardware restoration pass. This is entry
+and short-play coverage, not a claim that the original exit puzzle of every
+level has been exercised.
+
+D11 now permits the previously recorded level-one RNG differences to remain in
+item 16. `check_gameplay_route.py --deferred-rng` accepts only the exact pinned
+native/original seed hashes at checkpoints 64 and 90, only for the completed
+level-one/two routes. It still requires all other state/pixel checks and positive
+completion. Native `.run-rXZcAu` and `.run-ITSYlT` pass that explicitly qualified
+gate; their reports retain both exceptions. The level-three early-exit counter
+difference and torch captures have not been silently accepted by this option.
+The D11 corruption controls reject a changed RNG value, a changed in-game pixel
+at an exempt checkpoint, and missing completion; the unchanged control passes.
+
+`gameplay-assisted-paint-2` confirms that the ending PaintRect uses a type-zero
+solid-black pen (eight one-bit data bytes set), patCopy and foreground index 255.
+The original paint and ending both return successfully. The port now initializes
+its owned monochrome pen/fill defaults before PenNormal and uses the pat1Data
+field at offset 20. `check_ending_pen.py` checks the pinned pen-state evidence.
+The observer's attempted video dumps used virtual access to physical video RAM;
+those dumps are excluded from the manifest and are not pixel evidence.
+
+Native `.run-hclZeL` passes the default pen and stops on a later ending GWorld
+size outside the old whitelist. The adapter now delegates valid bounds to the
+existing shared layout validator. `gameplay-assisted-ending-worlds-1` completes
+the original ending and repeats every pinned checkpoint; its 36 allocations
+match the helper's non-pointer PixMap fields. The observed layouts include the
+ending's additional dimensions, pinned in `manifest/gameplay-ending-worlds.sha256`.
+The host test exercises every supported width for the 16-byte layout and rejects
+the first stride overflow.
+
+Native `.run-NplQMc` passes the ending GWorld allocation and retains matching
+pixels/full context at all 80 pre-ending checkpoints. It then stops at HUnlock
+(CODE 15+29AA) during cleanup. The original `gameplay-assisted-ending-handles-1` returns `memWZErr`
+without changing the alias and completes the ending with all pinned checkpoints
+matching. The existing free-master-slot handling now includes this measured
+caller; its log is pinned in `manifest/gameplay-ending-handles.sha256`. The endpoint
+and Hall gate remain incomplete. The complete host scaffold suite and ten
+Python gameplay-input/evidence controls pass with the current changes.
+
+
+The original assisted level-four route `gameplay-assisted-level4-1` reaches the
+natural level-five entry after 1889 frames. Health assistance is recorded; no
+exit result was written. A fresh repeat and native pair remain pending.
+Native `.run-nb7R9n` passes the first ending cleanup alias and stops at the third
+(CODE 15+29DA). The same completed original ending-handle trace records the
+unchanged slot and `memWZErr` for that caller too; the narrow adapter now covers
+all three measured cleanup sites. This subsequent native endpoint is pending.
+
+The owner requested portable saves for profiling. Original `profiling-saves-1`
+writes and flushes all 14 level-entry saves through SaveGame. They are exported
+unchanged under ignored `tmp/profiling-saves/`, with names/hashes pinned in
+`manifest/profiling-saves.sha256`. These are profiling inputs, not completed
+level-route evidence. See `docs/profiling-saves.md` for release staging and use.

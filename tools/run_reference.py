@@ -19,7 +19,11 @@ def digest(path):
         return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
-def run(name=None, control=None):
+def run(name=None, control=None, deadline=None):
+    if os.environ.get('POP2_GAMEPLAY') and not os.environ.get('POP2_DISPLAY_ROUTE'):
+        raise ValueError('REFERENCE / GAMEPLAY REQUIRES POP2_DISPLAY_ROUTE=1')
+    if deadline is not None and not 1 <= deadline <= 43200:
+        raise ValueError('REFERENCE / DEADLINE RANGE')
     mame=Path(shutil.which(os.environ.get('MAME','mame')) or '')
     if not mame.is_file():
         raise ValueError('REFERENCE / MAME NOT FOUND')
@@ -53,7 +57,7 @@ def run(name=None, control=None):
         process=subprocess.Popen(args,cwd=ROOT,env=env,stdout=output,stderr=subprocess.STDOUT)
         pidfile.write_text(str(process.pid)+'\n')
         try:
-            result=process.wait(timeout=3600 if env.get('POP2_GAMEPLAY')=='route' else 480 if env.get('POP2_AUDIO') or env.get('POP2_GAMEPLAY') else 240)
+            result=process.wait(timeout=deadline if deadline is not None else 3600 if env.get('POP2_GAMEPLAY')=='route' else 480 if env.get('POP2_AUDIO') or env.get('POP2_GAMEPLAY') else 240)
         except BaseException:
             # Use the shared identity-checked helper; never kill by process name.
             subprocess.run(['/bin/bash','-c','. amiga/env.sh; . "$FSUAE_COMMON"; fsuae_kill_recorded "$1" mame','reference',str(pidfile)],cwd=ROOT,check=True)
@@ -77,15 +81,27 @@ def run(name=None, control=None):
         log=(destination/'session.log').read_text()
         if log.count('FIXED_FIXTURE_COMPLETE calls=80\n')!=1 or 'FAIL REFERENCE' in log:
             raise ValueError('REFERENCE / FIXED FIXTURE INCOMPLETE')
-    if env.get('POP2_NULL_DISPOSE'):
+    if env.get('POP2_HANDLE_COPY_PROBE'):
+        log=(destination/'session.log').read_text()
+        if log.count('HANDLE_COPY_FIXTURE_COMPLETE\n')!=1 or 'FAIL REFERENCE' in log:
+            raise ValueError('REFERENCE / HANDLE COPY FIXTURE INCOMPLETE')
+    if env.get('POP2_EQUAL_RECT_PROBE'):
+        log=(destination/'session.log').read_text()
+        if log.count('EQUAL_RECT_COMPLETE calls=36\n')!=1 or 'FAIL REFERENCE' in log:
+            raise ValueError('REFERENCE / EQUAL RECT FIXTURE INCOMPLETE')
+    if env.get('POP2_HANDLE_STATE_PROBE'):
+        log=(destination/'session.log').read_text()
+        if log.count('HANDLE_STATE_FIXTURE_COMPLETE\n')!=1 or 'FAIL REFERENCE' in log:
+            raise ValueError('REFERENCE / HANDLE STATE FIXTURE INCOMPLETE')
+    if env.get('POP2_NULL_DISPOSE') and not any(env.get(k) for k in ('POP2_HANDLE_STATE_PROBE','POP2_HANDLE_COPY_PROBE','POP2_EQUAL_RECT_PROBE')):
         log=(destination/'session.log').read_text()
         for marker in ('DISPOSE_FIXTURE stage=1 d0=00000000 memerr=0000',
                        'DISPOSE_FIXTURE stage=2 d0=00000000 memerr=0000 a0=00000000',
                        'DISPOSE_FIXTURE_COMPLETE'):
             if log.count(marker)!=1:raise ValueError('REFERENCE / DISPOSE FIXTURE RESULT')
-    if env.get('POP2_AUDIO'):
+    if env.get('POP2_AUDIO') or env.get('POP2_ROUTE_AUDIO_TRACE'):
         log=(destination/'session.log').read_text()
-        marker='AUDIO_CALLBACK_ORDER_COMPLETE calls=6' if env.get('POP2_AUDIO_CALLBACK_ORDER')=='1' else 'AUDIO_FIXTURE_COMPLETE calls=27' if env['POP2_AUDIO']=='fixture' else 'AUDIO_CUTSCENE_COMPLETE' if env['POP2_AUDIO']=='cutscene' else 'AUDIO_DEMO_COMPLETE' if env.get('POP2_DEMO_ROUTE') else 'AUDIO_ROUTE_COMPLETE' if env.get('POP2_DISPLAY_ROUTE') else 'AUDIO_OBSERVER_COMPLETE'
+        marker='AUDIO_CALLBACK_ORDER_COMPLETE calls=6' if env.get('POP2_AUDIO_CALLBACK_ORDER')=='1' else 'AUDIO_OBSERVER_COMPLETE' if env.get('POP2_ROUTE_AUDIO_TRACE') else 'AUDIO_FIXTURE_COMPLETE calls=27' if env['POP2_AUDIO']=='fixture' else 'AUDIO_CUTSCENE_COMPLETE' if env['POP2_AUDIO']=='cutscene' else 'AUDIO_DEMO_COMPLETE' if env.get('POP2_DEMO_ROUTE') else 'AUDIO_ROUTE_COMPLETE' if env.get('POP2_DISPLAY_ROUTE') else 'AUDIO_OBSERVER_COMPLETE'
         if log.count(marker+'\n')!=1 or 'FAIL REFERENCE' in log:
             raise ValueError('REFERENCE / AUDIO COMPLETION MISSING')
         from driver_image import decrypt, expand
@@ -98,6 +114,8 @@ def run(name=None, control=None):
         log=(destination/'session.log').read_text()
         endpoint='first_frames=2' if env['POP2_GAMEPLAY']=='restart' else 'loaded_frames=1'
         marker='GAMEPLAY_DISCOVERY_COMPLETE' if env.get('POP2_ROUTE_DISCOVERY')=='1' and env['POP2_GAMEPLAY']=='route' else 'GAMEPLAY_ROUTE_COMPLETE level=1 next=2' if env['POP2_GAMEPLAY']=='route' else 'GAMEPLAY_REFERENCE_COMPLETE route='+env['POP2_GAMEPLAY']+' '+endpoint
+        if env.get('POP2_ROUTE_ENDING')=='1':marker='GAMEPLAY_ENDING_COMPLETE'
+        if env.get('POP2_ROUTE_HALL')=='1':marker='GAMEPLAY_HALL_COMPLETE'
         if log.count(marker+'\n')!=1 or 'FAIL REFERENCE' in log:
             raise ValueError('REFERENCE / GAMEPLAY COMPLETION MISSING')
     if env.get('POP2_TITLE_STATE'):
@@ -141,5 +159,6 @@ if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--name')
     parser.add_argument('--control',choices=['bad-guard','bad-audio-guard'])
+    parser.add_argument('--deadline', type=int, help='host deadline in seconds, 1–43200; expiration is a failure')
     args=parser.parse_args()
-    run(args.name,args.control)
+    run(args.name,args.control,args.deadline)

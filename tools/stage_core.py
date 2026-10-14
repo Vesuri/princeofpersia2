@@ -88,3 +88,11 @@ if import_reference:
         raise RuntimeError('GAMEPLAY IMPORT / DIAGNOSTIC BUILD REQUIRED')
     from gameplay_saved_file import install_native
     install_native(Path(import_reference), Path(sys.argv[1]))
+
+profile_save=os.environ.get('PROFILE_SAVE_DIRECTORY')
+if profile_save:
+    if import_reference:
+        raise RuntimeError('PROFILE IMPORT / DISTINCT SOURCE REQUIRED')
+    from export_profile_saves import install_profile
+    levels=range(1,15) if os.environ.get('PROFILE_SAVE_LEVEL','all')=='all' else [int(os.environ['PROFILE_SAVE_LEVEL'])]
+    for level in levels:install_profile(Path(profile_save),level,Path(sys.argv[1]))

@@ -47,6 +47,15 @@ ifneq (,$(filter -DPOP2_INTEGRATION_PROBE,$(EXTRA_DEFINES)))
 PROBES += g_integrationRightReads g_integrationEscReads g_integrationSpaceEvents
 endif
 obj/CoreRuntime.o: ../build/core/Inputs.h
+ifneq (,$(filter -DPOP2_GAMEPLAY_ROUTE_PROBE,$(EXTRA_DEFINES)))
+GAMEPLAY_LEVEL ?= 1
+override EXTRA_DEFINES += -DPOP2_GAMEPLAY_ROUTE_LEVEL=$(GAMEPLAY_LEVEL)
+obj/CoreRuntime.o: ../build/gameplay/RouteInputs.h
+verify: verify-gameplay-route
+.PHONY: verify-gameplay-route
+verify-gameplay-route:
+	@python3 ../tools/gameplay_route_inputs.py --level $(GAMEPLAY_LEVEL) $(if $(GAMEPLAY_REFERENCE),--reference "$(GAMEPLAY_REFERENCE)") $(if $(GAMEPLAY_MANIFEST),--manifest "$(GAMEPLAY_MANIFEST)") --verify
+endif
 ifneq (,$(filter -DPOP2_AUDIO,$(EXTRA_DEFINES)))
 obj/CoreRuntime.o: ../build/audio/AudioInputs.h
 ifneq (,$(filter -DPOP2_AUDIO_PROBE,$(EXTRA_DEFINES)))
@@ -86,7 +95,7 @@ endif
 obj/DisplayC2P.o: ../src/platform/amiga/DisplayC2P.s ../src/platform/amiga/kalms/c2p1x1_8_c5_gen.s
 	$(VASM) -m68020 -Felf -quiet -x -no-opt -nowarn=62 "$<" -o "$@"
 obj/MacEntry.o: ../src/platform/amiga/MacEntry.s Makefile
-	$(AS) -mcpu=68020 -g --register-prefix-optional $(if $(filter -DPOP2_AUDIO_ORDER_PROBE,$(EXTRA_DEFINES)),--defsym POP2_AUDIO_ORDER_PROBE=1) $(if $(filter -DPOP2_GAMEPLAY_SAVE_PROBE,$(EXTRA_DEFINES)),--defsym POP2_GAMEPLAY_SAVE_PROBE=1) $(if $(filter -DPOP2_TIMING_TM_PROBE,$(EXTRA_DEFINES)),--defsym POP2_TIMING_TM_PROBE=1) $(if $(filter -DPOP2_TIMING_VBL_PROBE,$(EXTRA_DEFINES)),--defsym POP2_TIMING_VBL_PROBE=1) $(if $(filter -DPOP2_INTEGRATION_PROBE,$(EXTRA_DEFINES)),--defsym POP2_INTEGRATION_PROBE=1) "$<" -o "$@"
+	$(AS) -mcpu=68020 -g --register-prefix-optional $(if $(filter -DPOP2_AUDIO_ORDER_PROBE,$(EXTRA_DEFINES)),--defsym POP2_AUDIO_ORDER_PROBE=1) $(if $(filter -DPOP2_GAMEPLAY_ROUTE_PROBE,$(EXTRA_DEFINES)),--defsym POP2_GAMEPLAY_ROUTE_PROBE=1) $(if $(filter -DPOP2_GAMEPLAY_SAVE_PROBE,$(EXTRA_DEFINES)),--defsym POP2_GAMEPLAY_SAVE_PROBE=1) $(if $(filter -DPOP2_TIMING_TM_PROBE,$(EXTRA_DEFINES)),--defsym POP2_TIMING_TM_PROBE=1) $(if $(filter -DPOP2_TIMING_VBL_PROBE,$(EXTRA_DEFINES)),--defsym POP2_TIMING_VBL_PROBE=1) $(if $(filter -DPOP2_INTEGRATION_PROBE,$(EXTRA_DEFINES)),--defsym POP2_INTEGRATION_PROBE=1) "$<" -o "$@"
 ifneq (,$(filter -DPOP2_TIMING_PROBE,$(EXTRA_DEFINES)))
 PROBES += g_profileFreeFast g_profileLargestFast g_profileFreeChip g_c2pPasses g_c2pRects g_c2pPixels g_c2pUnbatched g_timingCount g_timingRows g_timingPhase g_timingSamples g_timingSetCount g_timingSetRows
 endif

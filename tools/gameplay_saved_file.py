@@ -40,12 +40,33 @@ def export(reference):
     print('GAMEPLAY SAVE EXPORT PASS: data/resource forks and type/creator; wrapper preserved')
 
 
+def macbinary_files(raw, name):
+    """Decode a preserved save wrapper into the port's existing fork layout."""
+    from datetime import datetime, timedelta, timezone
+    from extract_original_data import metadata
+    encoded=name.encode('mac-roman')
+    if len(raw)<128 or raw[1]!=len(encoded) or raw[2:2+len(encoded)]!=encoded:
+        raise ValueError('GAMEPLAY IMPORT / WRAPPER NAME')
+    size,resource=struct.unpack_from('>II',raw,83)
+    offset=128+((size+127)//128)*128
+    if offset+resource>len(raw):raise ValueError('GAMEPLAY IMPORT / FORK EXTENTS')
+    data=raw[128:128+size];rsrc=raw[offset:offset+resource];kind=raw[65:73]
+    # Inverse of install_reference_volume.macbinary; use the existing AFI1 encoder.
+    finder = raw[65:73] + bytes((raw[73], raw[101])) + raw[75:81] + bytes(16)
+    epoch = datetime(1904, 1, 1, tzinfo=timezone.utc)
+    date = lambda start: (epoch + timedelta(seconds=int.from_bytes(raw[start:start+4], 'big'))).strftime('%Y-%m-%d %H:%M:%S %z')
+    info = metadata([dict(XADFileType=int.from_bytes(kind[:4], 'big'),
+                          XADFileCreator=int.from_bytes(kind[4:], 'big'),
+                          XADFinderFlags=int.from_bytes(finder[8:10], 'big'),
+                          XADCreationDate=date(91), XADLastModificationDate=date(95))], finder)
+    return {name: data, name+'.rsrc': rsrc, name+'.finfo': info}
+
+
 def install_native(reference, destination):
     """Stage an original-created save before a fresh diagnostic Amiga boot."""
     import hashlib
     import json
-    from datetime import datetime, timedelta, timezone
-    from extract_original_data import metadata, pins
+    from extract_original_data import pins
     reference = reference.resolve()
     for name, expected in pins(ROOT / 'manifest/gameplay-save-reference.sha256').items():
         if hashlib.sha256((reference / name).read_bytes()).hexdigest() != expected:
@@ -64,15 +85,7 @@ def install_native(reference, destination):
     if (size != len(data) or resource != len(rsrc) or raw[128:128+size] != data or
             raw[offset:offset+resource] != rsrc or raw[65:73] != kind):
         raise ValueError('GAMEPLAY IMPORT / WRAPPER FORKS')
-    # Inverse of install_reference_volume.macbinary; use the existing AFI1 encoder.
-    finder = raw[65:73] + bytes((raw[73], raw[101])) + raw[75:81] + bytes(16)
-    epoch = datetime(1904, 1, 1, tzinfo=timezone.utc)
-    date = lambda start: (epoch + timedelta(seconds=int.from_bytes(raw[start:start+4], 'big'))).strftime('%Y-%m-%d %H:%M:%S %z')
-    info = metadata([dict(XADFileType=int.from_bytes(kind[:4], 'big'),
-                          XADFileCreator=int.from_bytes(kind[4:], 'big'),
-                          XADFinderFlags=int.from_bytes(finder[8:10], 'big'),
-                          XADCreationDate=date(91), XADLastModificationDate=date(95))], finder)
-    files = {'Level 1': data, 'Level 1.rsrc': rsrc, 'Level 1.finfo': info}
+    files = macbinary_files(raw, 'Level 1')
     for name in files:
         if (destination / name).exists():
             raise ValueError('GAMEPLAY IMPORT / FRESH DESTINATION REQUIRED')

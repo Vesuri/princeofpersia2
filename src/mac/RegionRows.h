@@ -1,16 +1,17 @@
 #ifndef AMIGAXDEV_REGION_ROWS_H
 #define AMIGAXDEV_REGION_ROWS_H
 #include "WindowGeometry.h"
+#include "BigEndianMemory.h"
 namespace RegionRows {
-inline int16_t get(const uint8_t* p) {return int16_t(uint16_t(p[0])<<8|p[1]);}
-struct Edges { int16_t x[16]; uint16_t count; };
+inline int16_t get(const uint8_t* p) {return int16_t(BigEndianMemory::read16(p));}
+struct Edges { enum { capacity=32 }; int16_t x[capacity]; uint16_t count; };
 inline bool toggle(Edges& edges,int16_t x) {
     uint16_t at=0;while(at<edges.count && edges.x[at]<x)++at;
     if(at<edges.count && edges.x[at]==x) {
         for(uint16_t i=at;i+1<edges.count;++i)edges.x[i]=edges.x[i+1];
         --edges.count;return true;
     }
-    if(edges.count==16)return false;
+    if(edges.count==Edges::capacity)return false;
     for(uint16_t i=edges.count;i>at;--i)edges.x[i]=edges.x[i-1];
     edges.x[at]=x;++edges.count;return true;
 }
@@ -48,20 +49,24 @@ inline bool row(const uint8_t* region,uint16_t capacity,int16_t y,Edges& result)
 // regions retain the ordinary complete validator. Owned storage stays off the
 // small supervisor stack; callers keep the cache alive between copies.
 struct ValidationCache {
-    static constexpr uint16_t slots=8, maximumBytes=4096;
-    struct Entry { uint16_t size=0; uint8_t bytes[maximumBytes]; };
+    static constexpr uint16_t slots=32, maximumBytes=4096;
+    static constexpr uint32_t storageBytes=32768;
+    struct Entry { uint16_t size=0, offset=0; };
     Entry entries[slots]{};
+    uint8_t storage[storageBytes]{};
     uint16_t next=0;
+    uint32_t cursor=0;
     static bool same(const uint8_t* a,const uint8_t* b,uint16_t size) {
 #ifdef __mc68000__
-        struct __attribute__((packed,may_alias)) Word { uint32_t value; };
-        while(size>=4) {
-            uint32_t av,bv;
-            __asm__("move.l %1,%0" : "=d"(av) : "m"(*(const Word*)a) : "cc");
-            __asm__("move.l %1,%0" : "=d"(bv) : "m"(*(const Word*)b) : "cc");
-            if(av!=bv)return false;
-            a+=4;b+=4;size-=4;
+        uint16_t longs=size>>2;
+        if(longs) {
+            uint8_t equal;
+            --longs;
+            __asm__ volatile("1: cmpm.l (%0)+,(%1)+\n\tdbne %2,1b\n\tseq %3"
+                : "+&a"(a), "+&a"(b), "+d"(longs), "=d"(equal) : : "cc", "memory");
+            if(!equal)return false;
         }
+        size&=3;
 #endif
         while(size--)if(*a++!=*b++)return false;
         return true;
@@ -73,13 +78,28 @@ struct ValidationCache {
         // Rectangles are cheaper to validate directly than to cache.
         if(size>10 && size<=maximumBytes)
             for(uint16_t i=0;i<slots;++i)
-                if(entries[i].size==size && same(entries[i].bytes,bytes,size))return true;
+                if(entries[i].size==size && same(storage+entries[i].offset,bytes,size))return true;
         Edges checked{};
         if(!row(bytes,capacity,0,checked))return false;
         if(size>10 && size<=maximumBytes) {
-            Entry& entry=entries[next];next=(next+1)%slots;
-            for(uint16_t i=0;i<size;++i)entry.bytes[i]=bytes[i];
-            entry.size=size;
+            if(cursor+size>storageBytes)cursor=0;
+            for(uint16_t i=0;i<slots;++i) {
+                Entry& old=entries[i];
+                if(old.size && cursor<uint32_t(old.offset)+old.size
+                   && old.offset<cursor+size)old.size=0;
+            }
+            uint8_t* out=storage+cursor;
+            const uint8_t* in=bytes;
+            uint16_t count=size;
+#ifdef __mc68000__
+            while(count>=4) {
+                __asm__ volatile("move.l (%0)+,(%1)+" : "+a"(in), "+a"(out) : : "cc", "memory");
+                count-=4;
+            }
+#endif
+            while(count--)*out++=*in++;
+            entries[next].size=size;entries[next].offset=uint16_t(cursor);
+            next=(next+1)%slots;cursor+=size;
         }
         return true;
     }

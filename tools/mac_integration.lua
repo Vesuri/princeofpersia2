@@ -83,15 +83,38 @@ function M.opening()
  if not os.getenv("POP2_INTEGRATION_CLEANUP") and not os.getenv("POP2_NEWGWORLD") and not os.getenv("POP2_TITLE_COPY") then cpu.debug:bpclear(bp);bp=nil end
 end
 local nilProbe,nilPC,nilStage
+local equalBase,equalIndex
+local equalRects={{0,0,10,20},{0,0,10,20},{0,0,0,0},{10,20,0,0},{-32768,-1,32767,0},{0,1,10,20}}
+local function nextEqual()
+ local a=(equalIndex-1)//#equalRects+1;local b=(equalIndex-1)%#equalRects+1
+ for n,r in ipairs({equalRects[a],equalRects[b]})do
+  for i,v in ipairs(r)do mem:writev_u16(equalBase+256+(n-1)*8+(i-1)*2,v&65535)end
+ end
+ local sp=equalBase+1024
+ mem:writev_u32(sp,equalBase+256);mem:writev_u32(sp+4,equalBase+264);mem:writev_u16(sp+8,0x7f5a)
+ cpu.state.SP.value=sp;cpu.state.PC.value=equalBase;dbg.execution_state='run'
+end
 function M.startNil()
  assert(not pending,'INTEGRATION PENDING AT FIXTURE')
  local code=(cpu.state.SP.value&0xffffff)-8192
  assert(code>0x100000,'INTEGRATION FIXTURE EXTENT')
+ if os.getenv('POP2_EQUAL_RECT_PROBE') then
+  equalBase=code;equalIndex=1
+  mem:writev_u16(code,0xa8a6);mem:writev_u16(code+2,0x4e71)
+  cpu.debug:bpset(code+2,'1','logerror "EQUAL_RECT_STOP\\n"');nextEqual();return
+ end
  -- NewHandle(16), DisposeHandle(valid), then DisposeHandle(nil).
  local program=string.pack('>I2I2I2I2I2I2I2',0x7010,0xa122,0xa023,0x4e71,0x91c8,0xa023,0x4e71)
+ if os.getenv('POP2_HANDLE_COPY_PROBE') then
+  program=string.pack('>I2I2I2I2I2I2I2I2I2I2',0x7010,0xa122,0x4e71,0x2448,0x70c0,0xa06a,0xa9e1,0x4e71,0xa025,0x4e71)
+ elseif os.getenv('POP2_HANDLE_STATE_PROBE') then
+  -- Valid unlock, retain its master address, dispose, then unlock and purge
+  -- the freed master without allocating anything between the calls.
+  program=string.pack('>I2I2I2I2I2I2I2I2I2I2I2',0x7010,0xa122,0xa02a,0x4e71,0x2448,0xa023,0x204a,0xa02a,0x4e71,0xa049,0x4e71)
+ end
  for i=1,#program do mem:writev_u8(code+i-1,program:byte(i))end
  for i=1,#program do assert(mem:readv_u8(code+i-1)==program:byte(i),'INTEGRATION FIXTURE BYTES')end
- nilPC=code+6;nilStage=1
+ nilPC=code+(os.getenv('POP2_HANDLE_COPY_PROBE') and 4 or 6);nilStage=1
  nilProbe=cpu.debug:bpset(nilPC,'1','logerror "INTEGRATION_NIL_STOP\\n"')
  cpu.state.PC.value=code;dbg.execution_state='run'
 end
@@ -137,6 +160,50 @@ function M.poll()
    print('FIXED_FIXTURE_COMPLETE calls='..#fixedCases);fixedPC=nil;M.finish();manager.machine:exit()
   else nextFixed()end
   return true
+ end
+ if equalBase and pc==equalBase+2 then
+  local sp=cpu.state.SP.value&0xffffff
+  assert(sp==equalBase+1032,'EQUAL RECT STACK')
+  local a=(equalIndex-1)//#equalRects+1;local b=(equalIndex-1)%#equalRects+1
+  local expected=true;for i=1,4 do if equalRects[a][i]~=equalRects[b][i]then expected=false end end
+  assert(mem:readv_u8(sp)==(expected and 1 or 0) and mem:readv_u8(sp+1)==0x5a,'EQUAL RECT BOOLEAN SLOT')
+  for n,r in ipairs({equalRects[a],equalRects[b]})do for i,v in ipairs(r)do assert(mem:readv_u16(equalBase+256+(n-1)*8+(i-1)*2)==v&65535,'EQUAL RECT INPUT PRESERVED')end end
+  print(string.format('EQUAL_RECT_RESULT a=%d b=%d result=%d pad=%02X',a,b,mem:readv_u8(sp),mem:readv_u8(sp+1)))
+  equalIndex=equalIndex+1
+  if equalIndex>36 then print('EQUAL_RECT_COMPLETE calls=36');M.finish();manager.machine:exit();dbg.execution_state='run'else nextEqual()end
+  return true
+ end
+ if nilPC and pc==nilPC and os.getenv('POP2_HANDLE_COPY_PROBE') then
+  local h=cpu.state.A0.value&0xffffff
+  print(string.format('HANDLE_COPY_FIXTURE stage=%d d0=%08X memerr=%04X a0=%08X master=%08X sr=%04X',nilStage,cpu.state.D0.value,mem:readv_u16(0x220),h,mem:readv_u32(h),cpu.state.SR.value))
+  if nilStage==1 then
+   assert(h~=0 and mem:readv_u16(0x220)==0,'COPY FIXTURE ALLOCATION')
+   for i=0,15 do mem:writev_u8(ptr(h)+i,(i*37+11)%256)end
+  elseif nilStage==2 then
+   cpu.state.SR.value=(cpu.state.SR.value&0xffe0)|31
+   mem:writev_u16(0x220,0x1234)
+  elseif nilStage==3 then
+   local source=cpu.state.A2.value&0xffffff
+   assert(source~=h,'COPY FIXTURE DISTINCT HANDLE')
+   print(string.format('HANDLE_COPY_SOURCE handle=%08X master=%08X',source,mem:readv_u32(source)))
+   for i=0,15 do assert(mem:readv_u8(ptr(source)+i)==(i*37+11)%256 and mem:readv_u8(ptr(h)+i)==(i*37+11)%256,'COPY FIXTURE CONTENTS')end
+  else assert(cpu.state.D0.value==16,'COPY FIXTURE SIZE')end
+  cpu.debug:bpclear(nilProbe)
+  if nilStage<4 then
+   nilPC=nilPC+(nilStage==1 and 8 or nilStage==2 and 2 or 4);nilStage=nilStage+1
+   nilProbe=cpu.debug:bpset(nilPC,'1','logerror "INTEGRATION_HANDLE_COPY_STOP\\n"')
+  else print('HANDLE_COPY_FIXTURE_COMPLETE');M.finish();manager.machine:exit()end
+  dbg.execution_state='run';return true
+ end
+ if nilPC and pc==nilPC and os.getenv('POP2_HANDLE_STATE_PROBE') then
+  local h=cpu.state.A0.value&0xffffff
+  print(string.format('HANDLE_STATE_FIXTURE stage=%d d0=%08X memerr=%04X a0=%08X master=%08X sr=%04X',nilStage,cpu.state.D0.value,mem:readv_u16(0x220),h,mem:readv_u32(h),cpu.state.SR.value))
+  cpu.debug:bpclear(nilProbe)
+  if nilStage<3 then
+   nilPC=nilPC+(nilStage==1 and 10 or 4);nilStage=nilStage+1
+   nilProbe=cpu.debug:bpset(nilPC,'1','logerror "INTEGRATION_HANDLE_STATE_STOP\\n"')
+  else print('HANDLE_STATE_FIXTURE_COMPLETE');M.finish();manager.machine:exit()end
+  dbg.execution_state='run';return true
  end
  if nilPC and pc==nilPC then
   print(string.format('DISPOSE_FIXTURE stage=%d d0=%08X memerr=%04X a0=%08X',nilStage,cpu.state.D0.value,mem:readv_u16(0x220),cpu.state.A0.value))

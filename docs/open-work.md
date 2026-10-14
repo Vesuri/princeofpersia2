@@ -7,7 +7,14 @@ acceptance gates pass.
 
 12. **Gameplay validation.** Fixed-seed, state-paired routes through all levels and
     cutscenes, save/load, death, restart, Hall of Fame and the ending.
-    Acceptance: coverage matrix with positive completion records for every entry.
+    Owner permits cheats and checkpoints to bypass traps/combat (D10). Prioritize
+    loud-stop discovery and reaching completion over unassisted route practice.
+    Acceptance: coverage matrix with positive completion records for every entry,
+    identifying assistance and matching it between original and native runs.
+    Owner-approved exception: the already recorded torch/RNG differences remain
+    in item 16 and do not block this item. Require completed assisted routes,
+    the ending and no unresolved loud stops; record those differences explicitly
+    rather than reporting exact matches where they do not hold.
 14. **WHDLoad and release.** Installer that decodes the user's archive and verifies
     SHA-256; KickEmu slave with `WHDLF_EmulLineA`, CPU compatibility and AGA checks;
     deferred 68040 timing-service and original game-step cadence validation,
@@ -40,3 +47,13 @@ acceptance gates pass.
     input continuity, or the discovery tool explicitly detects and reports
     unsupported restore conditions. Consult the other ports before changing
     shared Macintosh input helpers.
+
+18. **Deferred freed-handle error classification.** Original System 7.5.5 returns
+    `memWZErr` for the disposed palette alias at CODE 15+29C2 in story scene 20,
+    but an isolated NewHandle/DisposeHandle/HUnlock fixture returns `memAZErr`.
+    The current gameplay fix supports only the measured caller and a verified
+    free master slot; arbitrary pointers and unmeasured invalid calls still stop.
+    Investigate broader memory-layout-dependent error classification after
+    gameplay coverage, consulting the other ports and shared heap workflow.
+    Acceptance: paired controls establish supported cases without accepting
+    unknown pointers or silently changing the free list.

@@ -14,6 +14,7 @@ SEAMS=[
  (2,0x3b76,struct.pack('>2H',0x4e75,0x4e71),'NoMacMenuShow'),
  (17,0x245e,struct.pack('>3H',0xaffd,1,0x4e75),'PortAbout'),
  (17,0x6d42,struct.pack('>4H',0xaffd,2,0x4e75,0x4e71),'PortAlert'),
+ (2,0x2220,struct.pack('>3H',0xaffd,3,0x4e75),'PortHallName'),
 ]
 def content():
  verify_output(DESTINATION);census.load(DESTINATION/'Prince of Persia 2.rsrc')

@@ -105,6 +105,14 @@ if [ "${CORE:-0}" = 1 ]; then
     python3 ../tools/check_timing_tm.py "$RUN" "$TIMING_TM_REFERENCE" --setup "$AMIGA_SETUP"
   elif [ "${TIMING_VBL:-0}" = 1 ]; then
     python3 ../tools/check_timing_vbl.py "$RUN" "$TIMING_VBL_REFERENCE" --setup "$AMIGA_SETUP"
+  elif [ "${GAMEPLAY_ROUTE:-0}" = 1 ]; then
+    route_args=()
+    if [ -n "${GAMEPLAY_MANIFEST:-}" ]; then route_args=(--manifest "$GAMEPLAY_MANIFEST"); fi
+    if [ "${GAMEPLAY_HALL:-0}" = 1 ]; then route_args+=(--hall); fi
+    python3 ../tools/check_gameplay_route.py "$RUN" "$GAMEPLAY_REFERENCE" --setup "$AMIGA_SETUP" --level "${GAMEPLAY_LEVEL:-1}" "${route_args[@]}"
+    if [ "${GAMEPLAY_HALL:-0}" = 1 ]; then python3 ../tools/check_gameplay_hall.py "$GAMEPLAY_HALL_REFERENCE" --native "$RUN"; fi
+  elif [ -n "${PROFILE_SAVE_DIRECTORY:-}" ]; then
+    python3 ../tools/check_profile_save.py "$RUN" "$PROFILE_SAVE_DIRECTORY" "$PROFILE_SAVE_LEVEL"
   elif [ "${GAMEPLAY_IMPORT:-0}" = 1 ]; then
     python3 ../tools/check_gameplay_import.py "$RUN" "$GAMEPLAY_IMPORT_REFERENCE" "$GAMEPLAY_IMPORT_PAIRED_REFERENCE"
   elif [ "${GAMEPLAY_SAVE:-0}" = 1 ]; then

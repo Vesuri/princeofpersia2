@@ -6,11 +6,12 @@
 namespace GWorld8 {
 struct Rect { int16_t top,left,bottom,right; };
 struct Layout { uint16_t rowBytes; uint32_t pixelBytes; };
-inline bool layout(const Rect& r,Layout& out) {
+inline bool layout(const Rect& r,Layout& out,uint16_t quantum=4) {
     int32_t width=int32_t(r.right)-r.left,height=int32_t(r.bottom)-r.top;
-    if(width<=0 || height<=0)return false;
-    // Measured original QDOffscreen allocation keeps an extra 32-bit slop word.
-    uint32_t stride=((uint32_t(width)+3)&~3UL)+4;
+    if(width<=0 || height<=0 || (quantum!=4 && quantum!=16))return false;
+    // Measured keepLocal uses a 32-bit slop word; noNewDevice on the
+    // 8-bit main device rounds to sixteen bytes and keeps sixteen extra.
+    uint32_t stride=((uint32_t(width)+quantum-1)&~uint32_t(quantum-1))+quantum;
     if(stride>=0x4000)return false;
     out={uint16_t(stride),stride*uint32_t(height)};return true;
 }

@@ -403,8 +403,14 @@ mac.run(function()
    if audio then print('AUDIO_PHASE title');mac.wait(120)end
    if not os.getenv('POP2_DEMO_ROUTE') then mac.press('Space')end
    if gameplay then
-    assert(mac.wait_for('gameplay-first-frame',function()return gameplay.rooms()==1 end,18000),'GAMEPLAY FIRST FRAME')
+    assert(mac.wait_for('gameplay-first-frame',function()return gameplay.rooms()>=1 end,18000),'GAMEPLAY FIRST FRAME')
     if os.getenv('POP2_GAMEPLAY')=='route' then
+     if os.getenv('POP2_ROUTE_HALL')=='1' then
+      assert(mac.wait_for('hall-ready',function()return gameplay.phase()=='hall-ready'end,216000),'GAMEPLAY HALL READY')
+      print('GAMEPLAY_HALL_TYPING');mac.wait(12);mac.type('Codex');mac.press('Return');print('GAMEPLAY_HALL_TYPED')
+      assert(mac.wait_for('hall-confirm',function()return gameplay.phase()=='hall-confirm'end,3600),'GAMEPLAY HALL CONFIRM')
+      mac.wait(60);mac.press('Return')
+     end
      assert(mac.wait_for('route-complete',gameplay.complete,216000),'GAMEPLAY ROUTE INCOMPLETE')
      return
     elseif os.getenv('POP2_GAMEPLAY')=='restart' then

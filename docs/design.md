@@ -14,6 +14,22 @@
 | D8 | Remove all Macintosh UI: menu bar, window frames, dialogs and pointer. Reached functions get port-owned replacements | Decided |
 | D9 | Do not support "Compress Data". Installation supplies uncompressed data, which stays uncompressed; no in-place packing or startup packing prompt | Decided |
 
+## Assisted gameplay validation
+
+D10 (owner-authorized): item 12 may use cheats and checkpoints to bypass traps
+and combat. Its purpose is to expose loud stops and establish that the port can
+reach completion, not to demonstrate unassisted playing skill. Record every
+intervention, apply equivalent assistance to original/native comparisons, and
+retain positive endpoints for levels, cutscenes and session actions. A level
+loaded by a cheat is coverage of loading and entry, not proof of its exit or
+ending. Harness assistance is opt-in and excluded from ordinary release builds.
+
+D11 (owner-authorized gameplay acceptance): the already recorded torch/RNG
+state and pixel differences remain in deferred item 16. Item 12 may accept
+completed assisted routes with those exceptions explicitly identified, provided
+there are no unresolved loud stops and the game reaches the ending. This does
+not turn unexecuted routes or unreached endpoints into passes.
+
 ## Faithfulness boundary
 
 The original Macintosh execution under the D2 reference is the correctness reference.

@@ -32,6 +32,11 @@ int main(int argc,char** argv) {
         assert(GWorld8::layout({-10,-100,17,int16_t(width-100)},l));
         assert(l.rowBytes==4*((width+3)/4)+4&&l.pixelBytes==unsigned(l.rowBytes)*27);
     }
+    for(int width=1;width<=16352;++width){
+        assert(GWorld8::layout({-10,-100,17,int16_t(width-100)},l,16));
+        assert(l.rowBytes==16*((width+15)/16)+16 && l.pixelBytes==unsigned(l.rowBytes)*27);
+    }
+    assert(!GWorld8::layout({0,0,1,16353},l,16));
     assert(!GWorld8::layout({0,0,1,16377},l));
     assert(!GWorld8::layout({0,0,0,5},l));assert(!GWorld8::layout({2,3,1,9},l));
     assert(!GWorld8::layout({0,5,10,5},l));

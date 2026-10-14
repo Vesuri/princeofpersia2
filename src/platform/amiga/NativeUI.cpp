@@ -131,7 +131,48 @@ bool fileDialog(uint8_t* a,uint32_t& consumed){
     if(!NativeDisplay::hideOverlay())return fail(NativeDisplay::error());
     consumed=bytes;return true;
 }
+bool hallName(uint32_t* regs,uint8_t* args){
+    if(!valid((uint32_t)args,6) || !valid(l(args),2))return fail("UI / HALL ARGUMENTS");
+    uint8_t* table=(uint8_t*)l(args);unsigned count=w(table),selected=w(args+4);
+    if(!count || count>5 || selected>=count || !valid((uint32_t)table,2+count*30))return fail("UI / HALL TABLE");
+    char name[24]={};unsigned length=0;bool dirty=true,confirm=false,accepted=false,done=false;
+    NativeInput::flush(0xffff,0);
+    while(!done){
+        if(dirty){
+            for(auto& pixel:g_uiOverlayPixels)pixel=255;
+            if(!text("HALL OF FAME",32,40)||!text("Name",48,76)||!text("Time",368,76))return false;
+            for(unsigned i=0;i<count;++i){
+                const uint8_t* row=table+2+i*30;char existing[29]={};
+                unsigned n=0;while(n<28 && row[n]){existing[n]=row[n];++n;}
+                if(n==28)return fail("UI / HALL NAME EXTENT");
+                char number[6]={};unsigned value=w(row+28),digits=0;char reverse[5];
+                do{reverse[digits++]=char('0'+value%10);value/=10;}while(value);
+                for(unsigned d=0;d<digits;++d)number[d]=reverse[digits-d-1];
+                if(i==selected && !text(">",32,104+i*28))return false;
+                if(!text(i==selected?name:existing,48,104+i*28)||!text(number,368,104+i*28))return false;
+            }
+            if(!text(confirm?"Save this name? Return: Yes / Escape: Edit":"Type your name. Backspace deletes.",32,292)||
+               !text(confirm?"":"Return: Continue       Escape: Cancel",32,328))return false;
+            if(!NativeDisplay::showOverlay(g_uiOverlayPixels))return fail(NativeDisplay::error());
+            g_uiOverlay=confirm?7004:7003;++g_uiOverlayCount;pop2UIOverlayShown();dirty=false;
+        }
+        if(NativeInput::error())return fail(NativeInput::error());
+        InputState::Event event;if(!NativeInput::event(8,true,NativeInput::ticks(),event))continue;
+        uint8_t key=event.message;
+        if(key==27){if(confirm){confirm=false;dirty=true;}else done=true;continue;}
+        if(key==13){if(!length)continue;if(confirm){accepted=done=true;}else{confirm=true;dirty=true;}continue;}
+        if(!confirm){
+            if(key==8 && length){name[--length]=0;dirty=true;}
+            else if(key>=32 && key<127 && key!='<' && key!='>' && length<23){name[length++]=key;name[length]=0;dirty=true;}
+        }
+    }
+    if(accepted){uint8_t* row=table+2+selected*30;for(unsigned i=0;i<=length;++i)row[i]=name[i];}
+    g_uiOverlay=0;NativeInput::flush(0xffff,0);
+    if(!NativeDisplay::hideOverlay())return fail(NativeDisplay::error());
+    regs[0]=accepted?1:0;return true;
+}
 bool replacement(uint16_t selector,uint32_t* regs,uint8_t* args){
+    if(selector==3)return hallName(regs,args);
     char message[513];uint16_t kind=0;
     if(selector==1){
         if(!valid((uint32_t)args,2)||w(args)!=600)return fail("UI / ABOUT ID");
@@ -191,6 +232,13 @@ bool dispatch(uint16_t t,uint32_t* regs,uint8_t* a,uint32_t& consumed){
  case 0xa9b9:
   if(!valid((uint32_t)a,6)||w(a)!=4)return fail("UI / CURSOR ID");
   if(!cursor){cursor=heap->newHandle(68,true);if(!cursor)return fail("UI / CURSOR ALLOCATION");}
+  if(!heap->isHandle(cursor))return fail("UI / CURSOR OWNER");
+  // LoadLevel unlocks and marks this handle purgeable. GetCursor must reload
+  // its owned D8 replacement after pressure from later cutscenes empties it.
+  if(!*cursor){
+   if(heap->reallocateHandle(cursor,68))return fail("UI / CURSOR RELOAD");
+   for(unsigned i=0;i<68;++i)(*cursor)[i]=0;
+  }
   if(!heap->isHandle(cursor)||heap->handleSize(cursor)!=68)return fail("UI / CURSOR OWNER");
   sl(a+2,(uint32_t)cursor);sw(low+0xa60,0);consumed=2;regs[0]=0;return true;
  case 0xa851:

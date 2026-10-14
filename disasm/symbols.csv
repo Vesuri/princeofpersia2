@@ -1101,4 +1101,13 @@ segment,offset,name,evidence,notes
 23,0x140A,ATMGlass_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 23,0x1470,DrawObjGlass_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 23,0x154A,TriggerGlass_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
+5,0x4F92,PlayAmbient,DERIVED,Original MacsBug name at 0x5112; selects ambient sound through CODE 17 Random at return offset 0x6E1E
+8,0x3B4E,CaveGetTorchFrame,DERIVED,Original MacsBug name at 0x3B7A; traced CODE 17 Random return to CODE 8 offset 0x3B5C during cave torch animation
 8,0x002E,BridgeCheckBreak,DERIVED,Original local call at CODE 8+0022 and RTS-adjacent MacsBug name at 0x0174; checks fighter columns and bridge timer
+20,0x0854,HandToHandWrapper,DERIVED,Original register glue around A9E1 at +085A; reached by assisted level entry survey
+3,0x1AD8,ReadRoomAdjacency,DERIVED,Four room links from context+2080 plus 8 times room minus one; used for assisted final-route planning
+4,0x2590,IsShadowImbued,DERIVED,Named original routine tests special state 13 or final-level health greater than two
+2,0x45A4,SessionVictoryDecision,DERIVED,Original result greater than fourteen selects NIS 11 then HallOfFameDialog
+2,0x2220,GetHallOfFameName,DERIVED,Original TextEdit routine takes table pointer and row index; returns acceptance after the name confirmation
+17,0x5E3A,DrawIt_BitMapToRegion,MEASURED,Final encounter live calls match all 300 captured bitmap masks and encoded regions
+17,0x5E68,DrawIt_OffsetRgn,MEASURED,All 300 original ending-route region translations byte-match shared region mapping
