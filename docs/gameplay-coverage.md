@@ -71,6 +71,33 @@ selector at `+0088` has separate main-cinematic and numbered story-scene paths;
 these must be enumerated by their original dispatch and callers before claiming
 complete cutscene coverage. These static facts establish scope, not execution.
 
+## Cutscene dispatch scope
+
+DERIVED from original CODE 15 dispatch at +0088 and Transition at +07C8:
+the numbered cinematic cases are 1–11. Cases 12–20 call TreeCheck with
+indices 1–9. Out-of-range selectors take the default path, so a recorded
+selector-100 return alone does not establish another completed cinematic.
+The original procedure names identify these targets:
+
+| Selector | Original target | Current acceptance |
+|---|---|---|
+| 1 | NISCarpet | Included in the passing clean level-five pair |
+| 2 | NISTemple | Paired coverage remains to be established |
+| 3 | NISTower | Paired coverage remains to be established |
+| 4 | NISTitle | Existing startup presentation gate; full natural-return coverage requires audit |
+| 5 | TransPrincessRoom | Paired coverage remains to be established |
+| 6 | NISThroneRoom | Clean level-eight original return; native pair pending |
+| 7 | Opening1 | Existing opening reference; full natural-return coverage requires audit |
+| 8 | Opening2 | Paired coverage remains to be established |
+| 9 | AboardShip | Existing level-one route; cinematic checkpoints require audit |
+| 10 | Discovery | Paired coverage remains to be established |
+| 11 | HappyEnding | Included in the passing ending/Hall pair |
+| 12–20 | TreeCheck indices 1–9 | Each selected story and its positive return remain to be audited |
+
+This table enumerates dispatch cases, not additional passes. Route entry/return
+markers alone do not prove visible checkpoints match or identify whether a
+scene took an early-return path.
+
 ## Walkthrough reference
 
 The owner-supplied [walkthrough](https://gamefaqs.gamespot.com/pc/564689-prince-of-persia-2-the-shadow-and-the-flame/faqs/23644)
@@ -949,3 +976,12 @@ sword/plate/stairs route in 490 frames and enters level nine, room 10.
 `manifest/gameplay-assisted-level8-clean.sha256` pins the completed route.
 A fresh original repeat and native comparison remain required. The earlier
 clean-1 preparation failed before emulator launch and is not route evidence.
+
+Fresh `gameplay-assisted-level8-clean-repeat-1` matches every checkpoint of
+the pinned clean level-eight route and passes the reference launcher.
+
+Original `gameplay-assisted-level9-1` uses logged room/position/health
+assistance, then the original running-jump exit decision to reach level ten,
+room 22, at step 37. `manifest/gameplay-assisted-level9.sha256` pins this
+completed route. No horse cinematic enter/return appears in its log; this
+is level-exit evidence only. Fresh repeat and native pairing remain open.

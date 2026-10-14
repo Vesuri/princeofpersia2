@@ -1113,3 +1113,6 @@ segment,offset,name,evidence,notes
 17,0x5E68,DrawIt_OffsetRgn,MEASURED,All 300 original ending-route region translations byte-match shared region mapping
 8,0x12B6,SetupCarpet,DERIVED,LINK entry leading to RTS at 0x1396 and original MacsBug name at 0x1398; consulted for assisted level-five exit
 2,0x20F4,DrawHallOfFameDialog,DERIVED,LINK entry and MacsBug name at 0x2208; D8 owned score-table rendering replaces Macintosh text and frame drawing
+15,0x0004,NIS,DERIVED,LINK entry with original NIS name at 0x0168; dispatch at 0x0088 selects cases 1 through 20
+15,0x07C8,Transition,DERIVED,LINK entry with original Transition name at 0x0872; nested dispatch selects cinematic cases 1 through 6
+6,0x4AD2,HorseExitAdvanceLevel,DERIVED,Original room-eight top-row running jump advances level nine to ten in assisted level9-1
