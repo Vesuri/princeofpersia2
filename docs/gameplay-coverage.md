@@ -51,10 +51,10 @@ and bounded captures. Original bytes, saved state and captures remain ignored.
 | Level 1 | Meaningful gameplay route and original level-exit decision | Completed native/original pair; two pinned RNG exceptions under D11 |
 | Level 2 | Meaningful gameplay route and original level-exit decision | Completed native/original pair; inherited level-one RNG exceptions only |
 | Level 3 | Meaningful gameplay route and original level-exit decision | Original repeats pass; native completion boundary unresolved, with recorded torch differences deferred |
-| Level 4 | Meaningful gameplay route and original level-exit decision | Original repeat passes; native replay pending |
+| Level 4 | Meaningful gameplay route and original level-exit decision | Original repeat passes; native stops at an unloaded audio instrument at frame 1468 |
 | Level 5 | Meaningful gameplay route and original level-exit decision | Clean assisted original repeat and native pair pass all 46 checkpoints; carpet NIS 1 returns and level six begins |
 | Level 6 | Meaningful gameplay route and original level-exit decision | Native reaches level seven; intermediate state/pixel comparison failures unresolved |
-| Level 7 | Meaningful gameplay route and original level-exit decision | Clean original reaches level eight; repeat and native comparison pending |
+| Level 7 | Meaningful gameplay route and original level-exit decision | Clean original and fresh repeat reach level eight; native comparison pending |
 | Levels 8–13, individually | Meaningful gameplay route and original level-exit decision | Entry survey passes; exit routes incomplete |
 | Level 14 | Meaningful gameplay route and original level-exit decision | Assisted final encounter and original decision 15 paired through the ending and Hall insertion |
 | Main cutscenes, individually | Original natural return and paired visible/state checkpoints | Incomplete |
@@ -867,3 +867,28 @@ Original `gameplay-assisted-level7-clean-1` reaches level eight at step 359
 using the successful plate/stairs sequence, without discarded navigation.
 `manifest/gameplay-assisted-level7-clean.sha256` pins the completed route;
 fresh repeat and native comparison remain pending.
+
+Fresh `gameplay-assisted-level7-clean-repeat-1` matches every recorded
+checkpoint of the clean level-seven route. Its native build is prepared.
+
+Original `gameplay-assisted-level6-clean-2` follows the previously successful
+plate/door movements from fresh startup, omitting the failed head-attack
+attempt. It naturally reaches level seven at step 177.
+`manifest/gameplay-assisted-level6-clean.sha256` pins this route; a fresh repeat
+and native comparison remain required. The unsuccessful shortened attempt
+`gameplay-assisted-level6-clean-1` is not used as acceptance evidence.
+
+Native level-four `.run-rHrTgJ` stops at frame 1468 with
+`AUDIO / INSTRUMENT NOT LOADED`, after capturing checkpoint 81. Hardware,
+heap and code/input restoration pass, but the route does not complete.
+The original audio-driver trace for this route is being captured to determine
+the missing instrument-loading behavior; the guard remains active.
+
+Fresh `gameplay-assisted-level6-clean-repeat-1` matches every checkpoint of
+the clean level-six route. Native comparison remains pending.
+
+A separate partial check of level-four `.run-rHrTgJ` compares its 82 captured
+checkpoints with the original. It finds RNG, pixel and full-context differences
+before the audio stop; these are retained as failures, not claimed as exact
+matches or automatically covered by D11. The original audio trace is the next
+step toward resolving the loud stop.
