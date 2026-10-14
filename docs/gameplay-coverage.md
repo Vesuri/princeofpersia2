@@ -995,3 +995,10 @@ original boundary. Code/input, heap and hardware restoration pass. Comparison
 still fails RNG, pixels, context and later actor records. The earlier frame-1888
 run remains a failure; this run does not establish stable timing or a passing
 paired route. No new blanket D11 exception is applied.
+
+Original `gameplay-assisted-level10-1` activates the room-19 lower-left plate
+(link 44) and enters the exit above, naturally reaching level eleven, room 5,
+at step 4086. The link target is DERIVED from CODE 5 GetLinkRoom/GetLinkCell
+and confirmed by the original door opening.
+`manifest/gameplay-assisted-level10.sha256` pins this completed discovery with
+its discarded attempts. A shorter fresh route and native pair remain required.

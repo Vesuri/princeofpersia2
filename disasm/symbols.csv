@@ -1116,3 +1116,5 @@ segment,offset,name,evidence,notes
 15,0x0004,NIS,DERIVED,LINK entry with original NIS name at 0x0168; dispatch at 0x0088 selects cases 1 through 20
 15,0x07C8,Transition,DERIVED,LINK entry with original Transition name at 0x0872; nested dispatch selects cinematic cases 1 through 6
 6,0x4AD2,HorseExitAdvanceLevel,DERIVED,Original room-eight top-row running jump advances level nine to ten in assisted level9-1
+5,0x2304,GetLinkCell,DERIVED,Original link record index uses context plus 0x1680 with stride 10 and cell at offset 2; MacsBug name at 0x2334
+5,0x23CE,GetLinkRoom,DERIVED,Original link record index uses context plus 0x1680 with stride 10 and room at offset 0; MacsBug name at 0x23FC
