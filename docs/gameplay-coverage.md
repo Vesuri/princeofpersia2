@@ -943,3 +943,9 @@ level/room before checking the strict expected boundary. Diagnostic native
 `.run-oqFGdv` confirms level-seven replay enters level eight, room 16, at
 step 357, with 359 key reads. The original enters at step 359. This establishes
 the endpoint but does not pass the timing comparison; the guard is unchanged.
+
+Fresh original `gameplay-assisted-level8-clean-2` completes the successful
+sword/plate/stairs route in 490 frames and enters level nine, room 10.
+`manifest/gameplay-assisted-level8-clean.sha256` pins the completed route.
+A fresh original repeat and native comparison remain required. The earlier
+clean-1 preparation failed before emulator launch and is not route evidence.
