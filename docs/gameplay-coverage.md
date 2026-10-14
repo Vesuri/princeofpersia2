@@ -51,10 +51,10 @@ and bounded captures. Original bytes, saved state and captures remain ignored.
 | Level 1 | Meaningful gameplay route and original level-exit decision | Completed native/original pair; two pinned RNG exceptions under D11 |
 | Level 2 | Meaningful gameplay route and original level-exit decision | Completed native/original pair; inherited level-one RNG exceptions only |
 | Level 3 | Meaningful gameplay route and original level-exit decision | Original repeats pass; native completion boundary unresolved, with recorded torch differences deferred |
-| Level 4 | Meaningful gameplay route and original level-exit decision | Original repeat passes; native stops at an unloaded audio instrument at frame 1468 |
+| Level 4 | Meaningful gameplay route and original level-exit decision | Original repeat passes; unloaded-instrument stop fixed, later first-frame boundary and intermediate comparisons unresolved |
 | Level 5 | Meaningful gameplay route and original level-exit decision | Clean assisted original repeat and native pair pass all 46 checkpoints; carpet NIS 1 returns and level six begins |
 | Level 6 | Meaningful gameplay route and original level-exit decision | Native reaches level seven; intermediate state/pixel comparison failures unresolved |
-| Level 7 | Meaningful gameplay route and original level-exit decision | Clean original and fresh repeat reach level eight; native comparison pending |
+| Level 7 | Meaningful gameplay route and original level-exit decision | Clean original and fresh repeat reach level eight; native first-frame boundary differs by two frames |
 | Levels 8–13, individually | Meaningful gameplay route and original level-exit decision | Entry survey passes; exit routes incomplete |
 | Level 14 | Meaningful gameplay route and original level-exit decision | Assisted final encounter and original decision 15 paired through the ending and Hall insertion |
 | Main cutscenes, individually | Original natural return and paired visible/state checkpoints | Incomplete |
@@ -921,3 +921,19 @@ The original enters level five at 1889,
 so the strict first-frame guard rejects the replay. Hardware, heap and input/code
 restoration pass. The audio blocker is resolved; the route's timing and
 intermediate comparisons remain unresolved.
+
+The live level-eight discovery had not picked up the sword at checkpoint 101:
+the capture still shows it on the floor. Positioning at x=480 and pressing Shift
+then enters original NIS selector 6, which returns naturally. Checkpoint 104
+shows the sword removed. Earlier NIS 4/7 returns in the same long discovery
+are not evidence of sword pickup. The discovery subsequently lands on the
+room-23 plate, opens its left exit and naturally reaches level nine, room 10,
+at step 2917. `manifest/gameplay-assisted-level8.sha256` pins the completed
+discovery, including the discarded attempts. A clean fresh route and native
+pair remain required.
+
+Native clean level-six replay `.run-uuUK13` reaches level seven at step 177
+with all 28 checkpoint counters, pixels, palette, actors and RNG matching.
+Hardware, heap, code and input restoration pass. Full-context comparisons fail
+at ordinals 10–26: the same differences persist within offsets 2008–2027.
+Their meaning remains unverified; this is not yet a passing full comparison.
