@@ -38,7 +38,7 @@ def metadata(reference, level=1):
 
 
 def key_rows(rows):
-    virtual = (0x7b, 0x7c, 0x7e, 0x7d, 0x38, 0x3b)
+    virtual = (0x7b, 0x7c, 0x7e, 0x7d, 0x38, 0x3b, 0x31)
     result = []
     for _, step, raw in rows:
         keys = bytes.fromhex(raw)

@@ -14,7 +14,24 @@ def rows(data):
         result.append((name.split(b'\0',1)[0],struct.unpack_from('>H',record,28)[0]))
     return result
 
+def named_path_contract():
+    reference=ROOT/'ref/mame/runs/files-save-3'
+    for name,digest in pins(ROOT/'manifest/gameplay-hall-path.sha256').items():
+        assert hashlib.sha256((reference/name).read_bytes()).hexdigest()==digest,'HALL / PATH PIN '+name
+    log=(reference/'session.log').read_text()
+    for serial in (98,110):
+        before=(reference/f'file-{serial}-before.bin').read_bytes()
+        after=(reference/f'file-{serial}-after.bin').read_bytes()
+        name=(reference/f'file-{serial}-name.bin').read_bytes()
+        returned=(reference/f'file-{serial}-returned-name.bin').read_bytes()
+        assert f'FILE_RETURN id={serial} result=0000' in log,'HALL / PATH ORIGINAL RETURN'
+        assert struct.unpack_from('>h',before,28)[0]==0,'HALL / PATH NAMED QUERY'
+        assert struct.unpack_from('>h',after,16)[0]==0,'HALL / PATH RESULT'
+        assert name.startswith(b':Data:') and returned==name,'HALL / NAMED PATH PRESERVED'
+
+
 def check(reference,native=None,repeat=None):
+    named_path_contract()
     for name,digest in pins(ROOT/'manifest/gameplay-hall-reference.sha256').items():
         assert hashlib.sha256((reference/name).read_bytes()).hexdigest()==digest,'HALL / PIN '+name
     log=(reference/'session.log').read_text()

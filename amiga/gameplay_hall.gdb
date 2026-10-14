@@ -9,7 +9,9 @@ commands
   if g_uiOverlay==7004
    set $hallConfirm=$hallConfirm+1
   else
+   if g_uiOverlay!=7005
    printf "HALL UNEXPECTED UI id=%lu\n",g_uiOverlay
+   end
   end
  end
  continue
@@ -34,6 +36,14 @@ commands
  printf "HALL INPUT edit=%u confirm=%u\n",$hallEdit,$hallConfirm
  printf "CORE STOP trap=%04lx segment=%lu offset=%04lx count=%lu\n",g_coreStopTrap,g_coreStopSegment,g_coreStopOffset,g_coreCount
  printf "CORE REASON %s\n",g_coreReason
+ printf "HALL ACCEPTED %lu FILES %lu\n",g_uiHallAccepted,g_routeHallFileCount
+ set $i=0
+ while $i<g_routeHallFileCount
+  printf "HALL FILE trap=%04lx error=%ld volume=%04lx ref=%04lx request=%lu actual=%lu\n",g_routeHallFiles[$i][0],g_routeHallFiles[$i][1],g_routeHallFiles[$i][2],g_routeHallFiles[$i][3],g_routeHallFiles[$i][4],g_routeHallFiles[$i][5]
+  printf "HALL FILE NAME %s\n",g_routeHallNames[$i]
+  set $i=$i+1
+ end
+ dump binary memory @RUN@/hall-ui-screen.bin g_uiOverlayPixels g_uiOverlayPixels+307200
  printf "ROUTE RESERVE requested=%lu before=%lu after=%lu error=%lu\n",g_routeReserve[0],g_routeReserve[1],g_routeReserve[2],g_routeReserve[3]
  printf "ROUTE RESULT complete=%lu rooms=%lu frames=%lu keys=%lu checkpoints=%lu last=%04lx\n",g_routeComplete,g_routeRooms,g_routeFrames,g_routeKeys,g_routeCheckpoint,g_routeLastResult
  printf "CORE RESTORE stage=%lu error=%lu vector=%lu heap=%lu zone=%lu dma=%u/%u irq=%u/%u view=%u vbi=%u\n",g_scaffoldStage,g_scaffoldError,g_coreVectorRestored,g_coreHeapOK,g_coreZoneBytes,g_savedDMA,g_actualDMA,g_savedIRQ,g_actualIRQ,g_viewRestored,g_vectorRestored

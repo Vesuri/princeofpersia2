@@ -1111,3 +1111,5 @@ segment,offset,name,evidence,notes
 2,0x2220,GetHallOfFameName,DERIVED,Original TextEdit routine takes table pointer and row index; returns acceptance after the name confirmation
 17,0x5E3A,DrawIt_BitMapToRegion,MEASURED,Final encounter live calls match all 300 captured bitmap masks and encoded regions
 17,0x5E68,DrawIt_OffsetRgn,MEASURED,All 300 original ending-route region translations byte-match shared region mapping
+8,0x12B6,SetupCarpet,DERIVED,LINK entry leading to RTS at 0x1396 and original MacsBug name at 0x1398; consulted for assisted level-five exit
+2,0x20F4,DrawHallOfFameDialog,DERIVED,LINK entry and MacsBug name at 0x2208; D8 owned score-table rendering replaces Macintosh text and frame drawing

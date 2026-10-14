@@ -9,6 +9,9 @@
 extern "C" {
 volatile uint32_t g_uiOverlay=0,g_uiOverlayCount=0;
 uint8_t g_uiOverlayPixels[640*480];
+#ifdef POP2_GAMEPLAY_HALL_PROBE
+volatile uint32_t g_uiHallAccepted=0;
+#endif
 __attribute__((noinline)) void pop2UIOverlayShown(){__asm__ volatile("nop" ::: "memory");}
 }
 #ifdef POP2_GAMEPLAY_SAVE_PROBE
@@ -131,6 +134,24 @@ bool fileDialog(uint8_t* a,uint32_t& consumed){
     if(!NativeDisplay::hideOverlay())return fail(NativeDisplay::error());
     consumed=bytes;return true;
 }
+bool hallTable(const uint8_t* table,unsigned selected,const char* name){
+    if(!valid((uint32_t)table,2))return fail("UI / HALL TABLE POINTER");
+    unsigned count=w(table);
+    if(count>5 || !valid((uint32_t)table,2+count*30))return fail("UI / HALL TABLE EXTENT");
+    for(auto& pixel:g_uiOverlayPixels)pixel=255;
+    if(!text("HALL OF FAME",32,40)||!text("Name",48,76)||!text("Time",368,76))return false;
+    for(unsigned i=0;i<count;++i){
+        const uint8_t* row=table+2+i*30;char existing[29]={};
+        unsigned n=0;while(n<28 && row[n]){existing[n]=row[n];++n;}
+        if(n==28)return fail("UI / HALL NAME EXTENT");
+        char number[6]={};unsigned value=w(row+28),digits=0;char reverse[5];
+        do{reverse[digits++]=char('0'+value%10);value/=10;}while(value);
+        for(unsigned d=0;d<digits;++d)number[d]=reverse[digits-d-1];
+        if(i==selected && !text(">",32,104+i*28))return false;
+        if(!text(i==selected?name:existing,48,104+i*28)||!text(number,368,104+i*28))return false;
+    }
+    return true;
+}
 bool hallName(uint32_t* regs,uint8_t* args){
     if(!valid((uint32_t)args,6) || !valid(l(args),2))return fail("UI / HALL ARGUMENTS");
     uint8_t* table=(uint8_t*)l(args);unsigned count=w(table),selected=w(args+4);
@@ -139,18 +160,7 @@ bool hallName(uint32_t* regs,uint8_t* args){
     NativeInput::flush(0xffff,0);
     while(!done){
         if(dirty){
-            for(auto& pixel:g_uiOverlayPixels)pixel=255;
-            if(!text("HALL OF FAME",32,40)||!text("Name",48,76)||!text("Time",368,76))return false;
-            for(unsigned i=0;i<count;++i){
-                const uint8_t* row=table+2+i*30;char existing[29]={};
-                unsigned n=0;while(n<28 && row[n]){existing[n]=row[n];++n;}
-                if(n==28)return fail("UI / HALL NAME EXTENT");
-                char number[6]={};unsigned value=w(row+28),digits=0;char reverse[5];
-                do{reverse[digits++]=char('0'+value%10);value/=10;}while(value);
-                for(unsigned d=0;d<digits;++d)number[d]=reverse[digits-d-1];
-                if(i==selected && !text(">",32,104+i*28))return false;
-                if(!text(i==selected?name:existing,48,104+i*28)||!text(number,368,104+i*28))return false;
-            }
+            if(!hallTable(table,selected,name))return false;
             if(!text(confirm?"Save this name? Return: Yes / Escape: Edit":"Type your name. Backspace deletes.",32,292)||
                !text(confirm?"":"Return: Continue       Escape: Cancel",32,328))return false;
             if(!NativeDisplay::showOverlay(g_uiOverlayPixels))return fail(NativeDisplay::error());
@@ -169,10 +179,22 @@ bool hallName(uint32_t* regs,uint8_t* args){
     if(accepted){uint8_t* row=table+2+selected*30;for(unsigned i=0;i<=length;++i)row[i]=name[i];}
     g_uiOverlay=0;NativeInput::flush(0xffff,0);
     if(!NativeDisplay::hideOverlay())return fail(NativeDisplay::error());
-    regs[0]=accepted?1:0;return true;
+    regs[0]=accepted?1:0;
+#ifdef POP2_GAMEPLAY_HALL_PROBE
+    g_uiHallAccepted=regs[0];
+#endif
+    return true;
 }
 bool replacement(uint16_t selector,uint32_t* regs,uint8_t* args){
     if(selector==3)return hallName(regs,args);
+    if(selector==4){
+        if(!valid((uint32_t)args,4))return fail("UI / HALL DRAW ARGUMENTS");
+        if(!hallTable((const uint8_t*)l(args),5,nullptr))return false;
+        if(!text("Return / Escape: Continue",32,328))return false;
+        if(!NativeDisplay::showOverlay(g_uiOverlayPixels))return fail(NativeDisplay::error());
+        g_uiOverlay=7005;++g_uiOverlayCount;pop2UIOverlayShown();g_uiOverlay=0;
+        return true;
+    }
     char message[513];uint16_t kind=0;
     if(selector==1){
         if(!valid((uint32_t)args,2)||w(args)!=600)return fail("UI / ABOUT ID");

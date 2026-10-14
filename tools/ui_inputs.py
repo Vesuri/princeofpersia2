@@ -15,6 +15,10 @@ SEAMS=[
  (17,0x245e,struct.pack('>3H',0xaffd,1,0x4e75),'PortAbout'),
  (17,0x6d42,struct.pack('>4H',0xaffd,2,0x4e75,0x4e71),'PortAlert'),
  (2,0x2220,struct.pack('>3H',0xaffd,3,0x4e75),'PortHallName'),
+ (2,0x20f4,struct.pack('>3H',0xaffd,4,0x4e75),'PortHallTable'),
+ # D8: the owned name UI already displayed the accepted name. Skip only the
+ # Macintosh glyph/box redraw; the original WriteHallOfFameFile still runs.
+ (2,0x1f8e,struct.pack('>2H',0x6000,0x202c-0x1f90),'NoMacHallNameRedraw'),
 ]
 def content():
  verify_output(DESTINATION);census.load(DESTINATION/'Prince of Persia 2.rsrc')

@@ -9,6 +9,16 @@ from replay_gameplay_route import compare, inputs, verify_reference, replay, ROO
 
 
 class RouteEvidenceTests(unittest.TestCase):
+    def test_restart_space_key_map(self):
+        from gameplay_route_inputs import key_rows
+        keys = bytearray(16)
+        keys[0x31 // 8] = 1 << (0x31 % 8)
+        self.assertEqual(key_rows([('1', '1', keys.hex())]),
+                         ['{1,64,{' + ','.join(str(v) for v in keys) + '}},'])
+        keys[0] |= 1
+        with self.assertRaisesRegex(AssertionError, 'UNMAPPED KEY'):
+            key_rows([('1', '1', keys.hex())])
+
     def test_schedule(self):
         with tempfile.TemporaryDirectory(dir=ROOT / 'tmp') as directory:
             path = Path(directory) / 'inputs.tsv'

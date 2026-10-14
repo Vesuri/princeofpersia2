@@ -353,7 +353,9 @@ int32_t dispatch(uint16_t trap,uint16_t selector,uint8_t* pb,uint8_t* buffer,con
         putWord(pb+62,0);putLong(pb+64,entry->resourceSize);putLong(pb+68,entry->resourceSize);
         putLong(pb+72,entry->metadata.created);putLong(pb+76,entry->metadata.modified);
         if(catalog) {for(unsigned i=80;i<100;++i)pb[i]=0;putLong(pb+100,entry->parent);putLong(pb+104,0);}
-        nameResult(nameOutput,entry->name);return 0;
+        // Named GetFInfo preserves the caller's path; only indexed queries
+        // return a leaf name. Measured by the original Hall/save Create calls.
+        if(catalog || index>0)nameResult(nameOutput,entry->name);return 0;
     }
     if((trap==0xa060 || trap==0xa260) && selector==8) {
         const MacFiles::Fork* fork=0;

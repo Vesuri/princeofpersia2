@@ -98,6 +98,10 @@ uint32_t g_routeEndingReturn=0;
 uint32_t g_routeHallReturn=0;
 volatile uint32_t g_routeReserve[4]={};
 volatile uint32_t g_routeHallComplete=0;
+#ifdef POP2_GAMEPLAY_HALL_PROBE
+volatile uint32_t g_routeHallFileCount=0,g_routeHallFiles[16][6]={};
+volatile char g_routeHallNames[16][256]={};
+#endif
 #ifdef POP2_ROUTE_RESOURCE_TRACE
 volatile uint32_t g_routeHandleCount=0,g_routeHandles[256][8],g_routeFreedUnlocks=0;
 #endif
@@ -839,9 +843,9 @@ static uint8_t routeHeld=0;
 static bool routeKeyboard(uint16_t step){
     if(g_routeKeys>=sizeof(routeKeys)/sizeof(routeKeys[0]) || routeKeys[g_routeKeys].step!=step)
         return fail("GAMEPLAY ROUTE / KEY STEP");
-    const uint8_t raw[]={0x4f,0x4e,0x4c,0x4d,0x60,0x63};
+    const uint8_t raw[]={0x4f,0x4e,0x4c,0x4d,0x60,0x63,0x40};
     uint8_t held=routeKeys[g_routeKeys].mask,changed=held^routeHeld;
-    for(unsigned i=0;i<6;++i)if(changed&(1<<i))NativeInput::inject(raw[i],(held&(1<<i))!=0);
+    for(unsigned i=0;i<sizeof(raw);++i)if(changed&(1<<i))NativeInput::inject(raw[i],(held&(1<<i))!=0);
     if(changed){uint32_t tick=NativeInput::ticks();while(NativeInput::ticks()==tick){}}
     routeHeld=held;
     if(NativeInput::error())return fail(NativeInput::error());
@@ -1194,7 +1198,7 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
     }
 #ifdef POP2_UI
     if(trap==0xaffd){
-        uint16_t expected=seg==17 && off==0x245e?1:seg==17 && off==0x6d42?2:seg==2 && off==0x2220?3:0;
+        uint16_t expected=seg==17 && off==0x245e?1:seg==17 && off==0x6d42?2:seg==2 && off==0x2220?3:seg==2 && off==0x20f4?4:0;
         if(!codeCaller || !expected)return stop(frame,usp,"UI / REPLACEMENT CALLER",trap,seg,off);
         uint16_t selector=w((uint8_t*)pc+2);
         if(selector!=expected)return stop(frame,usp,"UI / REPLACEMENT SELECTOR",trap,seg,off);
@@ -1382,7 +1386,18 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
                 }
             }
         }
+        #ifdef POP2_GAMEPLAY_HALL_PROBE
+        if(g_routeComplete && g_routeHallFileCount<16 && name){
+            unsigned n=0;do{g_routeHallNames[g_routeHallFileCount][n]=name[n];}while(name[n++] && n<256);
+        }
+#endif
         int32_t fileError=NativeFiles::dispatch(trap,(uint16_t)regs[0],pb,buffer,name,nameOutput);
+#ifdef POP2_GAMEPLAY_HALL_PROBE
+        if(g_routeComplete && g_routeHallFileCount<16){
+            volatile uint32_t* row=g_routeHallFiles[g_routeHallFileCount++];
+            row[0]=trap;row[1]=fileError;row[2]=w(pb+22);row[3]=w(pb+24);row[4]=l(pb+36);row[5]=l(pb+40);
+        }
+#endif
         if(fileError==MacFiles::unsupported)return stop(frame,usp,"FILES / UNSUPPORTED OPERATION",trap,seg,off);
         sw(pb+16,fileError);regs[0]=fileError;
         uint16_t sr=w(frame)&~15;if(!(fileError&0xffff))sr|=4;if(fileError&0x8000)sr|=8;sw(frame,sr);

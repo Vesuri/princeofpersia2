@@ -56,8 +56,8 @@ and bounded captures. Original bytes, saved state and captures remain ignored.
 | Save/load | Save through session command, move, load, restored game state | Two original/native pairs; 22 rejection controls |
 | Death | Original death routine returns after gameplay input | Existing first-room integration route |
 | Restart | Original command followed by completed playable first frame | Original and native repeats pass; 15 rejection controls |
-| Hall of Fame | Show/dismiss and persistent score insertion/readback | File-routine fixtures only |
-| Ending | Final gameplay decision, ending return and subsequent session flow | Incomplete |
+| Hall of Fame | Show/dismiss and persistent score insertion/readback | Original ending/name/write repeats and native persisted name/score pair pass; separate show/dismiss and fresh-session readback open |
+| Ending | Final gameplay decision, ending return and subsequent session flow | Native/original ending route matches all 81 checkpoints and natural ending return, followed by successful Hall insertion |
 
 DERIVED: CODE 2 `RestartGame` accepts levels 1–14; the session loop at
 `CODE 2+45A4` selects the ending path for a result above 14. CODE 15's NIS
@@ -765,3 +765,56 @@ writes and flushes all 14 level-entry saves through SaveGame. They are exported
 unchanged under ignored `tmp/profiling-saves/`, with names/hashes pinned in
 `manifest/profiling-saves.sha256`. These are profiling inputs, not completed
 level-route evidence. See `docs/profiling-saves.md` for release staging and use.
+
+Fresh original `gameplay-assisted-level4-repeat-1` matches all 93 checkpoints
+of the pinned assisted level-four route, including its natural level-five entry.
+The native replay is prepared but has not yet run.
+
+Native `.run-Of8g4k` positively reaches the original ending return: 385 frames,
+387 key reads and all 81 checkpoints match pixels and full context. The next
+Hall drawing call stops at FrameRect (CODE 2+0D20), so the combined Hall gate
+still fails. D8 assigns that Macintosh dialog rendering to the port-owned UI;
+the pending replacement draws the score table with the existing overlay and
+skips the old accepted-name glyph redraw while retaining original ranking and
+WriteHallOfFameFile. No generic FrameRect success is fabricated.
+
+Native `.run-2OVibg` completes the 81-checkpoint ending pair and reaches the
+Hall return after six name-edit events and one confirmation. Its persisted
+`Data/Prince.hof` is empty: the semantic persistence checker fails at the table
+header. Hall acceptance is therefore still incomplete, despite positive route
+and restoration checks. The next diagnostic run records acceptance and original
+file-call results to distinguish a UI-return problem from a write failure.
+
+Original `gameplay-assisted-level5-1` positively completes the carpet exit,
+NIS selector 1 natural return and level-six entry (room 27, step 1332).
+Position/health assistance and two failed closed-gate carpet attempts are
+retained in its recorded route; no level-exit result was written.
+`manifest/gameplay-assisted-level5.sha256` pins the completed discovery.
+Fresh `gameplay-assisted-level5-repeat-1` matches all 136 state/pixel
+checkpoints and reaches the same level-six endpoint. Native pairing remains
+pending.
+
+The Hall diagnostic `.run-V5Barc` confirms accepted name entry followed by
+Create/GetFInfo success and SetFInfo error -43; no file write follows. Existing
+original `files-save-3` captures preserve the named `:Data:Prince.hof` and
+`:Data:Fixture Save` paths across GetFInfo. These inputs are now pinned in
+`manifest/gameplay-hall-path.sha256`. The native adapter preserves named
+query input paths while retaining indexed name output; the ending/Hall replay
+is in progress. Alone in the Dark has a matching code pattern recorded in
+its FILES.1 follow-up.
+
+Native `.run-f0UnbL` passes all 81 ending checkpoints, name entry, original
+62-byte Hall write and persisted name/score comparison. The named GetFInfo
+path fix is exercised through successful Create/GetFInfo/SetFInfo/Open/Write/Close;
+code, input, heap and hardware restoration pass. Separate Hall show/dismiss
+and fresh-session readback remain open.
+
+The reviewed installed launcher helper adds only an A3000 preset; its A1200-030
+branch is unchanged. The installed bytes are hash-pinned in the scaffold manifest;
+the unrelated shared working-tree changes were not modified.
+
+Original `gameplay-assisted-level6-1` uses logged position assistance to reach
+the two-door exit room, activates its original switch and enters level seven
+(room 32) at step 280. One head-attack death/restart is retained. The completed
+route is pinned in `manifest/gameplay-assisted-level6.sha256`; a fresh repeat
+and native pair remain pending.
