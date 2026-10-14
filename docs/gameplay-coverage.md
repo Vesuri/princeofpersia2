@@ -50,7 +50,13 @@ and bounded captures. Original bytes, saved state and captures remain ignored.
 |---|---|---|
 | Level 1 | Meaningful gameplay route and original level-exit decision | Completed native/original pair; two pinned RNG exceptions under D11 |
 | Level 2 | Meaningful gameplay route and original level-exit decision | Completed native/original pair; inherited level-one RNG exceptions only |
-| Levels 3–14, individually | Meaningful gameplay route and original level-exit decision | Incomplete |
+| Level 3 | Meaningful gameplay route and original level-exit decision | Original repeats pass; native completion boundary unresolved, with recorded torch differences deferred |
+| Level 4 | Meaningful gameplay route and original level-exit decision | Original repeat passes; native replay pending |
+| Level 5 | Meaningful gameplay route and original level-exit decision | Clean assisted original repeat and native pair pass all 46 checkpoints; carpet NIS 1 returns and level six begins |
+| Level 6 | Meaningful gameplay route and original level-exit decision | Native reaches level seven; intermediate state/pixel comparison failures unresolved |
+| Level 7 | Meaningful gameplay route and original level-exit decision | Clean original reaches level eight; repeat and native comparison pending |
+| Levels 8–13, individually | Meaningful gameplay route and original level-exit decision | Entry survey passes; exit routes incomplete |
+| Level 14 | Meaningful gameplay route and original level-exit decision | Assisted final encounter and original decision 15 paired through the ending and Hall insertion |
 | Main cutscenes, individually | Original natural return and paired visible/state checkpoints | Incomplete |
 | Timed story scenes, individually | Original natural return for each selected scene | Incomplete |
 | Save/load | Save through session command, move, load, restored game state | Two original/native pairs; 22 rejection controls |
@@ -851,3 +857,13 @@ completion before changing levels (CODE 2+6134–6168). An additional 40 frames
 reaches the natural endpoint. `manifest/gameplay-assisted-level7.sha256` pins
 the completed discovery. A fresh route omitting discarded attempts is being
 captured; this is not yet a repeatable original/native pair.
+
+Native `.run-4DrtS4` passes the clean level-five route: all 46 checkpoints,
+192 frames and 194 key reads match, with no deferred RNG differences. NIS 1
+returns naturally and level six begins. Code, input, heap and hardware
+restoration pass. The earlier failed discovery replay remains recorded.
+
+Original `gameplay-assisted-level7-clean-1` reaches level eight at step 359
+using the successful plate/stairs sequence, without discarded navigation.
+`manifest/gameplay-assisted-level7-clean.sha256` pins the completed route;
+fresh repeat and native comparison remain pending.
