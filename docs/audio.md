@@ -190,3 +190,30 @@ python3 tools/test_audio_callback_order.py amiga/.run-xisZJy \
 
 This establishes replacement callback ordering. It does not resolve the remaining
 ambient-audio timing difference observed during level-one gameplay.
+
+## Unloaded MIDI instruments
+
+MEASURED: the opt-in original `POP2_AUDIO_UNLOADED_NOTE=1` fixture under
+`POP2_AUDIO=fixture` returns zero without allocating a voice for an unloaded
+instrument. Loaded/reloaded controls allocate a voice. MIDI Synth 3.45's
+expanded offset `33B2` branches to the return when the instrument slot is empty.
+`tools/check_audio_unloaded_note.py` compares voice admission and pitch with
+pinned original snapshots; it rejects the former native stop.
+
+The engine now returns without a voice for a well-formed note with a valid but
+unloaded instrument. Invalid IDs and malformed packets still stop. Vette's
+Bogas path and Alone in the Dark's Halestorm dispatcher were inspected first;
+neither supplies this MIDI Synth note/instrument-loading interface. The change
+is confined to Prince's existing MIDI engine. The native level-four replay passes the former stop, then fails its strict
+first-frame guard one frame before the expected level-five entry. The actual
+boundary state was not captured; the gameplay comparison remains unresolved.
+
+Reproduce the pinned fixture and live-call comparisons with:
+
+```sh
+python3 tools/check_audio_unloaded_note.py ref/mame/runs/audio-unloaded-note-1 \
+  --route ref/mame/runs/gameplay-assisted-level4-audio-2
+```
+
+`manifest/audio-unloaded-note.sha256` and
+`manifest/audio-unloaded-note-live.sha256` pin these private inputs.

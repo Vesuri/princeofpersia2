@@ -35,8 +35,12 @@ public:
     const char* noteOn(uint16_t instrument,uint16_t note,uint16_t duration,uint16_t volume,uint16_t channel) {
         selected=-1;
         if(!voices.initialized)return "AUDIO / NOT INITIALIZED";
-        if(instrument>=34 || !sounds[instrument].loaded)return "AUDIO / INSTRUMENT NOT LOADED";
+        if(instrument>=34)return "AUDIO / INSTRUMENT ID";
         if(note>127 || volume>127 || !duration || duration>32767 || channel>15)return "AUDIO / NOTE PACKET";
+        // MIDI Synth 3.45 +33AE/+33B2 returns without allocating a voice
+        // when the instrument slot is empty. Loaded/reloaded controls and
+        // the level-four instrument-32 request establish this path.
+        if(!sounds[instrument].loaded)return nullptr;
         const auto& sound=sounds[instrument];uint32_t step=0;
         const char* why=HalestormInputs::pitch(sound.instrument,sound.sample,note,pitchTable,512,step);if(why)return why;
         selected=voices.select(instrument,note,channel,0,false);

@@ -892,3 +892,32 @@ checkpoints with the original. It finds RNG, pixel and full-context differences
 before the audio stop; these are retained as failures, not claimed as exact
 matches or automatically covered by D11. The original audio trace is the next
 step toward resolving the loud stop.
+
+Original `gameplay-assisted-level4-audio-1` repeats all route checkpoints and
+records a note for unloaded instrument 32 at step 1467. Its discovery endpoint
+is present, but the launcher rejects the missing audio-observer completion
+signal. The discovery finish path now finalizes the observer; a fresh trace
+is running. The failed launcher result is not reported as a pass.
+
+The isolated original `audio-unloaded-note-1` fixture confirms a successful
+no-voice return for an unloaded instrument, with loaded/reloaded positive
+controls. The host regression fails on the old guard and passes with the
+correction. Native level-four regression remains pending.
+
+Native level-seven `.run-1953oB` reaches a new first-frame boundary at step 357
+where the original transitions at step 359. Its strict first-frame guard stops
+the replay; this is not a passing pair.
+
+Fresh `gameplay-assisted-level4-audio-2` passes the launcher completion check
+and every original route checkpoint. Its pinned trace independently confirms
+the unloaded instrument-32 request, zero return and no allocated voice.
+`check_audio_unloaded_note.py --route` verifies that live request alongside the
+isolated fixture. Native `.run-ZvgynP` has passed the former frame-1468 stop;
+its final route result remains pending.
+
+Native `.run-ZvgynP` passes the unloaded-instrument request and reaches the
+new first-frame boundary at step 1888; its actual level/room was not captured.
+The original enters level five at 1889,
+so the strict first-frame guard rejects the replay. Hardware, heap and input/code
+restoration pass. The audio blocker is resolved; the route's timing and
+intermediate comparisons remain unresolved.

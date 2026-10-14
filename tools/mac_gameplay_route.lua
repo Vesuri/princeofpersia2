@@ -153,6 +153,7 @@ local function command()
   assert(discovery and finishId==sequence+1 and #currentNIS==0,'GAMEPLAY DISCOVERY FINISH CONTEXT')
   sequence=finishId;release();capture('discovery-finished');complete=true;waiting=false
   local log=assert(io.open(run..'/route-actions.txt','a'));log:write(text);log:close()
+  if audioObserver then audioObserver.finish()end
   print('GAMEPLAY_DISCOVERY_COMPLETE');manager.machine:exit();dbg.execution_state='run';return
  end
  local assistId,kind,value=text:match('^(%d+) assist ([%a]+) (%d+)%s*$')

@@ -6,6 +6,8 @@ local run=assert(os.getenv('POP2_REFERENCE_RUN'))
 local install,probe,driver,death,deathProbe
 local fixture,fixtureReturn,fixtureProbe,fixtureStack,fixtureIndex,fixtureCases
 local callbackOrder=os.getenv('POP2_AUDIO_CALLBACK_ORDER')=='1'
+local unloadedNote=os.getenv('POP2_AUDIO_UNLOADED_NOTE')=='1'
+assert(not (callbackOrder and unloadedNote),'AUDIO FIXTURE MODE')
 local function dump(path,address,size)
  local f=assert(io.open(run..'/'..path,'wb'))
  for i=0,size-1 do f:write(string.char(mem:readv_u8(address+i)))end
@@ -55,6 +57,11 @@ function M.startFixture(checkpoint)
   local words={0x206f,0x0004,0x317c,0x0007,0x0018,0x52a8,0x0028,0x4e75}
   for i,v in ipairs(words)do mem:writev_u16(callback+2*(i-1),v)end
   fixtureCases={{22},{17,args=old},{17,args=new},{20,args=query},{20,args=query},{22}}
+ elseif unloadedNote then
+  -- A real resource is loaded, played, unloaded and requested again.
+  -- The loaded/reloaded calls control for an inert note probe.
+  fixtureCases={{6},{34,args=0},{9,0,60,20000,80,0},{6},
+                {36,args=0},{9,0,61,20000,80,0},{34,args=0},{9,0,62,20000,80,0}}
  else
   fixtureCases={{6}}
  for note=60,65 do fixtureCases[#fixtureCases+1]={9,0,note,20000,80,0}end
@@ -106,7 +113,7 @@ function M.poll()
   end
   fixtureIndex=fixtureIndex+1
   if fixtureIndex>#fixtureCases then
-   cpu.debug:bpclear(fixtureProbe);print((callbackOrder and 'AUDIO_CALLBACK_ORDER_COMPLETE calls=' or 'AUDIO_FIXTURE_COMPLETE calls=')..#fixtureCases)
+   cpu.debug:bpclear(fixtureProbe);print((callbackOrder and 'AUDIO_CALLBACK_ORDER_COMPLETE calls=' or unloadedNote and 'AUDIO_UNLOADED_NOTE_COMPLETE calls=' or 'AUDIO_FIXTURE_COMPLETE calls=')..#fixtureCases)
    manager.machine:exit();dbg.execution_state='run'
   else fixtureCall()end
   return true
