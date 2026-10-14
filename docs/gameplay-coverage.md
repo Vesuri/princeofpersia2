@@ -332,34 +332,75 @@ replays the complete authored route. Item 12 remains open.
 
 ### Level-five discovery status
 
-MEASURED: the discovery session crosses the entrance crouching without losing
-health, defeats the first skeleton (`route-823`, step 4943, enemy health zero),
-and crosses the lava with all three health points (`route-829`, step 5007,
-room 2). `level5-skeleton-dead-full-health` and
-`level5-trap-entry-full-health` preserve these checkpoints.
+MEASURED: `gameplay-level5-discovery-3` freshly replays all 265 authored
+level-one-through-four intervals against the pinned level-four reference.
+The original Restart command subsequently returns to level five, room one
+(`route-303` and `route-352`), allowing local retries without replaying earlier
+levels. These are discovery observations, not the full restart acceptance gate.
 
-The room-two crossing is not complete. Captures `route-850`, `route-871`,
-`route-908`, `route-961` and `route-966` distinguish the upper closing plate
-from the lower switch and the second door's changing state. DERIVED: walking
-onto the upper plate closes the first door; the lower switch gives limited
-time to pass the second. Waiting at the first door and varying the jump delay
-there did not provide a crossing. The earlier suggestion that both doors
-could simply be crossed after crouching along the upper platform is not
-supported by these attempts.
+MEASURED: the entrance route knocks down the first skeleton and crosses the
+lava. A standing jump from x 565 with one frame of right/up followed by 30
+neutral frames lands in room two at x 220 with all three health points
+(`route-403`). Two careful steps and the left-hand climb reach the upper
+platform without activating the lower switch (`route-409`). Holding jump
+longer carries the prince farther into the room and changes the approach.
 
-MEASURED: the shorter lower return (20 frames left/down, 16 right, 30 up/shift)
-reaches the upper platform with full health (`route-1104`, step 5073).
-`level5-upper-329-full-health` preserves a standing approach at x 329, step
-5092. Four frames right followed by 14 right/up reaches x 601, y 226 with
-full health (`route-1163`), but continuing right falls into the pit and dies
-(`route-1164`). The similar low landing in `level5-right-pit-full-health`
-also fails to climb out before the door blocks it. Neither is a successful
-crossing. The next route work needs an earlier second-door arrival while
-avoiding the upper closing plate. No level-five completion, repeatability or
-native comparison is claimed.
+MEASURED: after backing off and activating the upper switch again, both doors
+are open (`route-430`, two health points). Careful steps to x 533 followed by
+one frame right/up and 30 neutral frames cross the pit (`route-437`).
+`route-438` enters room nine; `route-440` saves `trap-crossed` at x 317,
+y 226, with two health points. `landing-no-lower-switch`,
+`upper-no-lower-switch` and `both-doors-open` preserve intermediate discovery
+checkpoints. The corridor beyond reaches the carpet in room three;
+`route-446` saves `carpet-room-arrival` with two health points.
+MEASURED: discovery continues through rooms four, five, eight and thirteen,
+including both potion pickups and the ledge catches. `route-532` saves
+`lower-gate-approach` in room fourteen with two health points. Its gate opens
+after a 60-frame neutral interval (`route-533`). The lava-room crossing uses
+an upper-platform jump followed by a second jump from the landing animation;
+`route-584` saves `lava-room-exit-alive` in room sixteen with two health points.
+The subsequent climbs reach room seventeen (`route-602`, `upper-shaft-entry`).
+MEASURED: the room-seventeen right-edge hang and climb leave the upper-left
+gate open (`route-778`–`route-780`). The return jump catches the upper-left
+ledge (`route-784`); climbing and jumping left reaches room twenty alive
+(`route-788`). Releasing movement on arrival gives a stable two-health-point
+checkpoint at x 570, y 106 (`route-799`, saved as `room20-upper-entry`).
+A jump and ledge climb cross room twenty (`route-803`–`route-806`). A shorter
+leftward approach avoids running into room twenty-five's blade: `route-818`
+stops at x 689 with two health points. The upward route reaches room six
+(`route-823`), whose two ledges lead right into room eleven (`route-832`,
+saved as `upper-east-corridor`). Its next jump catches the right middle ledge
+(`route-844`) and climbs onto it (`route-846`), still with two health points.
+The direct running-jump branch from x 286 (`route-962`–`route-970`) clears
+room eleven with both health points; the longer central-platform branch does
+not establish that passage. From its upper exit, 16 right, 10 right/up and
+18 right/shift catch room eighteen's upper-right ledge (`route-1008`). The
+climb completes at `route-1010`; further upward climbs reach room twelve
+(`route-1026`). Clearing its loose slab and climbing again reaches the upper
+ledge (`route-1041`, one health point). The left jump lands by the bridge
+entrance (`route-1047`); `route-1050` reaches the living skeleton in room ten.
+
+MEASURED: death in that fight followed by gameplay input restarts at the
+original room-twelve checkpoint with all three health points (`route-1063`
+and `route-1075`). This supports local fight retries; it is not a fresh paired
+restart acceptance result. From the natural restart at `route-1105`, 30
+left, 12 neutral, then three eight-frame left presses separated by four
+neutral frames pass the skeleton (`route-1112`). The prince turns right
+on its left side with two health points. `route-1116` saves this as
+`bridge-sides-swapped`. The bridge collapse, carpet gate and level exit
+remain incomplete; later unsuccessful fight branches do not establish them.
+
+The successful branch includes emulator restores and requires
+fresh original repeats before acceptance. No level-five completion or native
+comparison is claimed.
+
+External route guidance: the owner supplied the Macintosh longplay
+[Prince of Persia 2 Macintosh Longplay Playthrough](https://www.youtube.com/watch?v=fXPzKBH4j78&t=750s).
+Its 12:30–12:51 passage shows the direct left-hand climb, upper-switch retry
+and door crossing. The video provides navigation guidance, not exact input
+records or fixed-seed acceptance evidence.
 
 Restored discovery attempts have sometimes diverged after identical short
-commands when the preceding held input differed (for example `route-853`
-versus `route-856`). Releasing inputs before restore helps exploration;
-the input-continuity investigation is deferred in item 17. Discovery states
-are navigation aids, and only fresh repeat runs can establish route acceptance.
+commands when preceding held input differed. The input-continuity investigation
+remains deferred in item 17. Discovery states are navigation aids; only fresh
+repeat runs can establish route acceptance.
