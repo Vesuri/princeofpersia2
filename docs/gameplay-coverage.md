@@ -1022,3 +1022,13 @@ in the Dark implements the service through its ResourceFiles adapter and the
 shared ResourceDirectory/ResourceWriter; Vette has no matching trap handler.
 An opt-in trace is measuring this original call and its subsequent WriteResource
 before adapting that existing implementation.
+
+Fresh `gameplay-assisted-level10-clean-repeat-1` matches every checkpoint
+of the short level-ten route and passes the reference launcher.
+
+Original `gameplay-assisted-level8-resource-1` repeats the complete clean
+route with the explicit resource-write trace enabled. At CODE 15+3900 it adds
+DSLV 6401 to the current resource file and WriteResource follows at +3906;
+both return zero in D0, ResErr and MemErr. The original call at +3890 opens
+`:Data:Prince2.opt`. `manifest/gameplay-resource-write.sha256` pins the trace
+and commands. The native write implementation remains pending.

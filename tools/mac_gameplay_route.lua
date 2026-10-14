@@ -51,6 +51,12 @@ end
 function M.map(seg,base,guard,condition)
  bases[seg]=base
  if profileSave then profileSave.map(seg,base,guard)end
+ if seg==15 and os.getenv('POP2_ROUTE_RESOURCE_WRITE_TRACE')=='1' then
+  for _,offset in ipairs({0x38c0,0x38c2,0x38ce,0x38d0,0x3900,0x3902,0x3906,0x3908})do
+   guard(seg,base,offset,4);points[base+offset]='resource-write-'..string.format('%04X',offset)
+   cpu.debug:bpset(base+offset,condition,'logerror "GAMEPLAY_RESOURCE_WRITE_STOP\\n"')
+  end
+ end
  if seg==15 and os.getenv('POP2_ROUTE_PAINT_TRACE')=='1' then
   for _,point in ipairs({{0x3cac,'paint-before'},{0x3cae,'paint-after'}})do
    guard(seg,base,point[1],4);points[base+point[1]]=point[2]
@@ -316,6 +322,10 @@ function M.poll()
   mem:writev_u16(stack+1024,0xa013);mem:writev_u16(stack+1026,0x4e75)
   mem:writev_u32(stack,flushing.PC);cpu.state.SP.value=stack
   cpu.state.A0.value=flushing.pb;cpu.state.PC.value=stack+1024
+ elseif label:match('^resource%-write%-') then
+  local sp=cpu.state.SP.value&0xffffff
+  local args={};for i=0,15 do args[#args+1]=string.format('%02X',mem:readv_u8(sp+i))end
+  print(string.format('GAMEPLAY_RESOURCE_WRITE phase=%s current=%04X reserr=%04X memerr=%04X d0=%08X sp=%08X args=%s',label,mem:readv_u16(0xa5a),mem:readv_u16(0xa60),mem:readv_u16(0x220),cpu.state.D0.value,sp,table.concat(args)))
  elseif label=='cursor-return' or label=='cursor-purgeable' then
   local h=label=='cursor-return' and mem:readv_u32(cpu.state.SP.value)&0xffffff or cpu.state.A3.value&0xffffff
   assert(h~=0,'CURSOR TRACE NULL HANDLE')
