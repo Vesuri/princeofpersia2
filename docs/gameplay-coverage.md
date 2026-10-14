@@ -55,7 +55,11 @@ and bounded captures. Original bytes, saved state and captures remain ignored.
 | Level 5 | Meaningful gameplay route and original level-exit decision | Clean assisted original repeat and native pair pass all 46 checkpoints; carpet NIS 1 returns and level six begins |
 | Level 6 | Meaningful gameplay route and original level-exit decision | Native reaches level seven; intermediate state/pixel comparison failures unresolved |
 | Level 7 | Meaningful gameplay route and original level-exit decision | Clean original and fresh repeat reach level eight; native first-frame boundary differs by two frames |
-| Levels 8–13, individually | Meaningful gameplay route and original level-exit decision | Entry survey passes; exit routes incomplete |
+| Level 8 | Meaningful gameplay route and original level-exit decision | Clean original repeat passes; native AddResource loud stop in sword cutscene |
+| Level 9 | Meaningful gameplay route and original level-exit decision | Original repeat and native pair pass all 15 checkpoints |
+| Level 10 | Meaningful gameplay route and original level-exit decision | Clean original repeat passes; native pair pending |
+| Level 11 | Meaningful gameplay route and original level-exit decision | Original repeat passes; native pair pending |
+| Levels 12–13, individually | Meaningful gameplay route and original level-exit decision | Entry survey passes; exit routes incomplete |
 | Level 14 | Meaningful gameplay route and original level-exit decision | Assisted final encounter and original decision 15 paired through the ending and Hall insertion |
 | Main cutscenes, individually | Original natural return and paired visible/state checkpoints | Incomplete |
 | Timed story scenes, individually | Original natural return for each selected scene | Incomplete |
@@ -1032,3 +1036,7 @@ DSLV 6401 to the current resource file and WriteResource follows at +3906;
 both return zero in D0, ResErr and MemErr. The original call at +3890 opens
 `:Data:Prince2.opt`. `manifest/gameplay-resource-write.sha256` pins the trace
 and commands. The native write implementation remains pending.
+
+Native `.run-94PHSZ` passes the assisted level-nine route: all 15 checkpoints,
+37 frames and 39 key reads match, with no deferred RNG exceptions. It reaches
+level ten, room 22, and passes code/input, heap and hardware restoration.
