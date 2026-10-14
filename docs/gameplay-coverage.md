@@ -387,8 +387,34 @@ restart acceptance result. From the natural restart at `route-1105`, 30
 left, 12 neutral, then three eight-frame left presses separated by four
 neutral frames pass the skeleton (`route-1112`). The prince turns right
 on its left side with two health points. `route-1116` saves this as
-`bridge-sides-swapped`. The bridge collapse, carpet gate and level exit
-remain incomplete; later unsuccessful fight branches do not establish them.
+`bridge-sides-swapped`.
+
+DERIVED: `BridgeCheckBreak` at CODE 8+002E requires both fighters on the
+bridge, their columns no more than three apart, a counter of at least 60,
+the prince in columns 4–6 and the opponent in columns 5–6. The earlier
+stable duel at x 387 leaves the prince in column 2 and cannot trigger the
+collapse. This explains the navigation requirement without changing game logic.
+
+MEASURED: from `bridge-sides-swapped`, eight down, twelve right, eight
+control, twelve neutral, eight up and eight control reach x 464 with two
+health points (`route-1199`, saved as `bridge-central-safe`). Four left,
+then two repetitions of eight up/eight control and another eight up reach
+x 448 (`route-1246`, saved as `bridge-left-before-collapse`). Four left,
+one neutral, four left and twelve shift catch the surviving left edge
+(`route-1251`, frame 90, two health points). Thirty up/shift and twelve
+neutral complete the climb (`route-1253`, standing at x 355, y 230).
+`bridge-collapse-survived` preserves this discovery checkpoint. The bridge
+state is −1 after the collapse; the original skeleton has fallen out of the room.
+
+MEASURED: twenty left and twelve neutral enter room seven alive
+(`route-1256`). Its exit gate remains closed on this branch; crouching,
+careful movement and a running crouch do not pass it. The potion can restore
+a health point (`route-1333`), but the subsequent floor/dart passage does
+not open the gate. The approach-switch hypothesis is unproven. Re-entering
+room twelve from the natural checkpoint permits jumping to the right-hand
+platform, climbing its upper ledge and returning with all three health
+points; this preserves an alternative approach for further discovery.
+The carpet gate and level exit remain incomplete.
 
 The successful branch includes emulator restores and requires
 fresh original repeats before acceptance. No level-five completion or native
