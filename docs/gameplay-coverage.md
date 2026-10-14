@@ -816,5 +816,38 @@ the unrelated shared working-tree changes were not modified.
 Original `gameplay-assisted-level6-1` uses logged position assistance to reach
 the two-door exit room, activates its original switch and enters level seven
 (room 32) at step 280. One head-attack death/restart is retained. The completed
-route is pinned in `manifest/gameplay-assisted-level6.sha256`; a fresh repeat
-and native pair remain pending.
+route is pinned in `manifest/gameplay-assisted-level6.sha256`. Fresh
+`gameplay-assisted-level6-repeat-1` matches all 42 checkpoints, including the
+original level-seven entry. Native pairing remains pending.
+
+Native level-five discovery replay `.run-wHktzN` matches all 37 captured
+checkpoints (pixels, palette, actor/RNG state and full context) before stopping
+at the key-step guard after frame 523. The original failed carpet attempt
+restarts at step 522; the native run has not reached that restart at the
+recorded boundary. This is a failed replay, not level-five completion.
+A fresh assisted success route omitting the discarded failed attempts is being
+captured; the existing independent death/restart gates remain required.
+
+Fresh original `gameplay-assisted-level5-clean-1` follows the successful
+switch/carpet sequence without the discarded deaths: 192 frames, 194 key reads,
+46 checkpoints and 17 assisted word writes. It naturally enters level six
+after NIS selector 1 returns. `manifest/gameplay-assisted-level5-clean.sha256`
+pins this shorter route. Fresh `gameplay-assisted-level5-clean-repeat-1`
+matches every recorded checkpoint. Native replay is in progress.
+
+Native level-six replay `.run-uJ8sbp` completes all 280 frames and naturally
+enters level seven. The final checkpoint matches, and code/input/heap/hardware
+restoration passes. Intermediate comparisons fail: checkpoint 16 pixels and
+actor state, checkpoints 17–23 actor state, and checkpoints 24–40 full context.
+These failures remain unresolved and are not accepted under the existing D11
+exception without evidence identifying their cause. This is endpoint coverage,
+not a passing paired route.
+
+Original `gameplay-assisted-level7-1` positively reaches level eight, room 16,
+at step 905. The recorded assistance opens the room-21 exit through the
+room-eight plate; failed earlier navigation remains in this discovery. After
+the stairs, the original already requests level eight but waits for audio
+completion before changing levels (CODE 2+6134–6168). An additional 40 frames
+reaches the natural endpoint. `manifest/gameplay-assisted-level7.sha256` pins
+the completed discovery. A fresh route omitting discarded attempts is being
+captured; this is not yet a repeatable original/native pair.
