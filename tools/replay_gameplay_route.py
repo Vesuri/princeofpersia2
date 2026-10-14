@@ -1,4 +1,4 @@
-"""Replay authored routes through levels one through three in a fresh original run."""
+"""Replay authored routes through levels one through four in a fresh original run."""
 import argparse
 import hashlib
 from pathlib import Path
@@ -70,7 +70,7 @@ def compare(run, reference, sequence, *, reference_sequence=None):
 
 
 def verify_reference(reference, level=1):
-    if level not in (1, 2, 3):
+    if level not in (1, 2, 3, 4):
         raise ValueError('ROUTE / UNSUPPORTED REFERENCE LEVEL')
     for name, expected in pins(ROOT / f'manifest/gameplay-level{level}-reference.sha256').items():
         with (reference / name).open('rb') as stream:
@@ -80,7 +80,7 @@ def verify_reference(reference, level=1):
 
 
 def replay(run, schedule, reference=None, through_level=1):
-    if through_level not in (1, 2, 3):
+    if through_level not in (1, 2, 3, 4):
         raise ValueError('ROUTE / UNSUPPORTED LAST LEVEL')
     rows = inputs(schedule)
     transitions = {len(rows): 2}
@@ -132,6 +132,6 @@ if __name__ == '__main__':
     parser.add_argument('--schedule', type=Path,
                         default=ROOT / 'tools/gameplay_routes/level1.tsv')
     parser.add_argument('--reference', type=Path)
-    parser.add_argument('--through-level', type=int, choices=(1, 2, 3), default=1)
+    parser.add_argument('--through-level', type=int, choices=(1, 2, 3, 4), default=1)
     args = parser.parse_args()
     replay(args.run, args.schedule, args.reference, args.through_level)

@@ -12,7 +12,7 @@ from replay_gameplay_route import ROOT
 
 def controls(first, second, level=2):
     check(first, second, level)
-    last = 114 if level == 2 else 180
+    last = {2: 114, 3: 180, 4: 265}[level]
     rejected = 0
     with tempfile.TemporaryDirectory(prefix='level2-controls-', dir=ROOT / 'tmp') as directory:
         fixture = Path(directory)
@@ -61,13 +61,23 @@ def controls(first, second, level=2):
             data[offset] ^= 1
             reject(name, data)
         reject('route-114-context.bin', (fixture / 'route-114-context.bin').read_bytes()[:-1])
-        if level == 3:
+        if level >= 3:
             reject('session.log', log.replace(b'GAMEPLAY_ROUTE_NIS_RETURN selector=10\n', b''))
             reject('session.log', log + b'GAMEPLAY_ROUTE_NIS_ENTER selector=10\n')
             reject('session.log', log.replace(b'sequence=180 frames=2767 step=2767 level=4', b'sequence=180 frames=2767 step=2767 level=3'))
             reject('session.log', log.replace(b'frame=2767 step=2767 map=', b'frame=2766 step=2766 map='))
             for suffix, offset in (('-context.bin', 0x2100), ('.indices', 48 * 640 + 65), ('.rgb', 13), ('-a5.bin', 22266 - 0x18fc)):
                 name = 'route-170' + suffix
+                data = bytearray((fixture / name).read_bytes())
+                data[offset] ^= 1
+                reject(name, data)
+        if level == 4:
+            reject('session.log', log.replace(b'GAMEPLAY_ROUTE_NIS_RETURN selector=20\n', b''))
+            reject('session.log', log + b'GAMEPLAY_ROUTE_NIS_ENTER selector=20\n')
+            reject('session.log', log.replace(b'sequence=265 frames=4656 step=4656 level=5', b'sequence=265 frames=4656 step=4656 level=4'))
+            reject('session.log', log.replace(b'frame=4656 step=4656 map=', b'frame=4655 step=4655 map='))
+            for suffix, offset in (('-context.bin', 0x2100), ('.indices', 48 * 640 + 65), ('.rgb', 13), ('-a5.bin', 22266 - 0x18fc)):
+                name = 'route-260' + suffix
                 data = bytearray((fixture / name).read_bytes())
                 data[offset] ^= 1
                 reject(name, data)
@@ -86,6 +96,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('first', type=Path)
     parser.add_argument('second', type=Path)
-    parser.add_argument('--level', type=int, choices=(2, 3), default=2)
+    parser.add_argument('--level', type=int, choices=(2, 3, 4), default=2)
     args = parser.parse_args()
     controls(args.first, args.second, args.level)

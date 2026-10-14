@@ -310,3 +310,22 @@ run pairs, including a missing scene return and altered late-level evidence.
 actions and log. `tools/replay_gameplay_route.py --through-level 3` replays
 the authored route for further original repetitions. Native level-three
 validation remains open; the earlier level-one RNG mismatches remain failures.
+
+### Level-four original repeatability
+
+MEASURED: `gameplay-level4-fresh-1` and `gameplay-level4-fresh-2` replay all
+265 authored input intervals from fresh Macintosh startup without emulator
+restores. All 266 gameplay checkpoints match full context, six actor records,
+RNG, counters, indexed pixels and palette. Both consume 4660 matching keyboard
+records and naturally enter level 5, room 1, at step 4656. Story selectors 7,
+4, 9, 100, 10 and 20 have ordered entry and return records. These records prove
+original scene completion; native pairing and cutscene rendering remain open.
+
+`tools/gameplay_routes/level4.tsv` contains the 85 level-four input intervals.
+`tools/check_gameplay_level2_reference.py --level 4 FIRST SECOND` checks the
+complete route and transitions. The companion rejection test rejects 33
+corruptions or invalid pairs, including altered late-level state, pixels,
+palette, RNG, keyboard order and missing scene completion.
+`manifest/gameplay-level4-reference.sha256` pins 1070 capture, action and log
+files from the first fresh run. `tools/replay_gameplay_route.py --through-level 4`
+replays the complete authored route. Item 12 remains open.

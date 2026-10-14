@@ -46,7 +46,7 @@ class RouteEvidenceTests(unittest.TestCase):
     def test_multiple_level_replay(self):
         with tempfile.TemporaryDirectory(dir=ROOT / 'tmp') as directory:
             run = Path(directory)
-            for level in (2, 3):
+            for level in (2, 3, 4):
                 states = [dict(sequence='0', level='1', reason='first-frame', frames='0')]
                 for i in range(1, level + 1):
                     states.append(dict(sequence=str(i), level=str(i + 1), reason='next-level', frames=str(i * 8)))

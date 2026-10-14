@@ -6,10 +6,12 @@ from replay_gameplay_route import ROOT, compare, inputs, verify_reference
 
 
 def check(first, second, level=2):
-    assert level in (2, 3), "ROUTE / UNSUPPORTED LEVEL"
+    assert level in (2, 3, 4), "ROUTE / UNSUPPORTED LEVEL"
     boundaries = {95: (1001, 2, 2), 114: (1360, 3, 1)}
-    if level == 3:
+    if level >= 3:
         boundaries[180] = (2767, 4, 1)
+    if level == 4:
+        boundaries[265] = (4656, 5, 1)
     last = max(boundaries)
     final_step, final_level, final_room = boundaries[last]
     canonical = ROOT / 'ref/mame/runs/gameplay-level1-complete-1'
@@ -44,10 +46,12 @@ def check(first, second, level=2):
             compare(run, canonical, i)
         keys = re.findall(r'^GAMEPLAY_ROUTE_KEYS frame=(\d+) step=(\d+) map=([0-9A-F]{32})$', log, re.M)
         expected_steps = list(range(1002)) + list(range(1001, 1361))
-        if level == 3:
+        if level >= 3:
             expected_steps += list(range(1360, 2768))
             scenes = re.findall(r"^GAMEPLAY_ROUTE_NIS_(ENTER|RETURN) selector=(\d+)$", log, re.M)
-            assert scenes == [(event, str(selector)) for selector in (7, 4, 9, 100, 10) for event in ("ENTER", "RETURN")], "ROUTE / CUTSCENE COMPLETION"
+            assert scenes == [(event, str(selector)) for selector in ((7, 4, 9, 100, 10) if level == 3 else (7, 4, 9, 100, 10, 20)) for event in ("ENTER", "RETURN")], "ROUTE / CUTSCENE COMPLETION"
+        if level == 4:
+            expected_steps += list(range(2767, 4657))
         assert len(keys) == len(expected_steps) and [(int(a), int(b)) for a, b, _ in keys] == [(v, v) for v in expected_steps], 'ROUTE / CONSUMED KEY ORDER'
         keymaps.append(keys)
     assert first.resolve() != second.resolve(), 'ROUTE / INDEPENDENT RUNS REQUIRED'
@@ -60,5 +64,5 @@ def check(first, second, level=2):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('first', type=Path); parser.add_argument('second', type=Path)
-    parser.add_argument('--level', type=int, choices=(2, 3), default=2)
+    parser.add_argument('--level', type=int, choices=(2, 3, 4), default=2)
     args = parser.parse_args(); check(args.first, args.second, args.level)
