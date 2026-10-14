@@ -329,3 +329,37 @@ palette, RNG, keyboard order and missing scene completion.
 `manifest/gameplay-level4-reference.sha256` pins 1070 capture, action and log
 files from the first fresh run. `tools/replay_gameplay_route.py --through-level 4`
 replays the complete authored route. Item 12 remains open.
+
+### Level-five discovery status
+
+MEASURED: the discovery session crosses the entrance crouching without losing
+health, defeats the first skeleton (`route-823`, step 4943, enemy health zero),
+and crosses the lava with all three health points (`route-829`, step 5007,
+room 2). `level5-skeleton-dead-full-health` and
+`level5-trap-entry-full-health` preserve these checkpoints.
+
+The room-two crossing is not complete. Captures `route-850`, `route-871`,
+`route-908`, `route-961` and `route-966` distinguish the upper closing plate
+from the lower switch and the second door's changing state. DERIVED: walking
+onto the upper plate closes the first door; the lower switch gives limited
+time to pass the second. Waiting at the first door and varying the jump delay
+there did not provide a crossing. The earlier suggestion that both doors
+could simply be crossed after crouching along the upper platform is not
+supported by these attempts.
+
+MEASURED: the shorter lower return (20 frames left/down, 16 right, 30 up/shift)
+reaches the upper platform with full health (`route-1104`, step 5073).
+`level5-upper-329-full-health` preserves a standing approach at x 329, step
+5092. Four frames right followed by 14 right/up reaches x 601, y 226 with
+full health (`route-1163`), but continuing right falls into the pit and dies
+(`route-1164`). The similar low landing in `level5-right-pit-full-health`
+also fails to climb out before the door blocks it. Neither is a successful
+crossing. The next route work needs an earlier second-door arrival while
+avoiding the upper closing plate. No level-five completion, repeatability or
+native comparison is claimed.
+
+Restored discovery attempts have sometimes diverged after identical short
+commands when the preceding held input differed (for example `route-853`
+versus `route-856`). Releasing inputs before restore helps exploration;
+the input-continuity investigation is deferred in item 17. Discovery states
+are navigation aids, and only fresh repeat runs can establish route acceptance.

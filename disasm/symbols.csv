@@ -530,6 +530,7 @@ segment,offset,name,evidence,notes
 8,0x279C,DrawCavePillarTop_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 8,0x2BA2,DrawCaveTorch_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 8,0x2C04,DrawObjCaveLoose_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
+8,0x2C38,TriggerGateWithRevPlate,DERIVED,Original function entry through RTS at 0x2DCC and MacsBug name at 0x2DCE; consulted for level-five route discovery
 8,0x2DCE,TriggerGateWithRevPlate_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 8,0x2F88,CheckDartHit_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 8,0x312C,MobDart_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point

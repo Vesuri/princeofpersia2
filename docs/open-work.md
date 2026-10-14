@@ -30,3 +30,13 @@ acceptance gates pass.
     investigations while establishing routes through the remaining levels and ending.
     Acceptance: explain and resolve the recorded differences with original-paired
     evidence, including checks for any effect on gameplay decisions.
+
+17. **Deferred discovery-state input continuity.** Investigate why restored
+    Macintosh discovery attempts can consume different input after identical
+    short commands when the preceding held keys differ. Keep this separate
+    from the remaining level routes; preserve the existing requirement for
+    fresh original repeats without emulator restores.
+    Acceptance: controlled held-key and neutral-key restore cases establish
+    input continuity, or the discovery tool explicitly detects and reports
+    unsupported restore conditions. Consult the other ports before changing
+    shared Macintosh input helpers.
