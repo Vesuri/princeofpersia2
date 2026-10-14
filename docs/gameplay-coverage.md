@@ -1002,3 +1002,23 @@ at step 4086. The link target is DERIVED from CODE 5 GetLinkRoom/GetLinkCell
 and confirmed by the original door opening.
 `manifest/gameplay-assisted-level10.sha256` pins this completed discovery with
 its discarded attempts. A shorter fresh route and native pair remain required.
+
+Original `gameplay-assisted-level11-1` activates the room-29 plate and uses
+the room-24 exit, naturally entering level twelve, room 19, at step 292.
+`manifest/gameplay-assisted-level11.sha256` pins the completed assisted route.
+Fresh repeat and native pairing remain required.
+
+Original `gameplay-assisted-level10-clean-1` completes the confirmed lower
+plate/upper exit route in 292 frames.
+`manifest/gameplay-assisted-level10-clean.sha256` pins the fresh route; its
+repeat and native pair remain open.
+
+Fresh `gameplay-assisted-level11-repeat-1` matches every recorded checkpoint
+and passes the original launcher. Native pairing remains pending.
+
+Native level-eight `.run-yYDLsT` stops in the sword cutscene at CODE 15+3900,
+trap A9AB (AddResource), at step 126. This is an unresolved loud stop. Alone
+in the Dark implements the service through its ResourceFiles adapter and the
+shared ResourceDirectory/ResourceWriter; Vette has no matching trap handler.
+An opt-in trace is measuring this original call and its subsequent WriteResource
+before adapting that existing implementation.
