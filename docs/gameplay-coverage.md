@@ -985,3 +985,13 @@ assistance, then the original running-jump exit decision to reach level ten,
 room 22, at step 37. `manifest/gameplay-assisted-level9.sha256` pins this
 completed route. No horse cinematic enter/return appears in its log; this
 is level-exit evidence only. Fresh repeat and native pairing remain open.
+
+Fresh `gameplay-assisted-level9-repeat-1` matches every recorded checkpoint
+and passes the original launcher. Native pairing remains pending.
+
+Native level-four diagnostic `.run-0c0hOQ` completes all 93 checkpoints and
+enters level five, room 1, at step 1889 with 1891 key reads, matching the
+original boundary. Code/input, heap and hardware restoration pass. Comparison
+still fails RNG, pixels, context and later actor records. The earlier frame-1888
+run remains a failure; this run does not establish stable timing or a passing
+paired route. No new blanket D11 exception is applied.
