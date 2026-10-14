@@ -107,6 +107,8 @@ volatile uint32_t g_routeHandleCount=0,g_routeHandles[256][8],g_routeFreedUnlock
 #endif
 volatile uint32_t g_routeFrames=0,g_routeCheckpoint=0,g_routeKeys=0,g_routeRooms=0;
 volatile uint32_t g_routeLastResult=0,g_routeComplete=0;
+// Preserve the observed boundary even when the strict comparison stops execution.
+volatile uint32_t g_routeFirstFrame[5]={};
 const char* g_routeError=0;
 #ifdef POP2_ROUTE_AUDIO_TRACE
 volatile uint32_t g_routeAudioCount=0;
@@ -919,6 +921,9 @@ extern "C" void pop2IntegrationRoomHook(){
     g_integrationPulseRaw=128;NativeInput::flush(0xffff,0);NativeDisplay::wait();
 #ifdef POP2_GAMEPLAY_ROUTE_PROBE
     ++g_routeRooms;
+    g_routeFirstFrame[0]=g_routeFrames;g_routeFirstFrame[1]=g_routeKeys;
+    g_routeFirstFrame[2]=w(a5-0x4fd2);g_routeFirstFrame[3]=w(a5-0x4fc2);
+    g_routeFirstFrame[4]=w(a5-0x349a);
     unsigned ordinal=g_routeRooms==1?0:g_routeCheckpoint+1;
     if(ordinal>=sizeof(routeCheckpoints)/sizeof(routeCheckpoints[0])){g_routeError="GAMEPLAY ROUTE / FIRST FRAME COUNT";return;}
     auto& expected=routeCheckpoints[ordinal];

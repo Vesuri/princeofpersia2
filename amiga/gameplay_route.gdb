@@ -25,6 +25,7 @@ commands
  printf "CORE REASON %s\n",g_coreReason
  printf "ROUTE RESERVE requested=%lu before=%lu after=%lu error=%lu\n",g_routeReserve[0],g_routeReserve[1],g_routeReserve[2],g_routeReserve[3]
  printf "ROUTE RESULT complete=%lu rooms=%lu frames=%lu keys=%lu checkpoints=%lu last=%04lx\n",g_routeComplete,g_routeRooms,g_routeFrames,g_routeKeys,g_routeCheckpoint,g_routeLastResult
+ printf "ROUTE FIRST FRAME frames=%lu keys=%lu level=%lu room=%lu step=%lu\n",g_routeFirstFrame[0],g_routeFirstFrame[1],g_routeFirstFrame[2],g_routeFirstFrame[3],g_routeFirstFrame[4]
  printf "CORE RESTORE stage=%lu error=%lu vector=%lu heap=%lu zone=%lu dma=%u/%u irq=%u/%u view=%u vbi=%u\n",g_scaffoldStage,g_scaffoldError,g_coreVectorRestored,g_coreHeapOK,g_coreZoneBytes,g_savedDMA,g_actualDMA,g_savedIRQ,g_actualIRQ,g_viewRestored,g_vectorRestored
  printf "CORE EXCEPTION vector=%lu pc=%08lx\n",g_coreException,g_coreFaultPC
  printf "INTEGRATION AUDIT code=%lu input=%lu\n",g_coreCodeAudit,g_inputVectorRestored

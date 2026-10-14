@@ -937,3 +937,9 @@ with all 28 checkpoint counters, pixels, palette, actors and RNG matching.
 Hardware, heap, code and input restoration pass. Full-context comparisons fail
 at ordinals 10–26: the same differences persist within offsets 2008–2027.
 Their meaning remains unverified; this is not yet a passing full comparison.
+
+The opt-in route probe now preserves the actual first-frame counters and
+level/room before checking the strict expected boundary. Diagnostic native
+`.run-oqFGdv` confirms level-seven replay enters level eight, room 16, at
+step 357, with 359 key reads. The original enters at step 359. This establishes
+the endpoint but does not pass the timing comparison; the guard is unchanged.
