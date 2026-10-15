@@ -1151,5 +1151,7 @@ pause loop is then reached; Space resumes gameplay, observed at FrameAdv return.
 No original control flow is bypassed. `manifest/gameplay-hall-view-reference.sha256`
 pins the imported file, loaded table, visible/returned captures and completion log.
 `tools/check_gameplay_hall_view.py` checks these positive lifecycle endpoints and
-six altered-input/completion controls reject. Fresh repeat and native Hall-view
-pairing remain pending; the prior ending/name-entry/write pair is separate.
+six altered-input/completion controls reject. Fresh `gameplay-hall-view-repeat-1`
+passes the same lifecycle endpoints, with an identical loaded table and complete
+visible Hall image. Native Hall-view pairing remains pending; the prior
+ending/name-entry/write pair is separate.
