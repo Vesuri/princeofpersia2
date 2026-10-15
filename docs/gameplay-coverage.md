@@ -92,7 +92,7 @@ The original procedure names identify these targets:
 | 4 | NISTitle | Existing startup presentation gate; full natural-return coverage requires audit |
 | 5 | TransPrincessRoom | Paired coverage remains to be established |
 | 6 | NISThroneRoom | Clean level-eight original return; native pair pending |
-| 7 | Opening1 | Existing opening reference; full natural-return coverage requires audit |
+| 7 | Opening1 | Unskipped original return and visible checkpoint recorded below; native pair pending |
 | 8 | Opening2 | Paired coverage remains to be established |
 | 9 | AboardShip | Existing level-one route; cinematic checkpoints require audit |
 | 10 | Discovery | Paired coverage remains to be established |
@@ -102,6 +102,25 @@ The original procedure names identify these targets:
 This table enumerates dispatch cases, not additional passes. Route entry/return
 markers alone do not prove visible checkpoints match or identify whether a
 scene took an early-return path.
+
+### Unskipped opening observation
+
+MEASURED: `gameplay-natural-opening-captures-3` runs Opening1 (selector 7)
+without Escape, observes 5 CopyNIS and 21 NISTextDraw returns, and records its
+normal result 0. The title (selector 4) then returns with result 32 after the
+existing Space input, followed by level 1 room 4 and positive discovery
+completion. Selector 8 is not called on this path; its coverage remains open.
+`manifest/gameplay-natural-opening.sha256` pins the log and selected indexed,
+palette and A5 checkpoints. Visual inspection confirms the text-8 checkpoint
+shows the illustrated Princess/young-traveller passage; several other samples
+are black during transitions. This is original-only evidence, not a native
+pixel match or a full natural title timeout.
+
+The opt-in `POP2_CUTSCENE_OBSERVER=1` requires discovery mode and observes the
+existing CODE 2 NIS caller before CODE 15 loads, then guarded CODE 15 copy,
+text and return sites. An entry breakpoint in CODE 15 misses its first invocation;
+the failed `gameplay-natural-opening-captures-1` is not accepted evidence.
+The observer changes no original instructions or state.
 
 ## Walkthrough reference
 

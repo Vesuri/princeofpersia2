@@ -8,6 +8,7 @@ local cpu=manager.machine.devices[':maincpu'];local mem=cpu.spaces.program
 local dbg=manager.machine.debugger
 local run=assert(os.getenv('POP2_REFERENCE_RUN'))
 local bases={}
+local cutscenes=os.getenv('POP2_CUTSCENE_OBSERVER')=='1' and dofile('tools/mac_cutscene_observer.lua') or nil
 local profileSave=os.getenv('POP2_PROFILE_SAVES')=='1' and dofile('tools/mac_profile_save.lua') or nil
 local copyProbe=nil;local copySerial=0;local worldSerial=0
 local bitmapProbe=nil;local bitmapSerial=0
@@ -50,6 +51,7 @@ local function capture(reason)
 end
 function M.map(seg,base,guard,condition)
  bases[seg]=base
+ if cutscenes then cutscenes.map(seg,base,guard,condition)end
  if profileSave then profileSave.map(seg,base,guard)end
  if seg==15 and os.getenv('POP2_ROUTE_RESOURCE_WRITE_TRACE')=='1' then
   for _,offset in ipairs({0x38c0,0x38c2,0x38ce,0x38d0,0x3900,0x3902,0x3906,0x3908})do
@@ -160,6 +162,7 @@ local function command()
   sequence=finishId;release();capture('discovery-finished');complete=true;waiting=false
   local log=assert(io.open(run..'/route-actions.txt','a'));log:write(text);log:close()
   if audioObserver then audioObserver.finish()end
+  if cutscenes then cutscenes.finish()end
   print('GAMEPLAY_DISCOVERY_COMPLETE');manager.machine:exit();dbg.execution_state='run';return
  end
  local assistId,kind,value=text:match('^(%d+) assist ([%a]+) (%d+)%s*$')
@@ -265,6 +268,7 @@ local function await_command()
  end
 end
 function M.poll()
+ if cutscenes and cutscenes.poll()then return true end
  if profileSave then
   local result=profileSave.poll()
   if result=='complete' then capture('profile-saved');waiting=true;await_command();return true end
@@ -437,6 +441,7 @@ function M.poll()
  elseif label=='nis-enter' then
   local selector=mem:readv_u16(cpu.state.SP.value+4)
   currentNIS[#currentNIS+1]=selector;print('GAMEPLAY_ROUTE_NIS_ENTER selector='..selector)
+  if cutscenes then cutscenes.enter(selector)end
  elseif label=='nis-return' then
   assert(#currentNIS>0,'GAMEPLAY ROUTE NIS RETURN OWNER')
   print('GAMEPLAY_ROUTE_NIS_RETURN selector='..table.remove(currentNIS))
