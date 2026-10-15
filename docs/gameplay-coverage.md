@@ -98,7 +98,9 @@ The original procedure names identify these targets:
 | 10 | Discovery | Illustrated checkpoint and normal return match in the completed A1200-030 survey |
 | 11 | HappyEnding | Included in the passing ending/Hall pair |
 | 12 | TreeCheck index 1 | Illustrated and normal-return checkpoints match in the completed A1200-030 survey |
-| 13–20 | TreeCheck indices 2–9 | Each selected story and its positive return remain to be audited |
+| 13 | TreeCheck index 2 | Paired coverage remains to be established |
+| 14 | TreeCheck index 3 | Three cinematic checkpoints and normal return match within the completed isolated assisted route |
+| 15–20 | TreeCheck indices 4–9 | Each selected story and its positive return remain to be audited |
 
 The table uses the actual CODE 15 argument. DERIVED from CODE 2+0308–0322:
 the outer PlayNIS wrapper subtracts eight from story selectors before calling
@@ -1379,8 +1381,8 @@ MEASURED: the isolated `gameplay-story14-isolated-1` route and fresh
 with normal return and explicit discovery completion. All route checkpoints
 repeat, and all nine selector-14 capture files are byte-identical. The references
 are pinned in `manifest/gameplay-story14-reference.sha256` and
-`manifest/gameplay-story14-repeat.sha256`. Native pairing remains pending;
-this does not resolve the combined-route execution limit above.
+`manifest/gameplay-story14-repeat.sha256`. This does not resolve the combined-route
+execution limit above.
 
 The opt-in `assist minutes VALUE` command accepts 0–75 remaining minutes for
 a live actor. It logs the minute write and resets the two subminute words and
@@ -1389,6 +1391,18 @@ input checker verifies the complete before/after A5 captures and unchanged
 context and pixels. This route uses 46 minutes and first runs story selector 12
 before a further forward level transition selects 14. Four input-checker tests
 pass, including the pinned timer writes and rejection of out-of-range values.
+
+MEASURED: native `.run-LunkbY` completes the isolated story-14 route. Its
+fade-in, copy and normal-return captures match pixels, displayed palette and
+curated game state; all 21 containing route checkpoints match with no deferred
+exceptions. `tools/check_gameplay_story.py` checks both scopes, and
+`manifest/gameplay-story14-native.sha256` pins the evidence. Controls reject
+missing completion/return markers, an incorrect final result, an altered pixel
+and altered RNG state. The route only loads level entries and completes no
+FrameAdv updates, so its last-result diagnostic retains the zero initializer;
+the route checker now requires zero in that specific case, retaining -2 for
+routes with completed updates. The initial native launcher result was a false rejection
+of that counter; the standalone comparison passes with the corrected check.
 
 MEASURED: `gameplay-level6-context-2` repeats every checkpoint of the clean
 level-six reference with a read-only write tap. The complete context allocation

@@ -36,7 +36,10 @@ def check(run, reference, setup, level=1, manifest=None, hall=False, deferred_rn
         require(completion == 'ASSISTED ENDING COMPLETE' and '-DPOP2_GAMEPLAY_HALL_PROBE' in receipt['flags'].split(), 'HALL BUILD/ENDING')
         completion = 'HALL COMPLETE'
     require(log.count(f'CORE REASON GAMEPLAY ROUTE / {completion}\n') == 1, 'ROUTE COMPLETION')
-    require(f'ROUTE RESULT complete=1 rooms={sum(p[4] for p in checkpoints)} frames={final[0]} keys={len(keys)} checkpoints={len(checkpoints)-1} last=fffe\n' in log, 'ROUTE COUNTS')
+    # Entry-only assisted routes never return from FrameAdv: the diagnostic
+    # result retains its zero initializer. A completed update returns -2.
+    last = '0000' if level == 0 and final[0] == 0 else 'fffe'
+    require(f'ROUTE RESULT complete=1 rooms={sum(p[4] for p in checkpoints)} frames={final[0]} keys={len(keys)} checkpoints={len(checkpoints)-1} last={last}\n' in log, 'ROUTE COUNTS')
     require('INTEGRATION AUDIT code=1 input=1\n' in log, 'ROUTE RESTORATION AUDIT')
     records = re.findall(r'^ROUTE CHECKPOINT ordinal=(\d+) frames=(\d+) keys=(\d+) level=(\d+) room=(\d+) step=(\d+) planes=([0-9a-f]+) parity=(\d+)$', log, re.M)
     require(len(records) == len(checkpoints), 'ROUTE CHECKPOINT COUNT')
