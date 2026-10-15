@@ -62,7 +62,7 @@ and bounded captures. Original bytes, saved state and captures remain ignored.
 | Level 12 | Meaningful gameplay route and original level-exit decision | Original repeat passes; native reaches level thirteen two frames early, comparison remains open |
 | Level 13 | Meaningful gameplay route and original level-exit decision | Original and repeat pass; native reaches level fourteen two steps early with pixel/context differences |
 | Level 14 | Meaningful gameplay route and original level-exit decision | Assisted final encounter and original decision 15 paired through the ending and Hall insertion |
-| Main cutscenes, individually | Original natural return and paired visible/state checkpoints | Incomplete |
+| Main cutscenes, individually | Original natural return and paired visible/state checkpoints | Selectors 1–11 individually paired; the containing level-eight gameplay route remains open |
 | Timed story scenes, individually | Original natural return for each selected scene | Selectors 12–20 individually paired through normal return; time-expired selector 20 included |
 | Save/load | Save through session command, move, load, restored game state | Two original/native pairs; 22 rejection controls |
 | Death | Original death routine returns after gameplay input | Existing first-room integration route |
@@ -86,8 +86,16 @@ returns normally and the following completed gameplay frame reaches room four.
 Fresh `gameplay-princess-room-repeat-1` matches all 11 route checkpoints and
 all nine cinematic capture files. The route has two key reads and nine logged
 writes. `manifest/gameplay-princess-reference.sha256` and
-`manifest/gameplay-princess-repeat.sha256` pin the original evidence; native
-pairing remains pending.
+`manifest/gameplay-princess-repeat.sha256` pin the original evidence.
+
+MEASURED: native `.run-UvXvud` matches both cinematic copies and the normal
+return, then the completed gameplay frame. All 11 route checkpoints pass,
+including full context, actors, RNG, pixels and displayed colours, with no
+deferred differences. Restoration and the native launcher pass.
+`manifest/gameplay-princess-native.sha256` pins the pair. The shared cinematic
+checker requires both copy checkpoints for selector 5; its test rejects a
+missing capture, altered pixel and missing normal return. The time-expired
+story still passes the same checker.
 
 DERIVED from original CODE 15 dispatch at +0088 and Transition at +07C8:
 the numbered cinematic cases are 1–11. Cases 12–20 call TreeCheck with
@@ -101,7 +109,7 @@ The original procedure names identify these targets:
 | 2 | NISTemple | Illustrated and normal-return checkpoints match in the completed A1200-030 survey |
 | 3 | NISTower | Visible post-fade and normal-return checkpoints match in the completed A1200-030 survey |
 | 4 | NISTitle | Existing paired title presentation plus natural timeout/black return pair below |
-| 5 | TransPrincessRoom | Final-level room-two original route and fresh repeat pass; native pairing pending |
+| 5 | TransPrincessRoom | Two cinematic copies, normal return and following gameplay frame paired within the completed room-two route |
 | 6 | NISThroneRoom | Four visible/return checkpoints paired; normal return; containing level-eight route remains open |
 | 7 | Opening1 | Unskipped normal return and illustrated/return checkpoint pair pass on A1200-030 |
 | 8 | Opening2 | Natural return and three illustrated checkpoints match on A1200-030 |

@@ -1,4 +1,4 @@
-"""Compare a pinned timed-story cinematic and its containing assisted route."""
+"""Compare a pinned timed story or princess cinematic and its assisted route."""
 import argparse
 from pathlib import Path
 import re
@@ -24,7 +24,8 @@ def check(native, reference, manifest, selector):
     pinned = pins(manifest)
     labels = sorted(Path(name).stem for name in pinned
                     if name.startswith(prefix) and name.endswith('.indices'))
-    assert prefix + 'fade-1' in labels and prefix + 'return-1' in labels, 'STORY / CAPTURE COVERAGE'
+    required = ('copy-1','copy-2','return-1') if selector == 5 else ('fade-1','return-1')
+    assert all(prefix + suffix in labels for suffix in required), 'STORY / CAPTURE COVERAGE'
     transfer = (native / 'dh1/video-transfer.bin').read_bytes()
     for label in labels:
         assert all(label + suffix in pinned for suffix in ('.indices', '.rgb', '-a5.bin')), 'STORY / CAPTURE PINS'
@@ -39,7 +40,7 @@ def check(native, reference, manifest, selector):
                                (0x245c, 2), (0x5208, 372)):
             assert actual[-distance:-distance+size] == expected[-distance:-distance+size], 'STORY / CAPTURE STATE'
     check_route(native, reference, 'a1200-030', level=0, manifest=manifest)
-    print(f'STORY {selector} PAIR PASS: {len(labels)} cinematic checkpoints, normal return and completed assisted route')
+    print(f'CINEMATIC {selector} PAIR PASS: {len(labels)} cinematic checkpoints, normal return and completed assisted route')
 
 
 if __name__ == '__main__':
@@ -47,6 +48,6 @@ if __name__ == '__main__':
     parser.add_argument('native', type=Path)
     parser.add_argument('reference', type=Path)
     parser.add_argument('--manifest', type=Path, required=True)
-    parser.add_argument('--selector', type=int, choices=range(12, 21), required=True)
+    parser.add_argument('--selector', type=int, choices=[5, *range(12, 21)], required=True)
     args = parser.parse_args()
     check(args.native, args.reference, args.manifest, args.selector)
