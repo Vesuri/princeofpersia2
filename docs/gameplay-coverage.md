@@ -57,9 +57,10 @@ and bounded captures. Original bytes, saved state and captures remain ignored.
 | Level 7 | Meaningful gameplay route and original level-exit decision | Clean original and fresh repeat reach level eight; native first-frame boundary differs by two frames |
 | Level 8 | Meaningful gameplay route and original level-exit decision | Clean original repeat passes; native AddResource loud stop in sword cutscene |
 | Level 9 | Meaningful gameplay route and original level-exit decision | Original repeat and native pair pass all 15 checkpoints |
-| Level 10 | Meaningful gameplay route and original level-exit decision | Clean original repeat passes; native pair pending |
+| Level 10 | Meaningful gameplay route and original level-exit decision | Clean original repeat passes; native reaches level eleven two frames early, comparison remains open |
 | Level 11 | Meaningful gameplay route and original level-exit decision | Original repeat passes; native pair pending |
-| Levels 12–13, individually | Meaningful gameplay route and original level-exit decision | Entry survey passes; exit routes incomplete |
+| Level 12 | Meaningful gameplay route and original level-exit decision | Original assisted exit reaches level thirteen; fresh repeat and native pair pending |
+| Level 13 | Meaningful gameplay route and original level-exit decision | Entry survey passes; exit route incomplete |
 | Level 14 | Meaningful gameplay route and original level-exit decision | Assisted final encounter and original decision 15 paired through the ending and Hall insertion |
 | Main cutscenes, individually | Original natural return and paired visible/state checkpoints | Incomplete |
 | Timed story scenes, individually | Original natural return for each selected scene | Incomplete |
@@ -1040,3 +1041,13 @@ and commands. The native write implementation remains pending.
 Native `.run-94PHSZ` passes the assisted level-nine route: all 15 checkpoints,
 37 frames and 39 key reads match, with no deferred RNG exceptions. It reaches
 level ten, room 22, and passes code/input, heap and hardware restoration.
+
+Original `gameplay-assisted-level12-1` activates the room-24 plate and uses
+the room-7 exit, naturally entering level thirteen, room 3, at step 292.
+`manifest/gameplay-assisted-level12.sha256` pins all 24 checkpoints and the
+assistance log. Fresh repeat and native pairing remain required.
+
+Native level-ten `.run-OZOTgb` reaches level eleven, room 5, at step 290
+with 292 key reads; the original boundary is step 292. The strict first-frame
+guard rejects this run. Code/input and hardware/heap restoration pass, but
+this does not establish a passing paired route.

@@ -103,3 +103,17 @@ contracts, including user-mode ABI, CODE/heap audits and hardware restoration.
 Both reject all twelve altered-evidence controls. Host helper tests and shared
 source pins pass. Full gameplay coverage and fixed-68020 cadence remain in their
 separate open items.
+
+## Scenes to retain for future profiling
+
+Record suspected heavy scenes encountered during gameplay validation here,
+including the level/room or cinematic, reproducible route or save, observed
+symptom, target/build and whether a matched-workload measurement exists.
+Debugger waits and verification-run wall time alone do not establish a slowdown.
+No additional heavy scene has yet been established by the current route evidence.
+
+The level-five carpet exit is a useful transition workload, not a measured
+hotspot: the paired route in `docs/gameplay-coverage.md` covers NIS 1 returning
+to level six. `Profile 05` supplies a level-entry starting point, not a save
+immediately before the carpet. Retain it as a comparison workload when measuring
+any suspected transition slowdown.

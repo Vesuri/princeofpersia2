@@ -57,3 +57,10 @@ acceptance gates pass.
     gameplay coverage, consulting the other ports and shared heap workflow.
     Acceptance: paired controls establish supported cases without accepting
     unknown pointers or silently changing the free list.
+
+19. **Deferred scene profiling.** During gameplay validation, record suspected
+    heavy scenes in `docs/performance.md` with their route/save and observation;
+    do not interrupt item 12 for deep performance investigations. Later measure
+    these workloads on `a1200-030`, separating release execution from debugger
+    and verification overhead. Acceptance: reproducible matched-workload results
+    for the recorded candidates; no slowdown claims based on elapsed harness time.
