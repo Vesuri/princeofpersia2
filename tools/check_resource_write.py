@@ -1,9 +1,12 @@
 """Compare the persisted dissolve-cache map with the completed Macintosh write."""
 import argparse
 import hashlib
+import re
+import struct
 from pathlib import Path
 from amigaxdev.mac.resource_fork import read_resource_fork
 from extract_original_data import ROOT, pins
+from check_core_result import restored
 
 
 def check(native, original=ROOT/'tmp/resource-write-original', manifest=ROOT/'manifest/resource-write-output.sha256'):
@@ -33,9 +36,27 @@ def check(native, original=ROOT/'tmp/resource-write-original', manifest=ROOT/'ma
     print('RESOURCE WRITE FILE PASS: original-paired map and initialized payloads (DSLV 6401 pre-calibration bytes 12..19 excluded); boot/load still requires live evidence')
 
 
+def check_readback(native, run):
+    """Check the bounded fresh-boot DSLV 6401 resource fixture on A1200-030."""
+    log=(run/'gdb-out.log').read_text()
+    assert 'CORE STOP trap=a86e segment=2 offset=3e90 count=30' in log, 'RESOURCE READBACK / FIXTURE STOP'
+    assert 'CORE REASON UNIMPLEMENTED / InitGraf' in log, 'RESOURCE READBACK / FIXTURE REASON'
+    restored(run,log,setup='a1200-030')
+    rows=re.findall(r'^RESOURCE PROBE shape=([0-9a-f]+) option=([0-9a-f]+) refs=(\d+)/(\d+)/(\d+)/(\d+)$',log,re.M)
+    assert len(rows)==1 and all(int(v,16) for v in rows[0][:2]), 'RESOURCE READBACK / COMPLETION'
+    assert len(set(rows[0][2:]))==4 and all(int(v)>0 for v in rows[0][2:]), 'RESOURCE READBACK / FILE REFS'
+    info=(run/'resource-info.bin').read_bytes()
+    assert len(info)==264 and info[:5]==b'\x04DSLV' and info[256:]==struct.pack('>h2x4s',6401,b'DSLV'), 'RESOURCE READBACK / METADATA'
+    expected=next(r.body for r in read_resource_fork(native) if r.kind==b'DSLV' and r.rid==6401)
+    assert (run/'resource-option.bin').read_bytes()==expected, 'RESOURCE READBACK / COMPLETE PAYLOAD'
+    print('RESOURCE READBACK PASS: fresh A1200-030 boot, complete DSLV 6401 bytes and metadata, fixture stop and restoration')
+
+
 if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('native',type=Path)
     parser.add_argument('--original',type=Path,default=ROOT/'tmp/resource-write-original')
     parser.add_argument('--manifest',type=Path,default=ROOT/'manifest/resource-write-output.sha256')
+    parser.add_argument('--readback',type=Path,help='fresh-boot POP2_RESOURCE_CACHE_PROBE run')
     args=parser.parse_args();check(args.native,args.original,args.manifest)
+    if args.readback:check_readback(args.native,args.readback)

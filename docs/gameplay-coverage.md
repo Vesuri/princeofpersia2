@@ -1099,7 +1099,10 @@ remains compared in full.
 Fresh boot `.run-ZTGAT7` loads DSLV 6401 through the resource-service probe;
 all 373,788 bytes match the native-written payload, including the timing fields.
 `manifest/resource-write-native-observation.sha256` pins this bounded evidence.
-The generic launcher checker lacks `CORE_REFERENCE` and does not pass; this is
-payload-readback evidence only. The gameplay run still stops at CODE 15+39A4,
+The dedicated `--readback` check passes resource metadata, complete payload,
+A1200-030 configuration, fixture completion and restoration. Its controls reject
+missing completion, changed payload/metadata, an unfinished shell and the wrong
+CPU. The generic core launcher check lacks `CORE_REFERENCE`; this dedicated
+result establishes only the resource fixture, not full core or gameplay acceptance. The gameplay run still stops at CODE 15+39A4,
 `DISPLAY / PIXMAP OWNERSHIP`, after publication. Full transition and resource-write
 integration acceptance remain open.
