@@ -1069,3 +1069,10 @@ step 290 with 292 key reads, versus original step 292. The strict first-frame
 guard rejects the run. All 23 captured pre-stop checkpoints pass the diagnostic
 `paired_frame` and full-context comparison; the final endpoint comparison
 remains missing. Code/input and hardware/heap restoration pass.
+
+Original `gameplay-assisted-level10-audio-1` completes a fresh repeat of the
+short level-ten route with the opt-in audio observer enabled. Every route
+checkpoint matches, and the observer and reference launcher complete.
+`manifest/gameplay-level10-audio.sha256` pins its trace and commands.
+The exit interval contains driver clock queries (selector 15); this is evidence
+for the timing investigation, not a proven cause or a native acceptance result.
