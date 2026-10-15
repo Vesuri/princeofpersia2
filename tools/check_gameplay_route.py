@@ -32,6 +32,8 @@ def check(run, reference, setup, level=1, manifest=None, hall=False, deferred_rn
     completion = 'ASSISTED SURVEY COMPLETE' if level == 0 else f'LEVEL {level} COMPLETE'
     if level == 0 and 'GAMEPLAY_ENDING_COMPLETE\n' in (reference/'session.log').read_text():
         completion = 'ASSISTED ENDING COMPLETE'
+    if level == 0 and 'GAMEPLAY_EXPIRED_COMPLETE\n' in (reference/'session.log').read_text():
+        completion = 'EXPIRED STORY COMPLETE'
     if hall:
         require(completion == 'ASSISTED ENDING COMPLETE' and '-DPOP2_GAMEPLAY_HALL_PROBE' in receipt['flags'].split(), 'HALL BUILD/ENDING')
         completion = 'HALL COMPLETE'

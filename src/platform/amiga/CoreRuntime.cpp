@@ -1150,13 +1150,19 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
     if(g_routeComplete)return stop(frame,usp,routeCompleteReason,trap,seg,off);
 #endif
     if(routeEndingOrdinal>=0 && !g_routeEndingReturn && g_coreSegments[2][0]){
-        // Original session's winning branch calls NIS(11), then returns here.
-        // Observe that return without changing the original victory decision.
+        // Observe the winning or time-expired story return without changing
+        // either original session decision.
+        const uint32_t terminalOffset=routeExpired ? 0x71a6 : 0x45b8;
         for(uint32_t at=regs[14],depth=0;depth<32 && validMemory(at,10);++depth){
             uint32_t parent=l((uint8_t*)at),returned=l((uint8_t*)at+4);
-            if(returned==g_coreSegments[2][0]+0x45b8){
-                if(w((uint8_t*)at+8)!=11 || w(a5-0x4f92)!=15 ||
-                   l((uint8_t*)g_coreSegments[2][0]+0x45a4)!=0x0c44000e){
+            if(returned==g_coreSegments[2][0]+terminalOffset){
+                bool owner=routeExpired ?
+                    w((uint8_t*)at+8)==28 && w(a5-0x4fce)==0 &&
+                    l((uint8_t*)g_coreSegments[2][0]+0x719e)==0x701c3f00 &&
+                    l((uint8_t*)g_coreSegments[2][0]+0x71a2)==0x4eba90f4 :
+                    w((uint8_t*)at+8)==11 && w(a5-0x4f92)==15 &&
+                    l((uint8_t*)g_coreSegments[2][0]+0x45a4)==0x0c44000e;
+                if(!owner){
                     return stop(frame,usp,"GAMEPLAY ENDING / OWNER",trap,seg,off);
                 }
                 g_routeEndingReturn=returned;sl((uint8_t*)at+4,(uint32_t)pop2_gameplay_route_ending);break;

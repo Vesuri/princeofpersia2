@@ -63,7 +63,7 @@ def generate(reference, level=1):
             'static const RouteCheckpoint routeCheckpoints[] = {']
     out += ['{%d,%d,%d,%d,%s,false},' % (*row[:4], 'true' if row[4] else 'false') for row in checkpoints]
     out += ['};', f'static const char routeCompleteReason[] = "GAMEPLAY ROUTE / LEVEL {level} COMPLETE";']
-    out += ['static const int routeEndingOrdinal = -1;']
+    out += ['static const int routeEndingOrdinal = -1;', 'static const bool routeExpired = false;']
     return '\n'.join(out) + '\n'
 
 

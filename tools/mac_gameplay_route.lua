@@ -63,6 +63,11 @@ local function capture(reason)
 end
 function M.map(seg,base,guard,condition)
  bases[seg]=base
+ if seg==2 and os.getenv('POP2_ROUTE_EXPIRED_PROBE')=='1' then
+  assert(discovery and assisted and cutscenes,'EXPIRED STORY / OBSERVERS REQUIRED')
+  guard(seg,base,0x71a6,2);points[base+0x71a6]='expired-return'
+  cpu.debug:bpset(base+0x71a6,condition,'logerror "GAMEPLAY_ROUTE_STOP\\n"')
+ end
  if seg==6 and os.getenv('POP2_ROUTE_CONTEXT_TRACE')=='1' then
   guard(seg,base,0x3612,2);points[base+0x3612]='context-copy'
   cpu.debug:bpset(base+0x3612,condition,'logerror "CONTEXT_COPY_STOP\\n"')
@@ -315,6 +320,15 @@ function M.poll()
    dump('context-copy-'..contextCopies..'.bin',source,38)
    print(string.format('CONTEXT_COPY ordinal=%d destination=%04X room=%04X index=%04X source=%08X caller=%08X step=%d',contextCopies,destination,cpu.state.D3.value&65535,cpu.state.D4.value&65535,source,mem:readv_u32((cpu.state.A6.value&0xffffff)+4),mem:readv_u16(a5-0x349a)))
   end
+ elseif label=='expired-return' then
+  assert(mem:readv_u16(a5-0x4fce)==0 and #currentNIS==0,'EXPIRED STORY / OWNER')
+  local result=cpu.state.D0.value&65535
+  print(string.format('GAMEPLAY_EXPIRED_RETURN result=%d',result))
+  -- PlayNIS initializes D4 to 1; a nonzero cinematic result changes it to 2.
+  assert(result==1,'EXPIRED STORY / NORMAL RETURN')
+  release();capture('expired-return');print('GAMEPLAY_EXPIRED_COMPLETE')
+  if audioObserver then audioObserver.finish()end
+  cutscenes.finish();complete=true;manager.machine:exit();dbg.execution_state='run';return true
  elseif label=='victory' then
   assert(cpu.state.D4.value&65535==15 and #currentNIS==0,'ENDING VICTORY RESULT')
   victory=true;release();capture('victory')

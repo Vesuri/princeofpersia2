@@ -7,6 +7,32 @@ from gameplay_assisted_inputs import ROOT, REFERENCE, generate, metadata
 
 
 class AssistedInputs(unittest.TestCase):
+    def test_expired_story_and_rejection_controls(self):
+        reference=ROOT/'ref/mame/runs/gameplay-story20-expired-3'
+        manifest=ROOT/'manifest/gameplay-story20-reference.sha256'
+        keys,points,writes,_=metadata(reference,manifest)
+        self.assertEqual((len(keys),len(points),len(writes)),(1,4,4))
+        generated=generate(reference,manifest)
+        self.assertIn('routeExpired = true',generated)
+        self.assertIn('EXPIRED STORY COMPLETE',generated)
+        original=(reference/'session.log').read_text()
+        changes=[original.replace('GAMEPLAY_EXPIRED_COMPLETE','MISSING_COMPLETION'),
+                 original.replace('GAMEPLAY_EXPIRED_RETURN result=1','GAMEPLAY_EXPIRED_RETURN result=2'),
+                 original.replace('GAMEPLAY_ROUTE_NIS_RETURN selector=28','MISSING_RETURN'),
+                 original.replace('selector=20 result=0','selector=19 result=0'),
+                 original.replace('reason=expired-return','reason=completed-frames')]
+        with tempfile.TemporaryDirectory(dir=ROOT/'tmp',prefix='expired-controls-') as directory:
+            candidate=Path(directory)
+            for source in reference.glob('route-*'):
+                if source.suffix in ('.bin','.rgb','.indices'):
+                    (candidate/source.name).symlink_to(source)
+            with patch('gameplay_assisted_inputs.pins',return_value={}):
+                (candidate/'session.log').write_text(original);metadata(candidate)
+                for changed in changes:
+                    self.assertNotEqual(changed,original)
+                    (candidate/'session.log').write_text(changed)
+                    with self.assertRaises(AssertionError):metadata(candidate)
+
     def test_pinned_minute_assistance(self):
         reference=ROOT/'ref/mame/runs/gameplay-story14-isolated-1'
         manifest=ROOT/'manifest/gameplay-story14-reference.sha256'

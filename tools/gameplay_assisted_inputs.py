@@ -14,7 +14,13 @@ def metadata(reference=REFERENCE, manifest=MANIFEST):
         assert hashlib.sha256((reference / name).read_bytes()).hexdigest() == expected, 'ASSIST INPUT / HASH ' + name
     text = (reference / 'session.log').read_text()
     ending = text.count('GAMEPLAY_ENDING_COMPLETE\n') == 1
-    assert 'FAIL REFERENCE' not in text and (ending or text.count('GAMEPLAY_DISCOVERY_COMPLETE\n') == 1), 'ASSIST INPUT / COMPLETION'
+    expired = text.count('GAMEPLAY_EXPIRED_COMPLETE\n') == 1
+    assert not (ending and expired), 'ASSIST INPUT / TERMINAL OWNER'
+    assert 'FAIL REFERENCE' not in text and (ending or expired or text.count('GAMEPLAY_DISCOVERY_COMPLETE\n') == 1), 'ASSIST INPUT / COMPLETION'
+    if expired:
+        assert text.count('GAMEPLAY_EXPIRED_RETURN result=1\n') == 1, 'ASSIST INPUT / EXPIRED RESULT'
+        assert text.count('GAMEPLAY_ROUTE_NIS_ENTER selector=28\n') == text.count('GAMEPLAY_ROUTE_NIS_RETURN selector=28\n') == 1, 'ASSIST INPUT / EXPIRED RETURN'
+        assert len(re.findall(r'^CUTSCENE_RETURN ordinal=\d+ selector=20 result=0 copy=\d+ text=\d+$',text,re.M)) == 1, 'ASSIST INPUT / EXPIRED CINEMATIC'
     if ending:
         assert text.count('GAMEPLAY_VICTORY result=15\n') == 1, 'ASSIST INPUT / VICTORY'
         assert text.count('GAMEPLAY_ROUTE_NIS_ENTER selector=11\n') == text.count('GAMEPLAY_ROUTE_NIS_RETURN selector=11\n') == 1, 'ASSIST INPUT / ENDING RETURN'
@@ -34,10 +40,10 @@ def metadata(reference=REFERENCE, manifest=MANIFEST):
             continue
         row = dict(v.split('=') for v in line.split()[1:])
         reason = row['reason']
-        if reason == 'ending-return':ending_points += 1
+        if reason in ('ending-return','expired-return'):ending_points += 1
         if reason in ('discovery-finished', 'victory'):
             continue
-        assert reason in ('first-frame','next-level','completed-frames','assist-before','assisted','ending-return'), 'ASSIST INPUT / CHECKPOINT'
+        assert reason in ('first-frame','next-level','completed-frames','assist-before','assisted','ending-return','expired-return'), 'ASSIST INPUT / CHECKPOINT'
         assert int(row['frames']) == int(row['step']), 'ASSIST INPUT / FRAME STEP'
         ordinal = len(points)
         if reason == 'assisted':
@@ -51,7 +57,11 @@ def metadata(reference=REFERENCE, manifest=MANIFEST):
         assert re.fullmatch(r'route-[0-9]+(?:-before)?',row['prefix']), 'ASSIST INPUT / CAPTURE NAME'
         labels.append(row['prefix'])
     assert not pending and points and points[0][:4] == (0,1,4,0), 'ASSIST INPUT / INITIAL STATE'
-    assert ending_points == int(ending), 'ASSIST INPUT / ENDING CHECKPOINT'
+    assert ending_points == int(ending or expired), 'ASSIST INPUT / ENDING CHECKPOINT'
+    if expired:
+        assert row['reason']=='expired-return', 'ASSIST INPUT / EXPIRED FINAL STATE'
+        final_a5=(reference/(labels[-1]+'-a5.bin')).read_bytes()
+        assert final_a5[-0x4fce:-0x4fcc]==bytes(2), 'ASSIST INPUT / EXPIRED MINUTES'
     if ending:
         assert row['reason']=='ending-return' and points[-1][1]==14, 'ASSIST INPUT / ENDING FINAL STATE'
     assert len(set(labels)) == len(labels), 'ASSIST INPUT / DUPLICATE CAPTURE'
@@ -73,6 +83,7 @@ def metadata(reference=REFERENCE, manifest=MANIFEST):
 def generate(reference=REFERENCE, manifest=MANIFEST):
     keys,points,writes,_ = metadata(reference, manifest)
     ending = 'GAMEPLAY_ENDING_COMPLETE\n' in (reference/'session.log').read_text()
+    expired = 'GAMEPLAY_EXPIRED_COMPLETE\n' in (reference/'session.log').read_text()
     from gameplay_route_inputs import key_rows
     out=['// PRIVATE: pinned assisted reference input; ignored build/ only.',
          '#if POP2_GAMEPLAY_ROUTE_LEVEL != 0', '#error Assisted route requires level zero', '#endif',
@@ -85,6 +96,8 @@ def generate(reference=REFERENCE, manifest=MANIFEST):
             'static const RouteAssist routeAssists[] = {']
     out += ['{%d,%d,%d,%d},' % w for w in writes]
     out += ['};','static const char routeCompleteReason[] = "GAMEPLAY ROUTE / ASSISTED SURVEY COMPLETE";']
-    out += [f'static const int routeEndingOrdinal = {len(points)-1 if ending else -1};']
+    out += [f'static const int routeEndingOrdinal = {len(points)-1 if ending or expired else -1};',
+            f'static const bool routeExpired = {str(expired).lower()};']
     if ending:out = [line.replace('ASSISTED SURVEY COMPLETE','ASSISTED ENDING COMPLETE') for line in out]
+    if expired:out = [line.replace('ASSISTED SURVEY COMPLETE','EXPIRED STORY COMPLETE') for line in out]
     return '\n'.join(out)+'\n'

@@ -63,7 +63,7 @@ and bounded captures. Original bytes, saved state and captures remain ignored.
 | Level 13 | Meaningful gameplay route and original level-exit decision | Original and repeat pass; native reaches level fourteen two steps early with pixel/context differences |
 | Level 14 | Meaningful gameplay route and original level-exit decision | Assisted final encounter and original decision 15 paired through the ending and Hall insertion |
 | Main cutscenes, individually | Original natural return and paired visible/state checkpoints | Incomplete |
-| Timed story scenes, individually | Original natural return for each selected scene | Incomplete |
+| Timed story scenes, individually | Original natural return for each selected scene | Selectors 12–20 individually paired through normal return; time-expired selector 20 included |
 | Save/load | Save through session command, move, load, restored game state | Two original/native pairs; 22 rejection controls |
 | Death | Original death routine returns after gameplay input | Existing first-room integration route |
 | Restart | Original command followed by completed playable first frame | Original and native repeats pass; 15 rejection controls |
@@ -105,7 +105,7 @@ The original procedure names identify these targets:
 | 17 | TreeCheck index 6 | Three cinematic checkpoints and normal return match within the completed isolated assisted route |
 | 18 | TreeCheck index 7 | Three cinematic checkpoints and normal return match within the completed isolated assisted route |
 | 19 | TreeCheck index 8 | Three cinematic checkpoints and normal return match within the completed isolated assisted route |
-| 20 | TreeCheck index 9 | Time-expired story pairing remains to be established |
+| 20 | TreeCheck index 9 | Withered-tree cinematic and normal wrapper return paired through the time-expired checkpoint |
 
 The table uses the actual CODE 15 argument. DERIVED from CODE 2+0308–0322:
 the outer PlayNIS wrapper subtracts eight from story selectors before calling
@@ -1486,6 +1486,30 @@ The story checker passes all three cinematic checkpoints and all 21 route
 checkpoints, with normal return, restoration and no deferred differences.
 The launcher also passes the route comparison.
 `manifest/gameplay-story13-native.sha256` pins the native evidence.
+
+MEASURED: `gameplay-story20-expired-3` sets zero remaining minutes through
+logged assistance and follows the original expiration branch. Actual selector
+20 returns 0; its PlayNIS wrapper returns 1 at CODE 2+71A6. The opt-in
+`POP2_ROUTE_EXPIRED_PROBE=1` observes that return and explicitly finishes the
+reference. Fresh `gameplay-story20-expired-repeat-1` matches all four route
+checkpoints and all nine cinematic capture files. Both pass the launcher.
+`manifest/gameplay-story20-reference.sha256` and
+`manifest/gameplay-story20-repeat.sha256` pin the reference evidence.
+
+MEASURED: native `.run-2ERlhy` matches all three cinematic checkpoints and
+all four route checkpoints, with no deferred differences and successful
+restoration. `manifest/gameplay-story20-native.sha256` pins the pair. The
+verification-only terminal callback checks the original expiration caller,
+selector 28, instruction bytes and zero-minute state before observing its
+return; ordinary release does not contain this probe. Five input tests pass,
+including controls rejecting missing completion/return evidence, a non-normal
+wrapper result, a different cinematic selector and an incorrect final checkpoint.
+
+The rejected original `gameplay-story20-expired-1` tested the wrong wrapper
+result (0 rather than 1). `gameplay-story20-expired-2` reached the explicit
+endpoint but lacked launcher recognition of its completion marker. Neither is
+used as the accepted reference; the fresh run and repeat above pass the corrected
+checks without changing original game execution.
 
 MEASURED: `gameplay-level6-context-2` repeats every checkpoint of the clean
 level-six reference with a read-only write tap. The complete context allocation

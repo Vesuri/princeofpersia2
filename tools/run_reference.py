@@ -118,6 +118,12 @@ def run(name=None, control=None, deadline=None):
         endpoint='first_frames=2' if env['POP2_GAMEPLAY']=='restart' else 'loaded_frames=1'
         marker='GAMEPLAY_DISCOVERY_COMPLETE' if env.get('POP2_ROUTE_DISCOVERY')=='1' and env['POP2_GAMEPLAY']=='route' else 'GAMEPLAY_ROUTE_COMPLETE level=1 next=2' if env['POP2_GAMEPLAY']=='route' else 'GAMEPLAY_REFERENCE_COMPLETE route='+env['POP2_GAMEPLAY']+' '+endpoint
         if env.get('POP2_ROUTE_ENDING')=='1':marker='GAMEPLAY_ENDING_COMPLETE'
+        if env.get('POP2_ROUTE_EXPIRED_PROBE')=='1':
+            marker='GAMEPLAY_EXPIRED_COMPLETE'
+            if (log.count('GAMEPLAY_EXPIRED_RETURN result=1\n')!=1 or
+                log.count('GAMEPLAY_ROUTE_NIS_ENTER selector=28\n')!=1 or
+                log.count('GAMEPLAY_ROUTE_NIS_RETURN selector=28\n')!=1):
+                raise ValueError('REFERENCE / EXPIRED STORY RETURN MISSING')
         if env.get('POP2_ROUTE_HALL')=='1':marker='GAMEPLAY_HALL_COMPLETE'
         if env['POP2_GAMEPLAY']=='hall-view':marker='GAMEPLAY_HALL_VIEW_COMPLETE'
         if log.count(marker+'\n')!=1 or 'FAIL REFERENCE' in log:
