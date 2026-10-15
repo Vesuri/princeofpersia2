@@ -197,3 +197,12 @@ the extraction has identical 68020 instructions and relocations, and importing
 the unused adapter leaves the verification executable byte-identical. It is
 not yet connected to Resource Manager writes. The level-eight AddResource /
 WriteResource gameplay gate and persistent dissolve-cache validation remain open.
+
+The shared `ResourceWriter.inc` uses a transaction-owned heap workspace for map
+layout. This port's 4,096-entry directory capacity made the inherited local
+workspace exceed the 32 KB service stack: the compiled serializer reserved
+49,216 bytes before saved registers and callees. The heap version reserves
+40 bytes plus saved registers. Synthetic streamed-publication, map, ordering,
+and failure-atomicity tests pass; this stack correction alone is not a gameplay
+transition acceptance result. The canonical helper was prepared in a clean
+AmigaXDev checkout; its revision and imported bytes are pinned.
