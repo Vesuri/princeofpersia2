@@ -87,7 +87,7 @@ The original procedure names identify these targets:
 | Selector | Original target | Current acceptance |
 |---|---|---|
 | 1 | NISCarpet | Included in the passing clean level-five pair |
-| 2 | NISTemple | Paired coverage remains to be established |
+| 2 | NISTemple | Illustrated and normal-return checkpoints match in the completed A1200-030 survey |
 | 3 | NISTower | Paired coverage remains to be established |
 | 4 | NISTitle | Existing paired title presentation plus natural timeout/black return pair below |
 | 5 | TransPrincessRoom | Paired coverage remains to be established |
@@ -97,7 +97,8 @@ The original procedure names identify these targets:
 | 9 | AboardShip | Existing level-one route; cinematic checkpoints require audit |
 | 10 | Discovery | Illustrated checkpoint and normal return match in the completed A1200-030 survey |
 | 11 | HappyEnding | Included in the passing ending/Hall pair |
-| 12–20 | TreeCheck indices 1–9 | Each selected story and its positive return remain to be audited |
+| 12 | TreeCheck index 1 | Illustrated and normal-return checkpoints match in the completed A1200-030 survey |
+| 13–20 | TreeCheck indices 2–9 | Each selected story and its positive return remain to be audited |
 
 The table uses the actual CODE 15 argument. DERIVED from CODE 2+0308–0322:
 the outer PlayNIS wrapper subtracts eight from story selectors before calling
@@ -222,6 +223,30 @@ original and identical survey commands, and requires the normal Discovery return
 `manifest/gameplay-discovery-native.sha256` pins these native captures and
 completion/restoration evidence. This establishes Discovery coverage; the other
 new survey scenes still require their visible native checkpoints.
+
+MEASURED: original `gameplay-survey-cutscenes-3` repeats the same 79 survey
+checkpoints and adds early copy/text and completed fade-in observations. Native
+`.run-qxYoR0` completes all 79 paired checkpoints without deferred mismatches.
+TreeCheck index 1 text-4 and return, and temple copy-4 and return, match in
+viewport indices, displayed RGB, actor records, RNG, level/room and story index.
+`tools/check_gameplay_survey_cutscenes.py --expanded` verifies these pairs along
+with Discovery and full route completion/restoration. The expanded original and
+native manifests are `manifest/gameplay-survey-cutscenes-expanded.sha256` and
+`manifest/gameplay-survey-cutscenes-expanded-native.sha256`.
+
+The observer also samples FadeInBothCTBLs returning at CODE 15+2A28. Tower uses
+a direct palette fade, so that convenience-routine probe does not supply its
+visible checkpoint. Original `gameplay-survey-cutscenes-4` adds the direct fade's
+return at CODE 15+72DC and again repeats the entire survey. Its tower capture
+visibly shows the tower and sky; its hash-pinned evidence is in
+`manifest/gameplay-survey-cutscenes-tower.sha256`. This tower evidence remains
+original-only until the native pair completes.
+
+`tools/gameplay_cutscene_observer.py OUTPUT` combines the existing route observer
+with the cutscene commands from `amiga/natural_opening.gdb`. Use the generated
+file as `GDBSCRIPT` with the ordinary verification assisted-survey build and
+`GAMEPLAY_LEVEL=0`. Each launch freezes its observer and build; captures are
+read-only, and the regular route checker still requires all 79 paired checkpoints.
 
 ## Walkthrough reference
 

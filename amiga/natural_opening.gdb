@@ -66,6 +66,8 @@ set $nisordinal=0
 set $nisselector=0
 set $niscopy=0
 set $nistext=0
+set $nisfade=0
+set $nistower=0
 if *(unsigned short*)($nisbase+4)!=20054
  echo CUTSCENE INVALID SITE\n
  detach
@@ -93,6 +95,8 @@ commands
  set $nisselector=*(unsigned short*)($sp+4)
  set $niscopy=0
  set $nistext=0
+set $nisfade=0
+set $nistower=0
  printf "CUTSCENE_ENTER ordinal=%u selector=%u\n",$nisordinal,$nisselector
  continue
 end
@@ -100,7 +104,7 @@ break *($nisbase+13072)
 commands
  silent
  set $niscopy=$niscopy+1
- if $niscopy==1 || $niscopy==8 || $niscopy==32 || $niscopy==128 || $niscopy==512
+ if $niscopy==1 || $niscopy==2 || $niscopy==4 || $niscopy==8 || $niscopy==32 || $niscopy==128 || $niscopy==512
  eval "dump binary memory @RUN@/nis-%u-%u-copy-%u-screen.bin g_integrationScreen g_integrationScreen+307200",$nisordinal,$nisselector,$niscopy
  set $colors=*(unsigned long*)g_integrationColors
  eval "dump binary memory @RUN@/nis-%u-%u-copy-%u-colors.bin $colors $colors+2056",$nisordinal,$nisselector,$niscopy
@@ -113,7 +117,7 @@ break *($nisbase+1048)
 commands
  silent
  set $nistext=$nistext+1
- if $nistext==1 || $nistext==8 || $nistext==32 || $nistext==128 || $nistext==512
+ if $nistext==1 || $nistext==2 || $nistext==4 || $nistext==8 || $nistext==32 || $nistext==128 || $nistext==512
  eval "dump binary memory @RUN@/nis-%u-%u-text-%u-screen.bin g_integrationScreen g_integrationScreen+307200",$nisordinal,$nisselector,$nistext
  set $colors=*(unsigned long*)g_integrationColors
  eval "dump binary memory @RUN@/nis-%u-%u-text-%u-colors.bin $colors $colors+2056",$nisordinal,$nisselector,$nistext
@@ -131,6 +135,42 @@ commands
  eval "dump binary memory @RUN@/nis-%u-%u-return-%u-a5.bin g_coreA5-g_coreBelow g_coreA5",$nisordinal,$nisselector,1
  printf "CUTSCENE_FRAME ordinal=%u selector=%u kind=return count=%u\n",$nisordinal,$nisselector,1
  printf "CUTSCENE_RETURN ordinal=%u selector=%u result=%u copy=%u text=%u\n",$nisordinal,$nisselector,$d0&65535,$niscopy,$nistext
+ continue
+end
+if *(unsigned short*)($nisbase+10792)!=20085
+ echo CUTSCENE INVALID FADE SITE\n
+ detach
+ quit 1
+end
+break *($nisbase+10792)
+commands
+ silent
+ set $nisfade=$nisfade+1
+ if $nisfade==1 || $nisfade==2 || $nisfade==4 || $nisfade==8 || $nisfade==32 || $nisfade==128 || $nisfade==512
+ eval "dump binary memory @RUN@/nis-%u-%u-fade-%u-screen.bin g_integrationScreen g_integrationScreen+307200",$nisordinal,$nisselector,$nisfade
+ set $colors=*(unsigned long*)g_integrationColors
+ eval "dump binary memory @RUN@/nis-%u-%u-fade-%u-colors.bin $colors $colors+2056",$nisordinal,$nisselector,$nisfade
+ eval "dump binary memory @RUN@/nis-%u-%u-fade-%u-a5.bin g_coreA5-g_coreBelow g_coreA5",$nisordinal,$nisselector,$nisfade
+ printf "CUTSCENE_FRAME ordinal=%u selector=%u kind=fade count=%u\n",$nisordinal,$nisselector,$nisfade
+ end
+ continue
+end
+if *(unsigned short*)($nisbase+29404)!=20463
+ echo CUTSCENE INVALID TOWER SITE\n
+ detach
+ quit 1
+end
+break *($nisbase+29404)
+commands
+ silent
+ set $nistower=$nistower+1
+ if $nistower==1 || $nistower==2 || $nistower==4 || $nistower==8 || $nistower==32 || $nistower==128 || $nistower==512
+ eval "dump binary memory @RUN@/nis-%u-%u-tower-%u-screen.bin g_integrationScreen g_integrationScreen+307200",$nisordinal,$nisselector,$nistower
+ set $colors=*(unsigned long*)g_integrationColors
+ eval "dump binary memory @RUN@/nis-%u-%u-tower-%u-colors.bin $colors $colors+2056",$nisordinal,$nisselector,$nistower
+ eval "dump binary memory @RUN@/nis-%u-%u-tower-%u-a5.bin g_coreA5-g_coreBelow g_coreA5",$nisordinal,$nisselector,$nistower
+ printf "CUTSCENE_FRAME ordinal=%u selector=%u kind=tower count=%u\n",$nisordinal,$nisselector,$nistower
+ end
  continue
 end
 continue

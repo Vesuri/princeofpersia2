@@ -17,7 +17,7 @@ local function capture(call,kind,count)
 end
 function M.map(seg,base,guard,condition)
  if seg~=2 and seg~=15 then return end
- local sites=seg==2 and {{0x031e,'enter'},{0x033e,'enter'},{0x037e,'enter'}} or {{0x0166,'return'},{0x3310,'copy'},{0x0418,'text'}}
+ local sites=seg==2 and {{0x031e,'enter'},{0x033e,'enter'},{0x037e,'enter'}} or {{0x0166,'return'},{0x3310,'copy'},{0x0418,'text'},{0x2a28,'fade'},{0x72dc,'tower'}}
  for _,site in ipairs(sites)do
   guard(seg,base,site[1],2);points[base+site[1]]=site[2]
   cpu.debug:bpset(base+site[1],condition,'logerror "CUTSCENE_STOP\\n"')
@@ -27,7 +27,7 @@ end
 -- The wrapper remaps story selectors and handles copy protection separately.
 local function enter(selector)
  serial=serial+1
- calls[#calls+1]={ordinal=serial,selector=selector,copy=0,text=0}
+ calls[#calls+1]={ordinal=serial,selector=selector,copy=0,text=0,fade=0,tower=0}
  print(string.format('CUTSCENE_ENTER ordinal=%d selector=%d',serial,selector))
 end
 function M.poll()
