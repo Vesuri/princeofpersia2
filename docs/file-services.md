@@ -190,3 +190,10 @@ and catalog data and validates their structure; resource payloads remain loaded
 on demand. Release retains the 16-byte settings contract, immutable-asset write
 rejection, bounds and ownership checks. Ordinary file opens no longer enter an OS
 window merely to revisit a completed hash check.
+
+The pinned shared `ResourceStage` transaction is imported from AmigaXDev's
+clean extraction of Alone in the Dark's DOS publisher. Its adapter builds here;
+the extraction has identical 68020 instructions and relocations, and importing
+the unused adapter leaves the verification executable byte-identical. It is
+not yet connected to Resource Manager writes. The level-eight AddResource /
+WriteResource gameplay gate and persistent dissolve-cache validation remain open.
