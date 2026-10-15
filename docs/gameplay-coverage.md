@@ -1390,3 +1390,12 @@ The source record is captured before the copy. This is evidence of the original
 path, not yet a justification for ignoring its differing bytes. The trace log
 and source record are pinned in `manifest/gameplay-level6-context.sha256`;
 `POP2_ROUTE_CONTEXT_TRACE=1` enables this read-only reference diagnostic.
+
+MEASURED: native `.run-mdtypS` reproduces that same step-6 copy with room/index
+-1 and destination context+0x2002. On both systems the captured 38-byte source
+exactly equals the destination in the next route checkpoint. The native route
+positively completes all 28 checkpoints and enters level seven at step 177,
+with clean restoration and code/input audits. Its full-context checker still
+rejects ordinals 10–26. This localizes the mismatch to the source record rather
+than a differing copy implementation; it is not a full-route pass.
+`manifest/gameplay-level6-context-native.sha256` pins the diagnostic evidence.
