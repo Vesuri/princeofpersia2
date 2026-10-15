@@ -1419,3 +1419,12 @@ missed the door trigger and do not establish exit coverage. A neutral frame
 following the old room teleport (`gameplay-level6-refresh-1`) did not prevent
 its invalid-index copy. These controls do not replace or relax the failed
 full-context comparisons recorded above.
+
+MEASURED: native `.run-q5NbV0` matches all 24 captured checkpoints of the
+alternate door route: counters, full context, actors, RNG, viewport pixels,
+palette and copper output. It then reaches level seven, room 32, at step 332
+instead of 333. The strict `GAMEPLAY ROUTE / FIRST FRAME` guard stops before
+the final checkpoint, so this is not a completed paired route. The earlier
+context discrepancy is absent from the captured portion; the boundary timing
+remains unresolved. Native evidence is pinned in
+`manifest/gameplay-level6-door-native.sha256`.
