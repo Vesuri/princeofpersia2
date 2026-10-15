@@ -1403,7 +1403,16 @@ at checkpoints 14–35. Pixel differences occur at checkpoints 14–24; the firs
 is confined to viewport x44–85/y134–205, visually the blue altar flame.
 Later checkpoints 25–35 have identical viewport pixels. This localizes the
 remaining state/pixel difference but does not establish its cause or extend
-the D11 exception; final-entry timing and capture coverage still fail.
+the D11 exception; the containing route remains rejected.
+
+MEASURED: `.run-jXfO5v` reproduces the altar differences and captures the
+rejected level-fourteen entry in room 1. Endpoint viewport pixels, displayed
+palette, full context and actor records match; RNG does not. Native counts are
+1515 frames/1517 key reads versus original 1517/1519. Code/input audits and
+hardware/heap restoration pass. `manifest/gameplay-level13-rejected-entry.sha256`
+pins the final capture and diagnostic report, which explicitly retains
+`route_accepted: false`. Timing, preceding flame/context differences and
+endpoint RNG remain unresolved.
 
 Original fresh-session `gameplay-hall-view-4` imports the pinned Hall file
 written by `gameplay-assisted-hall-4`. Command-H runs `ShowHallOfFame`
