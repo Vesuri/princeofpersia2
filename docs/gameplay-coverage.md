@@ -1671,3 +1671,12 @@ the room-24 crossing. Native reaches level nine, room 10, at step 478 with
 480 key reads, versus original 479/481, and the strict first-frame guard rejects
 completion. `manifest/gameplay-level8-direct-room-native.sha256` pins the
 failed run. This variation moves the invalid copy later but does not resolve it.
+
+MEASURED: original `gameplay-level8-direct-stairs-1` retains the throne
+interaction, enters room 24 through logged assistance and then uses the stairs
+to reach level nine, room 10, at step 1193 with 1195 key reads. Its 78 checkpoints
+include the unsuccessful first stair approach and subsequent continuation;
+no emulator restore was used. The same observer that recorded the invalid
+opponent copy on the preceding route records none here.
+`manifest/gameplay-assisted-level8-direct-stairs.sha256` pins this completed
+original route. Fresh original repeat and native comparison remain pending.
