@@ -60,7 +60,7 @@ and bounded captures. Original bytes, saved state and captures remain ignored.
 | Level 10 | Meaningful gameplay route and original level-exit decision | Clean original repeat passes; native reaches level eleven two frames early, comparison remains open |
 | Level 11 | Meaningful gameplay route and original level-exit decision | Original repeat passes; native reaches level twelve two frames early, comparison remains open |
 | Level 12 | Meaningful gameplay route and original level-exit decision | Original repeat passes; native reaches level thirteen two frames early, comparison remains open |
-| Level 13 | Meaningful gameplay route and original level-exit decision | Original altar death/flame/exit reaches level fourteen; repeat and native pair pending |
+| Level 13 | Meaningful gameplay route and original level-exit decision | Original altar death/flame/exit and fresh repeat pass; native pair pending |
 | Level 14 | Meaningful gameplay route and original level-exit decision | Assisted final encounter and original decision 15 paired through the ending and Hall insertion |
 | Main cutscenes, individually | Original natural return and paired visible/state checkpoints | Incomplete |
 | Timed story scenes, individually | Original natural return for each selected scene | Incomplete |
@@ -1126,3 +1126,8 @@ revives him with special state 13. The later moves and unsuccessful door attempt
 remain in the route log. `manifest/gameplay-assisted-level13.sha256` pins all
 37 checkpoints and interventions. Fresh-repeat and native-pair acceptance remain
 pending; this is positive original exit evidence, not a native completion claim.
+
+Fresh `gameplay-assisted-level13-repeat-1` completes the same level-thirteen
+route and passes the reference launcher. All 37 checkpoints, including
+pre-assistance captures, match pixels, palette, full context and the curated
+A5 actor/RNG/counter spans. Native pairing remains pending.
