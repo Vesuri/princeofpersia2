@@ -1686,4 +1686,7 @@ include the unsuccessful first stair approach and subsequent continuation;
 no emulator restore was used. The same observer that recorded the invalid
 opponent copy on the preceding route records none here.
 `manifest/gameplay-assisted-level8-direct-stairs.sha256` pins this completed
-original route. Fresh original repeat and native comparison remain pending.
+original route. Fresh `gameplay-level8-direct-stairs-repeat-1` matches all 78
+checkpoints and passes the reference launcher;
+`manifest/gameplay-assisted-level8-direct-stairs-repeat.sha256` pins that repeat.
+Native comparison remains pending.
