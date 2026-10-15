@@ -132,6 +132,7 @@ void pop2_gameplay_route_frame();
 void pop2_gameplay_route_ending();
 void pop2_gameplay_route_hall();
 __attribute__((noinline)) void pop2GameplayRouteCheckpoint(){__asm__ volatile("nop" ::: "memory");}
+__attribute__((noinline)) void pop2GameplayRouteRejectedBoundary(){__asm__ volatile("nop" ::: "memory");}
 #endif
 #ifdef POP2_TIMING_TM_PROBE
 #if !defined(POP2_VERIFY) || !defined(POP2_INTEGRATION_PROBE) || defined(POP2_TIMING_VBL_PROBE)
@@ -982,7 +983,12 @@ extern "C" void pop2IntegrationRoomHook(){
     if(ordinal>=sizeof(routeCheckpoints)/sizeof(routeCheckpoints[0])){g_routeError="GAMEPLAY ROUTE / FIRST FRAME COUNT";return;}
     auto& expected=routeCheckpoints[ordinal];
     if(!expected.first || g_routeFrames!=expected.step || w(a5-0x4fd2)!=expected.level ||
-       w(a5-0x4fc2)!=expected.room || g_routeKeys!=expected.keys){g_routeError="GAMEPLAY ROUTE / FIRST FRAME";return;}
+       w(a5-0x4fc2)!=expected.room || g_routeKeys!=expected.keys){
+        g_routeError="GAMEPLAY ROUTE / FIRST FRAME";
+        // Observe the rejected entry before teardown without accepting it or
+        // applying the next checkpoint's assistance.
+        pop2GameplayRouteRejectedBoundary();return;
+    }
     if(g_routeRooms==1){g_integrationStage=3;recordIntegrationStage();}
     routeCapture(ordinal);
 #elif defined(POP2_GAMEPLAY_RESTART_PROBE)

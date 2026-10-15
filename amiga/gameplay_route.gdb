@@ -18,6 +18,18 @@ commands
  eval "dump binary memory @RUN@/route-%u-copper.bin g_displayCopper g_displayCopper+2236",g_routeCheckpoint
  continue
 end
+break pop2GameplayRouteRejectedBoundary
+commands
+ silent
+ set $context=*(unsigned long*)(g_coreA5-0x5014)
+ printf "ROUTE REJECTED ENTRY frames=%lu keys=%lu level=%u room=%u step=%u\n",g_routeFrames,g_routeKeys,*(unsigned short*)(g_coreA5-0x4fd2),*(unsigned short*)(g_coreA5-0x4fc2),*(unsigned short*)(g_coreA5-0x349a)
+ dump binary memory @RUN@/route-rejected-entry-screen.bin g_integrationScreen g_integrationScreen+307200
+ dump binary memory @RUN@/route-rejected-entry-a5.bin g_coreA5-g_coreBelow g_coreA5
+ dump binary memory @RUN@/route-rejected-entry-context.bin $context $context+0x2200
+ set $colors=*(unsigned long*)g_integrationColors
+ dump binary memory @RUN@/route-rejected-entry-colors.bin $colors $colors+2056
+ continue
+end
 break pop2CoreStopped
 commands
  silent

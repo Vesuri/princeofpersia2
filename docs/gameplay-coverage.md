@@ -1445,6 +1445,17 @@ context discrepancy is absent from the captured portion; the boundary timing
 remains unresolved. Native evidence is pinned in
 `manifest/gameplay-level6-door-native.sha256`.
 
+MEASURED: `.run-7yMRHs` repeats that rejection and captures the level-seven
+entry before teardown. Its viewport, displayed palette, complete context,
+actors, RNG, level and room match the original final checkpoint. The step
+counter remains 332 instead of 333 (334 instead of 335 key reads); all 24
+preceding captures pass `paired_frame` and complete-context comparison.
+`manifest/gameplay-level6-rejected-entry.sha256` pins this diagnostic evidence.
+The verification-only rejected-boundary callback observes the failure without
+accepting it or applying further assistance. The strict route checker still
+rejects completion; this localizes the remaining discrepancy to the boundary
+timing among the compared fields, rather than establishing route acceptance.
+
 ### Ship cutscene reference
 
 MEASURED: `gameplay-ship-cutscene-1` repeats all 95 level-one route checkpoints,
