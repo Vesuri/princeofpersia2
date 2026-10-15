@@ -2,7 +2,8 @@
 
 The current owner-directed target is `a1200-030`: the shared 50 MHz 68030,
 AGA, PAL, 2 MB Chip RAM and 8 MB Fast RAM preset with data cache enabled.
-68020 performance work is deferred. These are emulator measurements, not
+The owner brought 68020 item 15 forward; its baseline below fails cadence.
+These are emulator measurements, not
 real-hardware performance claims. The Fast RAM requirement is 8 MB (D5).
 
 ## Measurement boundary
@@ -58,6 +59,43 @@ first small animation update does not inherit that copy. This moves work into
 scene preparation rather than reducing total copying; see [timing](timing.md).
 These short, field-quantized emulator windows do not establish a general
 percentage speedup or all-scene frame rate.
+
+## 68020 evaluation (item 15)
+
+MEASURED: two runs of the same current profiling executable on `a1200-fast`
+(68EC020 at 14,187,580 Hz, instruction cache, no data cache, 2 MB Chip and
+8 MB Fast RAM) complete the route and restoration. Both satisfy the existing
+performance-window checks against original `timing-route-1`; neither passes
+`check_timing_cadence.py`. All six cadence-checker rejection controls pass.
+
+| Run | Five-update PAL fields | ms/update, including pacing | Five-tick intervals met |
+|---|---:|---:|---:|
+| `.run-2awJXm` | 107 | 428 | 0 of 53 |
+| `.run-c11jR8` | 106 | 424 | 0 of 53 |
+
+Each route's timer intervals range from 7 to 29 ticks against the original
+five-tick contract (about 83.3 ms). Both five-update windows perform five C2P
+passes, ten rectangles and 179,328 converted pixels, with zero input and no
+conversion outside frame end. Window screen/context bytes agree between runs
+and with the pinned parent captures. Death screen/context also agree between
+these two runs; the death screen differs from the older pinned parent, although
+its context matches. That full-route picture comparison remains a failure.
+No new gameplay exception is inferred from D12.
+
+The build uses `PROFILE=1 VERIFY=0`: no runtime hashing, broad trap tracing or
+exit CODE/heap audit, and no debugger stops inside the measured window. These
+are emulated-field measurements, not host elapsed times or real-hardware results.
+`manifest/performance-68020-baseline.sha256` pins both runs relative to the
+repository root, including frozen executable/symbols, observer, machine settings,
+positive completion and captures. Original inputs retain their existing pins.
+
+The repeat confirms a substantial gap, not a marginal missed deadline.
+Recommendation: extend item 19's matched-workload profiling to this 68020 target
+before attempting item 15 optimization. Attribute original execution, service
+handling and presentation costs and establish feasible savings first. This is
+not proof that 68020 support is impossible. No runtime optimization was applied;
+the ordinary release build is restored. Item 15 remains open, including timing
+services, matched gameplay regressions and supported hardware requirements.
 
 ## Frame-end conversion
 

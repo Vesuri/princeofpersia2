@@ -1,10 +1,19 @@
 # Open work
 
-Owner-approved order: release including 68040 validation (14), then 68020
-support (15). Gameplay coverage (12) is accepted under D10–D12. The current validation target is
-`a1200-030`;
-the owner deferred both 68040 and 68020 work. Items remain open until their
-acceptance gates pass.
+The owner requested 68020 item 15 ahead of release item 15. **68020 support.** Measure and optimize
+    the fixed 68020 configuration without changing original game decisions.
+    Two current baseline runs miss all 53 five-tick intervals and measure
+    424–428 ms/update in the matched five-update window. Full-route death pixels
+    also differ from the pinned parent. See `docs/performance.md`. Recommend
+    extending item 19 profiling to 68020 before optimization; this does not
+    establish that the target is impossible or waive its acceptance gate.
+    Acceptance: original timing-service contracts and game-step cadence pass on
+    `a1200-fast`, matched gameplay regressions pass, and the release hardware and
+    installer requirements accurately include the validated configuration.
+
+14. Gameplay coverage
+(12) remains accepted under D10–D12 on `a1200-030`; 68040 validation remains
+part of release work. Items remain open until their acceptance gates pass.
 
 14. **WHDLoad and release.** Installer that decodes the user's archive and verifies
     SHA-256; KickEmu slave with `WHDLF_EmulLineA`, CPU compatibility and AGA checks;
@@ -14,11 +23,6 @@ acceptance gates pass.
     CPU configuration, and the playbook §14 release checklist passes, including
     real hardware. The 68040 cadence overrun remains unresolved; 030 results do
     not establish 040 acceptance.
-15. **Deferred 68020 support.** After the preceding items, measure and optimize
-    the fixed 68020 configuration without changing original game decisions.
-    Acceptance: original timing-service contracts and game-step cadence pass on
-    `a1200-fast`, matched gameplay regressions pass, and the release hardware and
-    installer requirements accurately include the validated configuration.
 
 16. **Deferred gameplay timing and state differences (D11/D12).** Investigate
     the recorded one- or two-frame early exits in levels 3, 6–8 and 10–13;

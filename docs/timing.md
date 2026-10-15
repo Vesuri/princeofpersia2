@@ -3,7 +3,9 @@
 Item 11 is complete for the owner-selected `a1200-030` target. The original
 five-tick gameplay cadence passes, including the first step; Time Manager and
 VBL service fixtures pass too. The owner deferred 68040 validation to release
-item 14 and 68020 work to final item 15. Neither CPU is covered by this completion.
+item 14. The owner subsequently brought 68020 item 15 forward; its two current
+baseline runs fail cadence (see `performance.md`). Neither CPU is covered by
+item 11's completion.
 
 ## Clock and callback services
 

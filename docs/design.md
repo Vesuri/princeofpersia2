@@ -8,7 +8,7 @@
 | D2 | Reference system: System 7.5.5 under MAME on a compatible Macintosh IIci, 8 MB, main `mdc48` display at 256 colours, Virtual Memory off. Owner-authorized fallback from the failing System 6.0.8 / Macintosh IIx configuration | Decided |
 | D3 | Display: PAL hires interlaced, 8 bitplanes, FMODE 3, showing the original 512×384 window 1:1. No DblPAL or other 31 kHz mode | Decided |
 | D4 | Drop lores; retain D3’s 512×384 display at 1:1. `DrawHalf` and `ComputeHalfRect` select scene rectangles at the original scale, not a reduced-resolution renderer. Confirmed by the owner after analysis | Decided |
-| D5 | Current target: AGA, 68030 or better, 8 MB Fast RAM. Current validation uses only `a1200-030`. Owner deferred 68040 validation to release work and 68020 support to the final work item. Release startup fails at 4 MB and passes at 8 MB on the measured a1200-030 configuration | Decided |
+| D5 | Current target: AGA, 68030 or better, 8 MB Fast RAM. Current validation uses only `a1200-030`. Owner deferred 68040 validation to release work and subsequently requested 68020 item 15 ahead of release. The 68020 target is being evaluated, not yet accepted. Release startup fails at 4 MB and passes at 8 MB on the measured a1200-030 configuration | Decided |
 | D6 | Bypass the copy protection at a measured, byte-verified seam | Decided |
 | D7 | Music: reuse Alone in the Dark's native Halestorm driver in place of the original `MDRV`, improving it as needed. All audio through Paula DMA voices; no software mixing | Decided |
 | D8 | Remove all Macintosh UI: menu bar, window frames, dialogs and pointer. Reached functions get port-owned replacements | Decided |
@@ -37,7 +37,7 @@ differences to item 16. The gameplay relevance of differing non-player actor
 slots is not yet established. Preserve the failed strict comparisons and their
 captures; this acceptance does not claim exact equivalence or waive unknown
 service calls, unreached exits, or new differences on other routes. Positive
-original/native exit and session-action evidence remains required. Release/040 and 68020 validation remain deferred.
+original/native exit and session-action evidence remains required. Release/040 validation remains deferred; the subsequent owner request brings 68020 item 15 forward without changing these gameplay exceptions.
 
 ## Faithfulness boundary
 
