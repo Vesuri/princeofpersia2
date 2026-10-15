@@ -98,7 +98,7 @@ The original procedure names identify these targets:
 | 10 | Discovery | Illustrated checkpoint and normal return match in the completed A1200-030 survey |
 | 11 | HappyEnding | Included in the passing ending/Hall pair |
 | 12 | TreeCheck index 1 | Illustrated and normal-return checkpoints match in the completed A1200-030 survey |
-| 13 | TreeCheck index 2 | Paired coverage remains to be established |
+| 13 | TreeCheck index 2 | Three cinematic checkpoints and normal return match within the completed isolated assisted route |
 | 14 | TreeCheck index 3 | Three cinematic checkpoints and normal return match within the completed isolated assisted route |
 | 15 | TreeCheck index 4 | Three cinematic checkpoints and normal return match within the completed isolated assisted route |
 | 16 | TreeCheck index 5 | Three cinematic checkpoints and normal return match within the completed isolated assisted route |
@@ -1479,7 +1479,13 @@ remaining minutes. Fresh `gameplay-story13-isolated-repeat-1` matches every
 route checkpoint and all nine cinematic capture files. Both sessions record
 normal story return and discovery completion. The original evidence is pinned
 in `manifest/gameplay-story13-reference.sha256` and
-`manifest/gameplay-story13-repeat.sha256`; native pairing remains pending.
+`manifest/gameplay-story13-repeat.sha256`.
+
+MEASURED: native `.run-a0jjep` completes story 13 and its assisted route.
+The story checker passes all three cinematic checkpoints and all 21 route
+checkpoints, with normal return, restoration and no deferred differences.
+The launcher also passes the route comparison.
+`manifest/gameplay-story13-native.sha256` pins the native evidence.
 
 MEASURED: `gameplay-level6-context-2` repeats every checkpoint of the clean
 level-six reference with a read-only write tap. The complete context allocation
