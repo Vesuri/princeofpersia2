@@ -100,7 +100,8 @@ The original procedure names identify these targets:
 | 12 | TreeCheck index 1 | Illustrated and normal-return checkpoints match in the completed A1200-030 survey |
 | 13 | TreeCheck index 2 | Paired coverage remains to be established |
 | 14 | TreeCheck index 3 | Three cinematic checkpoints and normal return match within the completed isolated assisted route |
-| 15–20 | TreeCheck indices 4–9 | Each selected story and its positive return remain to be audited |
+| 15 | TreeCheck index 4 | Three cinematic checkpoints and normal return match within the completed isolated assisted route |
+| 16–20 | TreeCheck indices 5–9 | Each selected story and its positive return remain to be audited |
 
 The table uses the actual CODE 15 argument. DERIVED from CODE 2+0308–0322:
 the outer PlayNIS wrapper subtracts eight from story selectors before calling
@@ -1409,8 +1410,13 @@ with 37 remaining minutes and reaches actual selector 15. The fresh
 `gameplay-story15-isolated-repeat-1` matches all route checkpoints and all nine
 cinematic capture files. Both record normal story return and discovery
 completion. `manifest/gameplay-story15-reference.sha256` and
-`manifest/gameplay-story15-repeat.sha256` pin the references; native pairing
-remains pending.
+`manifest/gameplay-story15-repeat.sha256` pin the references.
+
+MEASURED: native `.run-WeoTKt` completes story 15 and its assisted route.
+`tools/check_gameplay_story.py --selector 15` passes all three cinematic
+checkpoints and all 21 route checkpoints, with normal return, hardware
+restoration and no deferred differences. The native launcher also passes the
+route comparison. `manifest/gameplay-story15-native.sha256` pins the evidence.
 
 MEASURED: `gameplay-level6-context-2` repeats every checkpoint of the clean
 level-six reference with a read-only write tap. The complete context allocation
