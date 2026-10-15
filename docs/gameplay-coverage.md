@@ -1404,6 +1404,14 @@ the route checker now requires zero in that specific case, retaining -2 for
 routes with completed updates. The initial native launcher result was a false rejection
 of that counter; the standalone comparison passes with the corrected check.
 
+MEASURED: `gameplay-story15-isolated-1` repeats the isolated story sequence
+with 37 remaining minutes and reaches actual selector 15. The fresh
+`gameplay-story15-isolated-repeat-1` matches all route checkpoints and all nine
+cinematic capture files. Both record normal story return and discovery
+completion. `manifest/gameplay-story15-reference.sha256` and
+`manifest/gameplay-story15-repeat.sha256` pin the references; native pairing
+remains pending.
+
 MEASURED: `gameplay-level6-context-2` repeats every checkpoint of the clean
 level-six reference with a read-only write tap. The complete context allocation
 is checked against its physical alias before arming the tap. The differing
