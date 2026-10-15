@@ -1332,6 +1332,15 @@ checkpoint matches, and the observer and reference launcher complete.
 The exit interval contains driver clock queries (selector 15); this is evidence
 for the timing investigation, not a proven cause or a native acceptance result.
 
+MEASURED: native `.run-epGaak` records 2,284 audio trace rows, including
+1,829 clock queries (selector 15). Each query returns the recorded engine
+clock. The opt-in `POP2_ROUTE_AUDIO_TRACE` observer records a zero argument
+slot for this argument-free selector rather than dereferencing an argument
+packet. `manifest/gameplay-level10-native-audio.sha256` pins the trace and
+run identity. The route still fails its early-entry counter check and restores
+hardware; these samples do not establish the cause of that timing difference.
+Ordinary release excludes the observer and passes the release audit.
+
 The stopped original `gameplay-assisted-level8-resource-1` disk contains
 DSLV 6400 (176,668 bytes) and the generated DSLV 6401 (373,788 bytes) in
 `Prince2.opt`. The exported forks and MacBinary wrapper are pinned in

@@ -1260,11 +1260,11 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
         if(retry){sl(frame+2,pc);return (uint32_t)usp;}
 #if defined(POP2_GAMEPLAY_ROUTE_PROBE) && defined(POP2_ROUTE_AUDIO_TRACE)
         uint32_t selector=l(usp+4);
-        if(g_integrationStage==3 && (selector==9 || selector==12 || selector==17 || selector==18 || selector==20)){
+        if(g_integrationStage==3 && (selector==9 || selector==12 || selector==15 || selector==17 || selector==18 || selector==20)){
             if(g_routeAudioCount==8192)return stop(frame,usp,"GAMEPLAY ROUTE / AUDIO TRACE CAPACITY",trap,seg,off);
             auto& state=NativeAudio::state();auto* row=g_routeAudio[g_routeAudioCount++];
             row[0]=w(a5-0x349a);row[1]=selector;row[2]=state.clock;
-            row[3]=w((uint8_t*)l(usp+8)+(selector==9 || selector==12 ? 0 : 24));
+            row[3]=selector==15 ? 0 : w((uint8_t*)l(usp+8)+(selector==9 || selector==12 ? 0 : 24));
             row[4]=regs[0];row[5]=state.cursors[5].position;
             row[6]=state.voices.effect.duration>=0;row[7]=wallTicks();
             row[8]=callerSeg;row[9]=callerOff;
