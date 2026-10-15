@@ -58,7 +58,7 @@ and bounded captures. Original bytes, saved state and captures remain ignored.
 | Level 8 | Meaningful gameplay route and original level-exit decision | Native reaches level nine after cache-write fix; one-step early boundary and full-context differences remain |
 | Level 9 | Meaningful gameplay route and original level-exit decision | Original repeat and native pair pass all 15 checkpoints |
 | Level 10 | Meaningful gameplay route and original level-exit decision | Route captures and level-eleven entry state match; native enters two frames early, so completion remains rejected |
-| Level 11 | Meaningful gameplay route and original level-exit decision | Original repeat passes; native reaches level twelve two frames early, comparison remains open |
+| Level 11 | Meaningful gameplay route and original level-exit decision | Route captures and level-twelve entry state match; native enters two frames early, so completion remains rejected |
 | Level 12 | Meaningful gameplay route and original level-exit decision | Original repeat passes; native reaches level thirteen two frames early, comparison remains open |
 | Level 13 | Meaningful gameplay route and original level-exit decision | Original and repeat pass; native reaches level fourteen two steps early with pixel/context differences |
 | Level 14 | Meaningful gameplay route and original level-exit decision | Assisted final encounter and original decision 15 paired through the ending and Hall insertion |
@@ -1281,6 +1281,14 @@ A diagnostic comparison of the 23 captured pre-stop checkpoints in each of
 `.run-OZOTgb` and `.run-GYU6Ag` passes `paired_frame` and full context
 comparison. The missing final checkpoint and early boundary remain failures;
 this diagnostic is not route acceptance.
+
+MEASURED: level-eleven diagnostic `.run-sm9wiN` matches all 23 preceding
+checkpoints and the rejected level-twelve entry in viewport pixels, displayed
+palette, full context, actors and RNG. The destination is room 19; the native
+counts remain 290 frames/292 key reads versus the original 292/294.
+`tools/inspect_gameplay_rejected_entry.py` confirms those comparisons while
+recording `route_accepted: false`. The strict completion gate remains failed.
+`manifest/gameplay-level11-rejected-entry.sha256` pins this evidence.
 
 Native level-twelve `.run-bAamYp` reaches level thirteen, room 3, at
 step 290 with 292 key reads, versus original step 292. The strict first-frame
