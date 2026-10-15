@@ -534,6 +534,35 @@ pop2_cached_services:
 	.word 0xaffe,0xa1ad
 pop2_cached_services_end:
 
+	| Direct Pascal builtins. Keep original argument slots and Boolean padding;
+	| saved C-clobbered registers are restored without an argument memmove.
+	.macro pure_rect name,body,bytes,fallback
+	.globl \name
+	.type \name,@function
+\name:
+	move.w ccr,-(sp)
+	movem.l d0-d1/a0-a1,-(sp)
+	move.l sp,a0
+	move.l a0,-(sp)
+	pea 22(a0)
+	jsr \body
+	addq.l #8,sp
+	tst.l d0
+	bmi.s 1f
+	move.w d0,16(sp)
+	move.l 18(sp),18+\bytes(sp)
+	movem.l (sp)+,d0-d1/a0-a1
+	move.w (sp)+,ccr
+	lea \bytes(sp),sp
+	rts
+1:	movem.l (sp)+,d0-d1/a0-a1
+	move.w (sp)+,ccr
+	jmp pop2_cached_services+\fallback
+	.endm
+	pure_rect pop2SectRect,pop2SectRectBody,12,0
+	pure_rect pop2UnionRect,pop2UnionRectBody,12,4
+	pure_rect pop2EmptyRect,pop2EmptyRectBody,4,8
+
 	.globl pop2_ui_fixture
 	.globl pop2_ui_fixture_end
 pop2_ui_fixture:
@@ -1107,3 +1136,6 @@ pop2_timing_tm_callback:
 	rts
 pop2_timing_tm_end:
 	.endif
+
+	.text
+	.include "../src/platform/amiga/RectProbe.inc"

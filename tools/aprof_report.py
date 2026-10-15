@@ -32,6 +32,7 @@ BUCKETS = [
     ('Presentation: C2P', ('c2p1x1_8_c5_gen', 'KalmsC2P', 'c2pRect')),
     ('Presentation: other', ('NativeDisplay::', 'PrinceScreen::', 'Planar8', 'AmigaHardware::blitter', 'AmigaHardware::waitBlit',
                              'paceFrame', 'publish')),
+    ('QuickDraw: pure rectangles', ('pop2SectRect', 'pop2UnionRect', 'pop2EmptyRect', 'RectBounds')),
     ('QuickDraw: CopyBits', ('CopyBits8', 'RegionRows', 'RegionCopy', 'copyBits', 'CopyBits', 'memmove', 'memcpy', 'MaskCopy')),
     ('QuickDraw: fills, lines, regions, text', ('FillRect8', 'Line8', 'Region', 'Polygon', 'BitmapText8', 'BitmapFont', 'PenRect')),
     ('QuickDraw: GWorld, port and palette state', ('GWorld8', 'Palette8', 'ColorMap8', 'AnimatePalette8', 'gWorld', 'GWorld')),
@@ -334,6 +335,8 @@ class Context:
         named = {n: a for a, n in symbols}
         # GetTrapAddress veneers: each is $AFFE followed by the serviced trap word.
         self.cached = (named.get('pop2_cached_services'), named.get('pop2_cached_services_end'))
+        # An end marker may alias the next function; it is not a call target.
+        symbols = [(a, n) for a, n in symbols if n != "pop2_cached_services_end"]
         self.symbol_addrs = [a for a, _ in symbols]
         self.symbol_names = [s for _, s in symbols]
         self.cached_words = []

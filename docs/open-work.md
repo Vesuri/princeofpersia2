@@ -41,6 +41,11 @@ Items remain open until their acceptance gates pass.
     avoid those copies. Evidence and exact run/manifest identities are in
     `docs/gameplay-coverage.md`. Item 12's owner-authorized acceptance is not
     an exact-match result: preserve failed strict reports and named guards.
+    A fresh item-19.1 integration reference (`20261015-151738-f9137e07`) also
+    fails its existing A5 pin at byte A5−0B77 (F3 versus F6), outside the two
+    already normalized clock words; first-room pixels, palette and context match.
+    Keep the failed pin check and establish that byte's role before changing
+    normalization. The 19.1 regression uses the documented pinned-reference mode.
     Acceptance: explain and resolve the differences with original-paired
     evidence, including any effects on gameplay decisions. Check the other
     ports before service changes; keep diagnostics opt-in and release ordinary.
@@ -69,8 +74,9 @@ Items remain open until their acceptance gates pass.
     guard attack, fall; `docs/performance.md#opening-sequence-profile-item-19`) is
     profiled with `amiga/aprof.sh`. It meets the original's requested cadence on
     the selected `a1200-030` preset, but the exact no-MMU 68030 model misses 10
-    of 81 intervals in the landing and the 68020 misses all. Port work is four to
-    five times the original game's. Work through the reductions in order, one
+    of 81 intervals in the landing and the 68020 misses all in the initial
+    profile. That baseline has port work four to five times the original game's;
+    reduction results are recorded in `docs/performance.md`. Work in order, one
     commit each. For every step report the opening profile before and after
     (`opening`, `report`, `work` per phase) with two repeats, the per-step
     service gates named below, `make integration-check`, the timing cadence and
@@ -79,20 +85,14 @@ Items remain open until their acceptance gates pass.
     HEAP items solved similar costs. Figures are 68030 ms per landing frame
     unless noted.
 
-    - **19.1 Direct pure rectangle veneers.** `SectRect`, `UnionRect` and
-      `EmptyRect` reached through `pop2_cached_services` cost 117–128 µs per
-      call (68020: 473–555 µs) because each veneer raises Line-A `$AFFE` and
-      runs the full dispatcher and an argument `memmove`; 137 calls per frame
-      on average and 278 in the landing. Give pure services a directly callable
-      native body with the Pascal ABI and condition codes, keeping the dispatch
-      path for patched traps. `ClipRect` changes port state and stays on the
-      full path unless separately validated.
-      Acceptance: `check_equal_rect.py` and new boundary/empty/overlap fixtures
-      paired with the original pass, and these calls average ≤ 15 µs.
     - **19.2 Cheaper ordinary trap dispatch.** Trivial traps (`SystemTask`,
       `HLock`, `HGetState`, `StripAddress`, `SwapMMUMode`) cost 77–101 µs
       (68020: 340–500 µs): about 120 instructions of user entry, a ~220
       instruction compare chain in `pop2Dispatch`, and VBL selection per trap.
+      Reuse 19.1's original rectangle CCR/register fixture when validating
+      ordinary trap entries: the existing display dispatcher preserves those
+      fields, unlike the measured rectangle services. Keep this separate from
+      the direct cached-entry optimization.
       Use table dispatch and Alone in the Dark's tick-scoped reuse of validated
       checks, keeping frame-owner, stack and return checks and named stops.
       Acceptance: core, file, display, UI and audio service gates pass; these
@@ -129,13 +129,15 @@ Items remain open until their acceptance gates pass.
       requires the owner's release of that deferral.
       Acceptance: heap host tests, the measured freed-handle and low-memory
       cases and gameplay save/restart regressions pass; `NewHandle` ≤ 0.5 ms.
-    - **19.8 Further scenes.** After 19.1–19.3, profile the level-five carpet
+    - **19.8 Further scenes.** After 19.2–19.3, profile the level-five carpet
       exit and the level-eight throne dissolve (clean and generated cache) as
       recorded above, and add scenes whose frames exceed their requested delays.
     - **19.9 Share the profile report.** Move the common profile parsing and
       call-tree code of `tools/aprof_report.py` and Alone in the Dark's report
       into AmigaXDev once its tree is clean, keeping port-specific names and
-      buckets local.
+      buckets local. Integrate the published shared rectangle-accessor commit
+      `b61c323` from `codex/pure-rectangle-accessors` when the AmigaXDev main
+      working tree is clean; Prince of Persia 2 already pins that canonical source.
 
     Acceptance: each step's gates and measured targets; finally the opening
     profile meets every requested interval on the exact 68030 model, with

@@ -5,6 +5,13 @@
 #include "CoreRuntime.h"
 #include "mac/BigEndianMemory.h"
 #include "mac/CodeRangeCache.h"
+#pragma push_macro("Read")
+#pragma push_macro("Write")
+#undef Read
+#undef Write
+#include "mac/RectBounds.h"
+#pragma pop_macro("Write")
+#pragma pop_macro("Read")
 #include "mac/VBLPasses.h"
 #include "NativeFiles.h"
 #include "NativeDisplay.h"
@@ -56,6 +63,9 @@ void pop2_integration_seed(void*,void*);void pop2_integration_title();
 uint32_t g_integrationOpeningReturn=0,g_integrationTitleTarget=0,g_integrationRoomReturn=0,g_integrationDeathTarget=0,g_integrationDeathReturn=0,g_integrationDeathKind=0;
 volatile uint32_t g_integrationStage=0,g_integrationRightAt=0;
 volatile uint32_t g_integrationTitlePhase=0,g_integrationTitleCue=0;
+#ifdef POP2_INTEGRATION_TITLE_STATE
+volatile uint32_t g_integrationTitleState=0;
+#endif
 void pop2_integration_opening();void pop2_integration_room();void pop2_integration_death();void pop2_integration_death_return();
 extern volatile uint32_t g_integrationPulseRaw,g_integrationPulseStart,g_integrationPulseEnd;
 #ifdef POP2_TIMING_PROBE
@@ -217,6 +227,7 @@ uint16_t g_uiProbeAboutID=600;
 volatile uint8_t g_uiProbeReplyRaw=0x44;
 __attribute__((noinline)) void pop2UIFixtureComplete(){__asm__ volatile("nop" ::: "memory");}
 void pop2_cached_services();void pop2_cached_services_end();
+void pop2SectRect();void pop2UnionRect();void pop2EmptyRect();
 void pop2_line_a();void pop2_mac_exit();void pop2_old_loadseg();void pop2_old_exit();
 uint32_t g_coreException=0,g_coreActiveFrame=0,g_coreFaultPC=0;
 uint32_t g_coreServicePC=0;uint16_t g_coreServiceSR=0,g_coreServiceActive=0;
@@ -982,7 +993,50 @@ extern "C" void pop2GameplayRouteEnding(){
     NativeDisplay::wait();routeCapture(next);
 }
 #endif
+#ifdef POP2_RECTANGLE_PROBE
+extern "C" {
+void pop2RectProbe();void pop2RectProbeEnd();
+uint32_t g_rectEntry,g_rectArgs[3],g_rectRegisters[15],g_rectBeforeSP,g_rectAfterSP;
+uint16_t g_rectTrap,g_rectInitialCCR,g_rectCCR,g_rectResult;
+uint8_t g_rectRows[1220][92];uint32_t g_rectCount=0,g_rectGuards=0;
+int32_t pop2PureRect(uint8_t*,uint32_t*,uint32_t);
+__attribute__((noinline)) void pop2RectProbeDone(){__asm__ volatile("nop" ::: "memory");}
+}
+static void rectangleFixture(){
+    static const int16_t rectangles[][4]={{0,0,10,20},{5,10,15,30},{10,20,20,40},{0,0,0,0},
+        {10,20,0,0},{-32768,-32768,32767,32767},{-32768,-1,0,1},{0,-32768,1,32767},
+        {-20,-30,-10,-5},{32767,32767,-32768,-32768}};
+    const uint16_t traps[]={0xa8aa,0xa8ab,0xa8ae};
+    void (*entries[])()={pop2SectRect,pop2UnionRect,pop2EmptyRect};
+    for(unsigned t=0;t<3;++t)for(unsigned a=0;a<10;++a)for(unsigned b=0;b<(t==2?1:10);++b)
+    for(unsigned alias=0;alias<(t==2?1:3);++alias)for(unsigned cc=0;cc<2;++cc){
+        uint8_t rects[24];for(unsigned i=0;i<4;++i){sw(rects+i*2,rectangles[a][i]);sw(rects+8+i*2,rectangles[b][i]);}
+        const uint16_t sentinel[]={123,456,789,1234};for(unsigned i=0;i<4;++i)sw(rects+16+i*2,sentinel[i]);
+        g_rectEntry=(uint32_t)entries[t];g_rectTrap=traps[t];g_rectInitialCCR=cc?31:0;
+        g_rectArgs[0]=(uint32_t)(rects+alias*8);g_rectArgs[1]=(uint32_t)(rects+8);g_rectArgs[2]=(uint32_t)rects;
+        pop2RectProbe();uint8_t* row=g_rectRows[g_rectCount++];
+        sw(row,g_rectCCR&31);sw(row+2,g_rectResult);__builtin_memcpy(row+4,rects,24);
+        for(unsigned i=0;i<15;++i)sl(row+28+i*4,g_rectRegisters[i]);
+        sl(row+88,g_rectAfterSP-g_rectBeforeSP);
+    }
+    // Same production guard, with each failed precondition independently active.
+    for(unsigned t=0;t<3;++t)for(unsigned fault=0;fault<(t==2?3:5);++fault){
+        uint8_t rect[8]={},args[18]={};uint32_t saved[2]={0x12345678,0x23456789};
+        sl(args,(uint32_t)pop2RectProbeEnd-2);
+        sl(args+4,(uint32_t)rect);sl(args+8,(uint32_t)rect);sl(args+12,(uint32_t)rect);
+        uint8_t* input=args+4;
+        if(fault==0)input=stack+65536-2;
+        else if(fault==1)sl(args,0);
+        else sl(args+(t==2?4:fault==2?12:fault==3?8:4),0);
+        if(pop2PureRect(input,saved,traps[t])==-1 && saved[0]==0x12345678 && saved[1]==0x23456789)++g_rectGuards;
+    }
+    pop2RectProbeDone();
+}
+#endif
 extern "C" void pop2IntegrationRoomHook(){
+#ifdef POP2_RECTANGLE_PROBE
+    rectangleFixture();
+#endif
     g_integrationPulseRaw=128;NativeInput::flush(0xffff,0);NativeDisplay::wait();
 #ifdef POP2_GAMEPLAY_ROUTE_PROBE
     ++g_routeRooms;
@@ -1070,6 +1124,13 @@ extern "C" void pop2IntegrationDeathReturned(){
 }
 extern "C" void pop2IntegrationTitleHook(uint8_t* originalSP){
     uint16_t phase=w(originalSP+4);
+#ifdef POP2_INTEGRATION_TITLE_STATE
+    // Same guarded renderer fixture as mac_reference.lua; never ordinary play.
+    if(phase==15){
+        if(g_integrationTitleState || w(a5-0x1f6e)!=100)g_integrationTitleState=2;
+        else {sw(a5-0x1f6e,101);g_integrationTitleState=1;}
+    }
+#endif
     g_integrationTitlePhase=phase;g_integrationTitleCue=w(a5-0x1f6e);
     if(phase==2 && g_integrationStage==0){
         g_integrationPulseRaw=128;g_integrationStage=1;recordIntegrationStage();
@@ -1086,8 +1147,53 @@ extern "C" void pop2IntegrationTitleHook(uint8_t* originalSP){
     }
 }
 #endif
+// Pascal entry adapter for the shared pure rectangle algorithms. Failed guards
+// retry the untouched full veneer, retaining its named errors and patch policy.
+// No tick, callback, port or framebuffer state is changed by these services.
+template<uint16_t trap>
+__attribute__((always_inline)) inline int32_t pureRect(uint8_t* args,uint32_t* saved) {
+    uint32_t count=trap==0xa8ae?6:trap==0xa8aa?14:12;
+    uint32_t start=(uint32_t)args-4,seg=0,off=0;
+    if(start<(uint32_t)stack || start-(uint32_t)stack>65536-count-4)return -1;
+    bool owner=location(l(args-4),seg,off);
+#ifdef POP2_RECTANGLE_PROBE
+    owner=owner || (l(args-4)>=(uint32_t)pop2RectProbe && l(args-4)<(uint32_t)pop2RectProbeEnd);
+#endif
+    if(!owner)return -1;
+    uint8_t* a=(uint8_t*)l(args+(trap==0xa8ae?0:8));
+    if(!validMemory((uint32_t)a,8))return -1;
+    if(trap==0xa8ae){
+        bool empty=int16_t(w(a))>=int16_t(w(a+4)) || int16_t(w(a+2))>=int16_t(w(a+6));
+        args[4]=empty?1:0;
+        saved[0]=(saved[0]&0xffff0000UL)|w(a);
+        saved[1]=(saved[1]&0xffff0000UL)|w(a+2);
+        return empty?0x10:0x14;
+    }
+    uint8_t* b=(uint8_t*)l(args+4);uint8_t* out=(uint8_t*)l(args);
+    if(!validMemory((uint32_t)b,8) || !validMemory((uint32_t)out,8))return -1;
+    if(trap==0xa8aa){
+        bool nonempty;RectBounds::intersect<BigEndianMemory::read16,BigEndianMemory::write16>(out,a,b,nonempty);args[12]=nonempty?1:0;
+        saved[0]=(saved[0]&0xffff0000UL)|14;
+        return nonempty?0x11:4;
+    }
+    RectBounds::unite<BigEndianMemory::read16,BigEndianMemory::write16>(out,a,b);saved[0]=l(out);saved[1]=l(out+4);
+    return 0x10|(saved[1]==0?4:(saved[1]&0x80000000UL)?8:0);
+}
+// Compile each fixed service separately so no runtime selector/temporary loop
+// is paid by the Pascal entry; all geometry still uses shared RectBounds.
+extern "C" __attribute__((optimize("O3"))) int32_t pop2SectRectBody(uint8_t* args,uint32_t* saved){return pureRect<0xa8aa>(args,saved);}
+extern "C" __attribute__((optimize("O3"))) int32_t pop2UnionRectBody(uint8_t* args,uint32_t* saved){return pureRect<0xa8ab>(args,saved);}
+extern "C" __attribute__((optimize("O3"))) int32_t pop2EmptyRectBody(uint8_t* args,uint32_t* saved){return pureRect<0xa8ae>(args,saved);}
+#ifdef POP2_RECTANGLE_PROBE
+extern "C" int32_t pop2PureRect(uint8_t* args,uint32_t* saved,uint32_t trap){
+    return trap==0xa8aa?pop2SectRectBody(args,saved):trap==0xa8ab?pop2UnionRectBody(args,saved):pop2EmptyRectBody(args,saved);
+}
+#endif
 extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
     uint32_t pc=l(frame+2),seg=0,off=0;
+#ifdef POP2_INTEGRATION_TITLE_STATE
+    if(g_integrationTitleState==2)return stop(frame,usp,"INTEGRATION / TITLE STATE INITIAL CUE",0,seg,off);
+#endif
     if(usp<stack || usp>stack+65536-4)return stop(frame,usp,"STACK / TRAP ARGUMENT EXTENT",0,seg,off);
 #ifdef POP2_UI
     bool cachedCaller=pc>=(uint32_t)pop2_cached_services && pc<(uint32_t)pop2_cached_services_end && !((pc-(uint32_t)pop2_cached_services)&3);
@@ -1829,6 +1935,11 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
         uint8_t* found=nullptr;
         for(uint8_t* p=(uint8_t*)pop2_cached_services;p<(uint8_t*)pop2_cached_services_end;p+=4)if(w(p+2)==target)found=p;
         if(!found)return stop(frame,usp,"TRAP TABLE / UNMEASURED QUERY",trap,seg,off);
+        // Only these immutable pure builtins bypass the exception dispatcher.
+        // ClipRect and the existing patched LoadSeg/Exit machinery stay there.
+        if(target==0xa8aa)found=(uint8_t*)pop2SectRect;
+        if(target==0xa8ab)found=(uint8_t*)pop2UnionRect;
+        if(target==0xa8ae)found=(uint8_t*)pop2EmptyRect;
         regs[8]=(uint32_t)found;break;
     }
 #endif

@@ -32,7 +32,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--references', nargs=2, type=Path)
     parser.add_argument('--title-reference', type=Path)
+    parser.add_argument('--completed-native', nargs=3, type=Path, metavar=('TITLE','NATURAL','REPEAT'),
+                        help='recheck completed runs of the freshly built executables; still run the no-Right control')
     parser.add_argument('--deadline', type=int, default=3600)
+    parser.add_argument('--setup', choices=['a1200-fast','a1200-030','a1200-040'], default='a1200-fast')
     args = parser.parse_args()
     assert args.deadline > 0
     os.chdir(ROOT)
@@ -67,35 +70,51 @@ def main():
     title_rejections=title_controls(title_reference)
     flags = '-DPOP2_CORE -DPOP2_DISPLAY -DPOP2_INPUT -DPOP2_UI -DPOP2_AUDIO -DPOP2_INTEGRATION_PROBE'
     native = {}
+    completed = dict(zip(('title-state','native','repeat'), args.completed_native or []))
 
     def build(extra=''):
         with (logs/('build-control.log' if extra else 'build.log')).open('w') as out:
             subprocess.run(['make', '-C', 'amiga', 'VERIFY=1', 'EXTRA_DEFINES='+flags+extra],
                            stdout=out, stderr=subprocess.STDOUT, check=True)
 
-    def launch(label, right_expected=True):
-        env = dict(os.environ, CORE='1', INTEGRATION='1',
+    def launch(label, right_expected=True, title_run=None):
+        env = dict(os.environ, CORE='1', INTEGRATION='1', AMIGA_SETUP=args.setup,
                    INTEGRATION_REFERENCE=str(references[0]),
                    INTEGRATION_TITLE_REFERENCE=str(title_reference),
                    INTEGRATION_NO_RIGHT='0' if right_expected else '1',
                    DEADLINE=str(args.deadline), GDBSCRIPT=str(ROOT/'amiga/integration.gdb'))
-        with (logs/(label+'.log')).open('w') as out:
-            subprocess.run(['/bin/bash', 'amiga/run.sh'], env=env,
-                           stdout=out, stderr=subprocess.STDOUT, check=True)
-        run = ROOT/'amiga'/(ROOT/'amiga/.run-last.txt').read_text().strip()
-        check(run, references[0], title_reference, right_expected=right_expected)
+        if title_run:
+            env['INTEGRATION_TITLE_RUN']=str(title_run)
+        if label in completed:
+            run = completed[label].resolve()
+            receipt = json.loads((run/'build-receipt.json').read_text())
+            built = json.loads((ROOT/'amiga/out/PrinceOfPersia2.json').read_text())
+            assert receipt['exe']==built['exe'] and receipt['flags']==built['flags'], 'INTEGRATION / REUSED BUILD'
+            assert hashlib.sha256((run/'dh1/PrinceOfPersia2').read_bytes()).hexdigest()==receipt['exe'], 'INTEGRATION / REUSED EXECUTABLE'
+            assert hashlib.sha256((run/'PrinceOfPersia2.elf').read_bytes()).hexdigest()==receipt['elf'], 'INTEGRATION / REUSED SYMBOLS'
+        else:
+            with (logs/(label+'.log')).open('w') as out:
+                subprocess.run(['/bin/bash', 'amiga/run.sh'], env=env,
+                               stdout=out, stderr=subprocess.STDOUT, check=True)
+            run = ROOT/'amiga'/(ROOT/'amiga/.run-last.txt').read_text().strip()
+        check(run, references[0], title_reference, right_expected=right_expected, setup=args.setup, title_run=title_run)
         native[label] = run
         return run
 
+    build(' -DPOP2_INTEGRATION_TITLE_STATE')
+    title_run = launch('title-state')
+    title_native_controls = evidence_controls(title_run, references[0], title_reference, setup=args.setup)
     build()
-    first = launch('native')
-    repeat = launch('repeat')
+    first = launch('native', title_run=title_run)
+    repeat = launch('repeat', title_run=title_run)
     # The state checks above compare curated game words; raw A5 images include pointers.
-    for name in ('title-screen.bin', 'first-room-screen.bin', 'first-room-planes.bin', 'death-screen.bin'):
+    # Title pixels are compared at frame 16 in the separate renderer fixture.
+    # Natural logo timing can vary, so its clouds need not be at the same frame.
+    for name in ('first-room-screen.bin', 'first-room-planes.bin', 'death-screen.bin'):
         assert (first/name).read_bytes() == (repeat/name).read_bytes(), 'INTEGRATION / NATIVE REPEAT '+name
-    controls = evidence_controls(repeat, references[0], title_reference)
+    controls = evidence_controls(repeat, references[0], title_reference, setup=args.setup, title_run=title_run)
     build(' -DPOP2_INTEGRATION_NO_RIGHT')
-    idle = launch('no-right', right_expected=False)
+    idle = launch('no-right', right_expected=False, title_run=title_run)
     assert (idle/'first-room-screen.bin').read_bytes() == (first/'first-room-screen.bin').read_bytes(), 'INTEGRATION / CONTROL START'
     assert (idle/'death-screen.bin').read_bytes() != (first/'death-screen.bin').read_bytes(), 'INTEGRATION / INPUT MUST CHANGE OUTCOME'
     build()  # Leave the verified integration build available.
@@ -103,10 +122,10 @@ def main():
     assert not any(p.startswith(('tmp/', 'ref/', 'build/', 'amiga/.run', 'amiga/obj/', 'amiga/out/')) for p in tracked)
     ignored = subprocess.check_output(['git', 'status', '--ignored', '--short'], text=True)
     assert all('!! '+p+'/' in ignored for p in ('tmp', 'ref', 'build'))
-    result = {'result': 'INTEGRATION GATE PASS', 'references': [str(p.relative_to(ROOT)) for p in references],
+    result = {'result': 'INTEGRATION GATE PASS', 'setup': args.setup, 'references': [str(p.relative_to(ROOT)) for p in references],
               'title_reference': str(title_reference.relative_to(ROOT)),
               'native': {k: str(p.relative_to(ROOT)) for k, p in native.items()},
-              'title_reference_controls': title_rejections, 'evidence_controls': controls, 'input_control': 'same first room; zero Right reads; different completed outcome'}
+              'title_native_controls': title_native_controls, 'title_reference_controls': title_rejections, 'evidence_controls': controls, 'input_control': 'same first room; zero Right reads; different completed outcome'}
     (logs/'report.json').write_text(json.dumps(result, indent=2)+'\n')
     print('INTEGRATION GATE PASS:', logs.relative_to(ROOT), flush=True)
 

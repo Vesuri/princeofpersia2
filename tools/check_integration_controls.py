@@ -1,5 +1,6 @@
 """Reject incomplete or altered native integration evidence."""
 import argparse
+import json
 import re
 import shutil
 import tempfile
@@ -8,10 +9,10 @@ from check_integration_result import check
 from extract_original_data import ROOT
 
 
-def evidence_controls(run, reference, title_reference):
-    check(run, reference, title_reference)
+def evidence_controls(run, reference, title_reference, *, setup="a1200-fast", title_run=None):
+    check(run, reference, title_reference, setup=setup, title_run=title_run)
     scratch = Path(tempfile.mkdtemp(prefix='integration-controls-', dir=ROOT/'tmp'))
-    names = ['gdb-out.log', 'logs/debug.uae', 'dh1/Shell.done',
+    names = ['build-receipt.json', 'gdb-out.log', 'logs/debug.uae', 'dh1/Shell.done',
              *[p.name for p in run.glob('*.bin')]]
     for name in names:
         target = scratch/name
@@ -43,6 +44,14 @@ def evidence_controls(run, reference, title_reference):
         ('first-room-a5.bin', flip(22266-0x18fc)),
         ('first-room-context.bin', flip(0x2180)),
     ]
+    if title_run:
+        # The separate renderer run receives all three title mutations above.
+        changes = [c for i,c in enumerate(changes) if i not in (11,12,13)]
+        changes += [
+            ('gdb-out.log', lambda b: re.sub(rb'phase=\d+ cue=114', b'phase=0 cue=114', b)),
+            ('build-receipt.json', lambda b: json.dumps(dict(json.loads(b),
+                flags=json.loads(b)['flags']+' -DPOP2_INTEGRATION_TITLE_STATE')).encode()),
+        ]
     for name, mutate in changes:
         path = scratch/name
         good = path.read_bytes()
@@ -50,14 +59,14 @@ def evidence_controls(run, reference, title_reference):
         assert bad != good, 'INTEGRATION / INACTIVE CONTROL '+name
         path.write_bytes(bad)
         try:
-            check(scratch, reference, title_reference)
+            check(scratch, reference, title_reference, setup=setup, title_run=title_run)
         except (AssertionError, RuntimeError, ValueError):
             pass
         else:
             raise AssertionError('INTEGRATION / ACCEPTED BAD EVIDENCE '+name)
         finally:
             path.write_bytes(good)
-    check(scratch, reference, title_reference)
+    check(scratch, reference, title_reference, setup=setup, title_run=title_run)
     print(f'INTEGRATION EVIDENCE CONTROLS PASS: {len(changes)} rejected alterations')
     return len(changes)
 
@@ -67,5 +76,6 @@ if __name__ == '__main__':
     parser.add_argument('run', type=Path)
     parser.add_argument('reference', type=Path)
     parser.add_argument('title_reference', type=Path)
+    parser.add_argument('--setup', choices=['a1200-fast','a1200-030','a1200-040'], default='a1200-fast')
     args = parser.parse_args()
-    evidence_controls(args.run, args.reference, args.title_reference)
+    evidence_controls(args.run, args.reference, args.title_reference, setup=args.setup)

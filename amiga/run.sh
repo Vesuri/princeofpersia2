@@ -110,6 +110,8 @@ if [ "${CORE:-0}" = 1 ]; then
     python3 ../tools/check_gameplay_opening.py "$RUN" "$GAMEPLAY_ATTRACT_REFERENCE" --attract
   elif [ -n "${GAMEPLAY_OPENING_REFERENCE:-}" ]; then
     python3 ../tools/check_gameplay_opening.py "$RUN" "$GAMEPLAY_OPENING_REFERENCE"
+  elif [ -n "${RECTANGLE_REFERENCE:-}" ]; then
+    python3 ../tools/check_pure_rectangles.py --original "$RECTANGLE_REFERENCE" --native "$RUN"
   elif [ "${OPENING_PROFILE:-0}" = 1 ]; then
     python3 ../tools/aprof_report.py check-run "$RUN"
   elif [ "${PERFORMANCE:-0}" = 1 ]; then
@@ -135,10 +137,12 @@ if [ "${CORE:-0}" = 1 ]; then
   elif [ "${GAMEPLAY_RESTART:-0}" = 1 ]; then
     python3 ../tools/check_gameplay_restart.py "$RUN" "$GAMEPLAY_REFERENCE" --setup "$AMIGA_SETUP"
   elif [ "${INTEGRATION:-0}" = 1 ]; then
+    title_args=()
+    if [ -n "${INTEGRATION_TITLE_RUN:-}" ]; then title_args=(--title-run "$INTEGRATION_TITLE_RUN"); fi
     if [ "${INTEGRATION_NO_RIGHT:-0}" = 1 ]; then
-      python3 ../tools/check_integration_result.py "$RUN" "$INTEGRATION_REFERENCE" "$INTEGRATION_TITLE_REFERENCE" --setup "$AMIGA_SETUP" --no-right
+      python3 ../tools/check_integration_result.py "$RUN" "$INTEGRATION_REFERENCE" "$INTEGRATION_TITLE_REFERENCE" ${title_args[@]+"${title_args[@]}"} --setup "$AMIGA_SETUP" --no-right
     else
-      python3 ../tools/check_integration_result.py "$RUN" "$INTEGRATION_REFERENCE" "$INTEGRATION_TITLE_REFERENCE" --setup "$AMIGA_SETUP"
+      python3 ../tools/check_integration_result.py "$RUN" "$INTEGRATION_REFERENCE" "$INTEGRATION_TITLE_REFERENCE" ${title_args[@]+"${title_args[@]}"} --setup "$AMIGA_SETUP"
     fi
   elif [ "${AUDIO_ORDER_PROBE:-0}" = 1 ]; then
     python3 ../tools/check_audio_callback_order.py "$RUN" "$AUDIO_ORDER_REFERENCE"

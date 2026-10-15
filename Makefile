@@ -117,11 +117,14 @@ shared-runtime-check:
 	@shasum -a 256 -c manifest/shared-runtime.sha256
 
 .PHONY: integration-check integration-contracts-check
+# Optional documented reference reuse and explicit machine selection.
+INTEGRATION_CONTRACT_ARGS ?=
+INTEGRATION_CHECK_ARGS ?=
 integration-contracts-check: shared-runtime-check
-	@. amiga/env.sh && python3 tools/check_integration_contracts.py
+	@. amiga/env.sh && python3 tools/check_integration_contracts.py $(INTEGRATION_CONTRACT_ARGS)
 
 integration-check: host-tests audio-inputs integration-contracts-check
-	@. amiga/env.sh && python3 tools/check_integration.py
+	@. amiga/env.sh && python3 tools/check_integration.py $(INTEGRATION_CHECK_ARGS)
 
 .PHONY: play
 play: release

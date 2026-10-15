@@ -1,3 +1,4 @@
+local rectangles=dofile('tools/mac_rectangles.lua')
 -- Read-only original-call contracts for native startup integration.
 local M={}
 local cpu=manager.machine.devices[':maincpu'];local mem=cpu.spaces.program
@@ -98,6 +99,7 @@ function M.startNil()
  assert(not pending,'INTEGRATION PENDING AT FIXTURE')
  local code=(cpu.state.SP.value&0xffffff)-8192
  assert(code>0x100000,'INTEGRATION FIXTURE EXTENT')
+ if os.getenv('POP2_RECTANGLE_PROBE') then rectangles.start(code,M.finish);return end
  if os.getenv('POP2_EQUAL_RECT_PROBE') then
   equalBase=code;equalIndex=1
   mem:writev_u16(code,0xa8a6);mem:writev_u16(code+2,0x4e71)
@@ -149,6 +151,7 @@ function M.startFixed()
  nextFixed()
 end
 function M.poll()
+ if rectangles.poll()then return true end
  if not meta or dbg.execution_state~='stop' then return false end
  local pc=cpu.state.PC.value
  if fixedPC and pc==fixedPC then

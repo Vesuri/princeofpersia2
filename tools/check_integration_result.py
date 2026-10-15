@@ -1,6 +1,7 @@
 """Require original native title, first room, gameplay input and restoration."""
 import argparse
 import hashlib
+import json
 import re
 from pathlib import Path
 from check_core_result import restored
@@ -41,7 +42,7 @@ def reference_state(reference):
     return result
 
 
-def check(run, reference, title_reference, *, right_expected=True, setup="a1200-fast"):
+def check(run, reference, title_reference, *, right_expected=True, setup="a1200-fast", title_run=None):
     reference_state(reference)
     title = title_state_reference(title_reference, 16)
     log = (run/'gdb-out.log').read_text()
@@ -59,12 +60,21 @@ def check(run, reference, title_reference, *, right_expected=True, setup="a1200-
     stages = re.findall(r'^INTEGRATION STAGE (\d+) fields=\d+ right=\d+ kind=(\d+)$', log, re.M)
     require([int(s) for s, _ in stages] == [1, 2, 3, 4], 'ORDERED TITLE AND GAMEPLAY MILESTONES')
     require(stages[-1][1] == '3', 'ORIGINAL DEATH ROUTINE COMPLETION')
-    require(re.findall(r'^INTEGRATION TITLE phase=(\d+) cue=(\d+)$', log, re.M)==[('16','114')], 'PAIRED TITLE FRAME AND CUE')
+    title_source = title_run or run
+    title_log = (title_source/'gdb-out.log').read_text()
+    if title_run:
+        check(title_run, reference, title_reference, setup=setup)
+        flags = json.loads((run/'build-receipt.json').read_text())['flags']
+        require('-DPOP2_INTEGRATION_TITLE_STATE' not in flags, 'NATURAL ROUTE BUILD')
+        reached = re.findall(r'^INTEGRATION TITLE phase=(\d+) cue=(\d+)$', log, re.M)
+        require(len(reached)==1 and int(reached[0][0])>=3 and reached[0][1]=='114', 'NATURAL TITLE CUE')
+    require(re.findall(r'^INTEGRATION TITLE phase=(\d+) cue=(\d+)$', title_log, re.M)==[('16','114')], 'PAIRED TITLE FRAME AND CUE')
     for label in ('title', 'first-room'):
-        require(crop((run/(label+'-screen.bin')).read_bytes()) ==
+        source = title_source if label=='title' else run
+        require(crop((source/(label+'-screen.bin')).read_bytes()) ==
                 crop(title['indices'] if label=='title' else (reference/(label+'.indices')).read_bytes()), label+' PIXELS')
         # Color-table seed is bookkeeping; compare all flags, indices and RGB words.
-        colors = (run/(label+'-colors.bin')).read_bytes()
+        colors = (source/(label+'-colors.bin')).read_bytes()
         require(len(colors) == 2056 and colors[4:] ==
                 (title['clut'] if label=='title' else (reference/(label+'.clut')).read_bytes())[4:], label+' COLORS')
     expected = crop((reference/'first-room.indices').read_bytes())
@@ -91,7 +101,8 @@ if __name__ == '__main__':
     parser.add_argument('run', type=Path)
     parser.add_argument('reference', type=Path)
     parser.add_argument('title_reference', type=Path, help='state-paired original title renderer fixture')
+    parser.add_argument('--title-run', type=Path, help='separate state-paired native title fixture')
     parser.add_argument('--no-right', action='store_true', help='require the completed no-input control route')
     parser.add_argument('--setup', choices=['a1200-fast','a1200-030','a1200-040'], default='a1200-fast')
     args = parser.parse_args()
-    check(args.run, args.reference, args.title_reference, right_expected=not args.no_right, setup=args.setup)
+    check(args.run, args.reference, args.title_reference, right_expected=not args.no_right, setup=args.setup, title_run=args.title_run)

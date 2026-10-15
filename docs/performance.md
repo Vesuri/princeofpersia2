@@ -198,7 +198,7 @@ fields, the same late landing frames), while the unmodified preset is faster in
 the landing (24 against 35–36 fields). The profiles are thus a conservative model
 of the selected preset; neither establishes hardware timing.
 
-### Results
+### Baseline before reductions
 
 MEASURED, all runs with identical Kid records in all 81 frames:
 
@@ -243,6 +243,113 @@ Trivial traps (`SystemTask`, `HLock`, `HGetState`, `StripAddress`,
 Averaged over the scene, the trap-entry/dispatch bucket is 35.3 ms per 68030
 frame and 66.8 ms per 68020 frame. Item 19's plan in `docs/open-work.md` orders
 the reductions. The pins are in `manifest/opening-profile.sha256`.
+
+### Direct pure rectangle entries (19.1)
+
+`GetTrapAddress` returns direct Pascal entries for `SectRect`, `UnionRect` and
+`EmptyRect`. They preserve the original Boolean padding, stack cleanup, measured
+D0/D1 results and CCR, with stack, input/output range and return-owner checks.
+A failed check restores the entry registers and enters the existing `$AFFE`
+veneer for a named stop. `ClipRect`, ordinary Line-A calls and the existing
+LoadSeg/Exit patch dispatch remain on the full path. No original game code or
+frame publication policy changes.
+
+Alone in the Dark's quick-trap ABI and patched-entry selection were inspected
+first, along with Vette's runtime. Geometry uses AmigaXDev's `RectBounds` with
+its explicit load/store accessors and shared `BigEndianMemory` word operations.
+The canonical accessor extension is pinned in `manifest/references.tsv` and
+published on AmigaXDev's `codex/pure-rectangle-accessors` branch. It was prepared
+and installed to an isolated prefix from a clean checkout because the main
+working tree has unrelated changes. Default byte-access overloads remain for
+existing consumers; no independent geometry implementation was added here.
+
+MEASURED on the same exact-cycle, no-MMU `a1200-030` model described above:
+`rect-before-a/b` and `rect-final-a/b`, two completed runs on each side. Mean
+inclusive time per cached call over all 81 frames:
+
+| Service | Calls per run | Before (µs) | After (µs) |
+|---|---:|---:|---:|
+| SectRect | 8,725 | 126.39–128.71 | 13.88–13.91 |
+| UnionRect | 1,297 | 122.60–130.28 | 13.84–13.92 |
+| EmptyRect | 1,096 | 98.60–106.68 | 7.85–7.96 |
+
+All three pass the ≤15 µs mean-call gate in both final runs, including their
+ownership checks. The following ranges cover the two repeats, in ms/frame.
+`work` excludes the original wait loop, so reduced work can become additional
+idle time while the original requested cadence stays intact.
+
+| Phase | Before total | After total | Before outside wait | After outside wait |
+|---|---:|---:|---:|---:|
+| 0 landing | 137.9–142.9 | 112.1 | 137.9–142.9 | 112.1 |
+| 1 stand-off | 85.9–86.3 | 83.2–83.5 | 67.0–67.2 | 51.1–51.5 |
+| 2 attack | 97.4–98.7 | 98.3–98.5 | 67.9–68.5 | 51.4–52.5 |
+| 3 attack | 98.7–99.3 | 98.6–98.8 | 67.8–68.3 | 50.6–51.6 |
+| 4 fall | 97.4–97.5 | 98.2 | 40.3–41.1 | 29.9–30.4 |
+
+The window takes 392–393 fields before and 381 after. All four runs have the
+same 81 Kid records, counters/phases, first-room pixels/palette and death pixels;
+both pairs pass the repeat check. Original timer requests match
+`ref/mame/runs/opening-noright-1`. Late intervals in this conservative model fall
+from 9–10 to 6–7 of 81; this step does not close item 19's final cadence gate or
+claim real-hardware timings. The profiler now resolves a function that aliases
+the cached-table end marker and gives direct rectangle bodies their own bucket.
+
+The authored `mac_rectangles.lua` / `POP2_RECTANGLE_PROBE` fixture pairs 1,220
+calls with System 7.5.5 (`rectangles-original-final`): signed extremes, negative
+bounds, empty/inverted/touching/overlapping rectangles, both input aliases and
+a separate destination, and two incoming CCR patterns. It compares rectangle
+bytes, all data registers, Boolean padding and CCR; the native fixture also
+checks A2–A6, exact Pascal stack cleanup and 13 rejected stack/owner/pointer
+conditions. The fixture calls the production entries on the real game stack,
+resumes the route and requires hardware restoration. It is excluded from release.
+The final native fixture passes all of these comparisons and resumes to the
+normal route-completion stop. The original normalized contract is pinned in
+`manifest/pure-rectangles-reference.sha256`; native fixture and all four profile
+inputs/results are pinned in `manifest/pure-rectangles.sha256`.
+
+The fresh integration attempt passed all four service contracts but rejected
+its first gameplay reference at the existing A5 pin: `20261015-151738-f9137e07`
+differs only at A5−0B77 outside the already normalized clock words. Its pixels,
+palette and context match. The failure is retained under item 16; no pin or
+normalization was weakened. The integration regression uses the documented
+pinned-reference mode and explicit `--setup a1200-030`, propagated through
+all native checks and rejection controls. The old harness assumed every native
+logo capture would occur at frame 16, despite using a controlled frame-16 original
+renderer fixture. The title comparison now uses the same guarded frame-15 cue
+input in a separate verification-only native run. Natural gameplay repeats and
+the no-Right control exclude that define and retain their full first-room,
+input, completion and restoration checks.
+
+The common regression gates pass on `a1200-030`: the complete integration gate
+(state-paired title plus two natural runs and no-Right control), VBL and Time
+Manager fixtures with 12 rejected alterations each, and 58 consecutive original
+five-tick cadence intervals with six rejected alterations. Integration rejects
+20 altered native title fixtures, 19 altered natural-route fixtures and six
+altered original title fixtures. EqualRect's 36 original cases, portable helper
+checks and shared sanitizer tests also pass. The ordinary release link/symbol
+audit is unchanged and passes; `make release` restores ordinary play. The final
+profile executable remains byte-identical after the verification-only title
+harness changes. No new fixture or title-state probe is present in release.
+
+Reproduce the paired fixture (choose an unused original run name):
+
+```sh
+. amiga/env.sh
+POP2_INTEGRATION=1 POP2_NULL_DISPOSE=1 POP2_RECTANGLE_PROBE=1 \
+  python3 tools/run_reference.py --name rectangles-original-repeat
+make -C amiga VERIFY=1 EXTRA_DEFINES='-DPOP2_CORE -DPOP2_DISPLAY -DPOP2_INPUT -DPOP2_UI -DPOP2_AUDIO -DPOP2_INTEGRATION_PROBE -DPOP2_RECTANGLE_PROBE'
+AMIGA_SETUP=a1200-030 CORE=1 \
+  RECTANGLE_REFERENCE="$PWD/ref/mame/runs/rectangles-original-repeat" \
+  GDBSCRIPT="$PWD/amiga/rectangles.gdb" DEADLINE=1200 bash amiga/run.sh
+```
+
+For each of the four profile names above, run `aprof_report.py opening NAME
+--original ref/mame/runs/opening-noright-1`, then `report NAME --phase N` and
+`work NAME --phase N` for N = 0 through 4. Use `opening rect-final-b --compare
+rect-final-a --original ref/mame/runs/opening-noright-1` for the final repeat and
+`calls NAME pop2SectRect` (or `pop2UnionRect`, `pop2EmptyRect`) for inclusive
+costs. Before-change call labels are `CACHED SectRect`, `CACHED UnionRect` and
+`CACHED EmptyRect`. Restore ordinary play with `make release` after probes.
 
 ## Scenes to retain for future profiling
 

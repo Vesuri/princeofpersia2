@@ -25,3 +25,5 @@ AmigaXDev	82aa455066df307af1c0c6c3da2de34d653b2d12	shared instruction/cycle prof
 AmigaXDev	c3fd8409a933b194991822f865d653742abdfb24	shared video tick field phase and PAL sub-field clock calculation
 AmigaXDev	9aab35291581d19fafea82ac0f63c75149d2ec0b	shared ResourceStage extraction prepared in a clean checkout; identical Alone in the Dark 68020 code and relocations
 AmigaXDev	a58c461c8164fac8f6e7416d1fd59a31a6af8898	shared resource writer with transaction-owned heap layout; clean checkout and portable publication controls
+Alone in the Dark	a39531ba15f9d9d21128d1b370b48eb89bc8a2df	quick-trap saved-image ABI, patched-entry fallback and shared RectBounds inspected for direct pure Pascal rectangle veneers
+AmigaXDev	b61c3235d115adb59ef4db3c2dd928f6e2b5823b	canonical rectangle load/store accessors, shared portable geometry with native BigEndianMemory specialization; clean checkout and sanitizer alias tests

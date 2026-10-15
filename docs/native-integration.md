@@ -4,8 +4,7 @@ The verified native route executes original startup, the opening cutscene, title
 and first playable room on the Amiga. The original game consumes Space to start
 and Right during gameplay. Full first-room pixels, colours and curated state
 match the natural Macintosh reference. The title rendering comparison uses a
-separate state-paired original fixture, described below. Timing fidelity remains
-item 11; all-level and lifecycle coverage remains item 12.
+separate state-paired original fixture, described below. Timing and accepted all-level coverage are described in their dedicated reports.
 
 ## Reproduction
 
@@ -31,7 +30,8 @@ or incomplete inputs, then checks the restored positive evidence again.
 audio-input verification, then runs the full native integration gate with
 `VERIFY=1`. Ordinary builds disable runtime hashing, trap/resource/volume logs
 and verification snapshots. The native
-gate compares two original references and two native routes, exercises a no-Right
+gate compares two original references and two natural native routes, runs a
+separate state-paired native title fixture, exercises a no-Right
 input control, and rejects deliberately altered completion, state, display and
 restoration evidence. Its acceptance requires:
 
@@ -50,8 +50,8 @@ The integration build uses test-only wrappers for fixed seed, milestone capture
 and timed input. Original game routines still execute. The default route lets the
 opening cutscene finish naturally; it does not press Escape to bypass the title.
 A deadline, missing milestone or named unsupported-service stop fails the gate.
-The full integration gate passes, including two positive native routes, 20
-altered-native-evidence rejections and the no-Right control. Six altered title
+The full integration gate passes, including two positive native routes, 20 title-fixture and 19 natural-route
+altered-evidence rejections and the no-Right control. Six altered title
 reference fixtures are also rejected. Audio and UI regressions pass, as do a
 fresh native save replay, changed settings across reboot, and rejection of writes
 to immutable installed data. These regressions retain their separate service
@@ -75,27 +75,40 @@ selects the separate original diagnostic; its completion marker and seed checks
 are distinct from the normal game route. Its log hash is pinned in
 `manifest/integration-demo-reference.sha256`.
 
-The title callback argument is an advancing animation-frame counter. The native
-input checkpoint follows the first completed logo frame, identified by cue 114
-after CODE 15+70ca/70cc selects it. The current native build reaches that state at
-frame 16; the natural Macintosh title capture is at frame 32. Their animated
-cloud positions differ, so those images are not a state-paired comparison.
+The title callback argument is an advancing animation-frame counter. Natural
+native input follows the first completed logo frame, identified by cue 114 after
+CODE 15+70ca/70cc selects it. Its frame number depends on service cost (frame 70
+in the item-19.1 030 run); comparing that image to a fixed frame-16 reference
+would compare different cloud positions.
 
 `POP2_TITLE_STATE=16 POP2_DISPLAY_ROUTE=1 POP2_NATURAL_OPENING=1` selects a separate
 original-renderer fixture. At guarded CODE 15+6fec, frame 15, it verifies cue 100
-and supplies the native run's measured cue 101. Original code then selects and
-draws the logo; frame 16 must report cue 114 before capture and explicit completion.
-This controlled rendering fixture does not prove natural startup or gameplay.
-Two independent fixture runs match the pins in
-`manifest/integration-title-state-reference.sha256`, and their complete viewport
-pixels and colour entries match the native title. The natural Macintosh routes
-remain the unmodified first-room references. No native game decision is changed
-to obtain the title match; timing equivalence remains item 11.
+and supplies cue 101. Original code then selects and draws the logo; frame 16
+must report cue 114 before capture and explicit completion. Two independent
+original fixture runs match `manifest/integration-title-state-reference.sha256`.
+
+The separate native `POP2_INTEGRATION_TITLE_STATE` verification build supplies
+that same guarded input at frame 15. Its complete viewport and colours must
+match the original fixture at frame 16/cue 114. It also completes gameplay and
+restores hardware. This controlled renderer check does not prove natural title
+timing. The two natural native routes and no-Right control are built without
+that define; their receipts are checked, and their first-room state/pixels are
+compared to the natural Macintosh references. The altered-evidence controls
+cover the title fixture and natural routes separately. Release builds reject
+the title-state define.
 
 `make integration-check` creates the natural and state-paired references. To use
 existing verified captures, run `tools/check_integration.py` with
 `--references NATURAL NATURAL_REPEAT --title-reference TITLE_STATE` after sourcing
-`amiga/env.sh`. Missing Space consumption, mismatched title frame/cue, any viewport
+`amiga/env.sh`. Add `--setup a1200-030` to validate that selected machine; it
+applies to the launcher and every result/rejection check. The Make target accepts
+these options through `INTEGRATION_CHECK_ARGS`; `INTEGRATION_CONTRACT_ARGS`
+likewise passes the four existing service references to the contract checker.
+`--completed-native TITLE NATURAL REPEAT` can recheck completed native runs:
+the gate rebuilds each variant and requires matching executable hashes and flags,
+verifies the retained executable/symbol hashes, and reruns every result/control
+check. The no-Right control still executes afresh. Reference hashes and completion
+checks are identical in fresh and reuse modes. Missing Space consumption, mismatched title frame/cue, any viewport
 pixel mismatch, or missing route completion fails the gate.
 
 The fresh integration references leave the opening uninterrupted. The reference
