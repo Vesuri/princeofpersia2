@@ -195,7 +195,7 @@ pop2_resource_fixture:
 	move.w (sp)+,(a3)
 	clr.l -(sp)
 	move.l #0x44534c56,-(sp)
-	move.w #0x1900,-(sp)
+	move.w g_resourceProbeID,-(sp)
 	.word 0xa9a0
 	move.l (sp)+,g_resourceProbeOption
 	clr.l -(sp)

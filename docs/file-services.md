@@ -126,8 +126,14 @@ forks, with a 64 KiB read cache per nonresident fork. Its total capacity is 4,09
 resources, while each fork retains the parser's 768-resource limit. The measured
 application/Prince/Kid/NIS/options chain contains 1,123 resources.
 Open, current-file selection, lookup through older files, resource information,
-loading, detachment and closing are connected to the runtime. Dirty resource
-publication remains unsupported; D9 excludes in-place data packing.
+loading, detachment and closing are connected to the runtime. The reached
+AddResource/WriteResource path publishes the generated dissolve cache to the
+options resource fork through the shared staged writer. Close publishes pending
+changes; other asset forks remain immutable. Invalid ownership and unmeasured
+dirty-handle release/detachment remain loud stops. D9 still excludes in-place
+data packing. The generated cache matches the original's initialized bytes and
+reloads through a fresh-boot resource fixture; level eight reaches level nine,
+with the boundary/context pairing failures recorded in gameplay coverage.
 
 The diagnostic `POP2_RESOURCE_PROBE` opens Prince, Kid, NIS and options resource
 forks. The options filename is passed directly from its original CODE 2+$4284

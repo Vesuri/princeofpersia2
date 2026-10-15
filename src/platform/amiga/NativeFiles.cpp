@@ -142,11 +142,11 @@ int32_t verifyOperation(void* context) {
         if(s.verified[fork])return 0;
         char path[192];int32_t error=files.forkPath(v.id,v.resource,path,sizeof(path));if(error)return error;
         if(!verify(path,s.size[fork],s.hash[fork])) {
-            // The options data fork is persistent user state. Its immutable
-            // resource fork still uses the original hash. Installation verifies
-            // the initial data; later runs accept the game's 16-byte settings.
+            // Options data and the dissolve-cache resource fork are persistent
+            // user state. ResourceDirectory validates the mutable map on open;
+            // installation verifies the original inputs.
             uint32_t size=0;
-            if(!s.settings || v.resource || !sizeOf(path,size) || size!=s.size[0])return MacFiles::unsupported;
+            if(!s.settings || !sizeOf(path,size) || size!=s.size[fork])return MacFiles::unsupported;
         }
         s.verified[fork]=true;return 0;
     }
@@ -236,6 +236,23 @@ int32_t metadataOperation(void* context) {
 }
 }
 namespace NativeFiles {
+bool mutableResource(uint32_t id) {
+    for(const auto& source:sources)if(source.id==id)return source.settings;
+    return false;
+}
+int32_t resourcePublished(int16_t ref,uint32_t size) {
+    const auto* fork=files.fork(ref);
+    if(!fork || !fork->resource || !fork->writable || !mutableResource(fork->id))return MacFiles::unsupported;
+    int32_t error=files.setSize(ref,size,true);if(error)return error;
+    for(auto& source:sources)if(source.id==fork->id){source.size[1]=size;source.verified[1]=true;}
+    files.flushed(fork->id,true);
+    struct Update { uint32_t id; } update={fork->id};
+    return pop2SystemWindow([](void* context)->int32_t {
+        uint32_t id=((Update*)context)->id;auto record=files.entry(id)->metadata;
+        record.modified=metadataTime();if(!record.modified)return MacFiles::unsupported;
+        return storeRecord(id,record);
+    },&update);
+}
 MacFiles& catalog() { return files; }
 const FileTransfers::Backend& backend() { return operations; }
 bool prepare() {
@@ -264,6 +281,7 @@ bool prepare() {
             record.finder[8]&=0xfe;
         } else if(!settings || !metadataRead(path,record))return false;
         bool data=n>5 && name[0]=='D' && name[1]=='a' && name[2]=='t' && name[3]=='a' && name[4]=='/';
+        if(settings && (!suffix(path,name,".rsrc") || !sizeOf(path,rs) || rs>0x1000000UL))return false;
         int32_t id=files.add(data ? files.data : files.application,data ? name+5 : name,name,false,ds,rs);
         if(id<0 || files.setMetadata(id,record))return false;
         Source& source=sources[i];source.settings=settings;source.id=id;source.size[0]=ds;source.size[1]=rs;

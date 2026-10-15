@@ -172,6 +172,14 @@ __attribute__((noinline)) void pop2DisplayServicesComplete() { __asm__ volatile(
 void pop2_resource_fixture();void pop2_resource_fixture_end();
 uint32_t g_specProbeCount=0,g_specProbePaths[11]={},g_specProbeOutputs[11]={};int16_t g_specProbeResults[11]={};
 uint32_t g_resourceProbeNames[4]={},g_resourceProbeHandle=0,g_resourceProbeOption=0,g_resourceProbeInfo=0;
+#ifdef POP2_RESOURCE_CACHE_PROBE
+#if !defined(POP2_VERIFY) || !defined(POP2_RESOURCE_PROBE)
+#error Cache readback requires the explicit resource verification fixture
+#endif
+uint16_t g_resourceProbeID=6401;
+#else
+uint16_t g_resourceProbeID=6400;
+#endif
 uint16_t g_resourceProbeRefs[4]={};uint32_t g_resourceProbeSizes[2]={};
 uint32_t g_fileProbePB=0,g_fileProbeBuffer=0,g_fileProbeResults[3]={0xffffffff,0xffffffff,0xffffffff};
 uint32_t g_fileProbeWriteMode=0;int32_t g_fileProbeWriteResult=-1;
@@ -249,7 +257,7 @@ uint8_t* videoTransfer=nullptr;uint32_t videoTransferSize=0;
 bool didStop=false;
 uint8_t auditBuffer[65536];
 uint8_t* patchedLoad=0;uint8_t* patchedExit=0;
-struct Resource { uint32_t type;int16_t id;OriginalApplication::Resource source;MacHeap::Handle handle;bool detached;uint32_t identity;int16_t fileRef; };
+struct Resource { uint32_t type;int16_t id;OriginalApplication::Resource source;MacHeap::Handle handle;bool detached;uint32_t identity;int16_t fileRef;uint8_t changes; };
 Resource resources[1024]={};unsigned resourceCount=0;int16_t resourceError=0;
 bool validMemory(uint32_t at,uint32_t n) {
     return (at>=(uint32_t)stack && at-(uint32_t)stack<=65536 && n<=65536-(at-(uint32_t)stack)) ||
@@ -392,6 +400,42 @@ Resource* byHandle(MacHeap::Handle h) {
     for(unsigned i=0;i<resourceCount;++i)if(resources[i].handle==h)return resources+i;
     return 0;
 }
+int32_t resourceHandleRead(void* context,uint32_t offset,uint8_t* bytes,uint32_t count,uint32_t& actual) {
+    actual=0;auto handle=(MacHeap::Handle)context;
+    if(!heap.isHandle(handle) || !*handle)return MacFiles::unsupported;
+    uint32_t size=heap.handleSize(handle);
+    if(offset>size || count>size-offset)return MacFiles::unsupported;
+    copy(bytes,*handle+offset,count);actual=count;return 0;
+}
+struct ResourceSelection {
+    Resource* only;
+    static int32_t payload(void* context,uint32_t identity,ResourceForks::Source& source,uint32_t& offset,uint32_t& size) {
+        Resource* only=((ResourceSelection*)context)->only;
+        for(unsigned i=0;i<resourceCount;++i) {
+            Resource& r=resources[i];if(r.identity!=identity || r.detached)continue;
+            if(only && only!=&r && (r.changes&2))return ResourceDirectory::omitEntry;
+            if((r.changes&1) && (!only || only==&r)) {
+                if(!heap.isHandle(r.handle) || !*r.handle)return MacFiles::unsupported;
+                size=heap.handleSize(r.handle);source={r.handle,size,resourceHandleRead};offset=0;
+            }
+            return 0;
+        }
+        return 0; // Unloaded, unchanged entries retain their disk source.
+    }
+};
+int32_t publishResources(int16_t ref,Resource* only=0) {
+    bool dirty=NativeResources::dirty(ref);
+    for(unsigned i=0;i<resourceCount;++i)if(resources[i].fileRef==ref && !resources[i].detached && resources[i].changes)dirty=true;
+    if(!dirty)return 0;
+    ResourceSelection selection={only};
+    int32_t result=NativeResources::publish(ref,ResourceSelection::payload,&selection);
+    if(!result)for(unsigned i=0;i<resourceCount;++i) {
+        Resource& r=resources[i];if(r.fileRef==ref && !r.detached && (!only || only==&r)) {
+            r.changes=0;if(r.handle)r.source.size=heap.handleSize(r.handle);
+        }
+    }
+    return result;
+}
 bool load(Resource& r) {
     if(*r.handle)return true;
     if(heap.reallocateHandle(r.handle,r.source.size))return fail("RESOURCE / ALLOCATION");
@@ -422,7 +466,7 @@ Resource* get(uint32_t type,int16_t id) {
     }
     unsigned index=0;while(index<resourceCount && resources[index].handle)++index;
     if(index==1024) { fail("RESOURCE / SLOT CAPACITY");return 0; }
-    Resource& r=resources[index];r.type=type;r.id=id;r.detached=false;r.identity=item.identity;r.fileRef=item.file;
+    Resource& r=resources[index];r.type=type;r.id=id;r.detached=false;r.identity=item.identity;r.fileRef=item.file;r.changes=0;
     r.source={0,item.size,item.attributes};
     r.handle=heap.newEmptyHandle();if(!r.handle) { fail("RESOURCE / MASTER POINTER");return 0; }
     if(index==resourceCount)++resourceCount;heap.setState(r.handle,0x20);
@@ -1487,7 +1531,8 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
     case 0xa9af:sw(usp,resourceError);break;
     case 0xa998:case 0xa99a: {
         int16_t ref=(int16_t)w(usp);
-        resourceError=trap==0xa998 ? NativeResources::use(ref) : NativeResources::close(ref);
+        resourceError=trap==0xa998 ? NativeResources::use(ref) : publishResources(ref);
+        if(!resourceError && trap==0xa99a)resourceError=NativeResources::close(ref);
         if(resourceError==MacFiles::unsupported) {fail("RESOURCE / FILE OPERATION UNSUPPORTED");goto failed;}
         if(!resourceError && trap==0xa99a)for(unsigned i=0;i<resourceCount;++i) {
             Resource& r=resources[i];if(r.handle && !r.detached && r.fileRef==ref) {
@@ -1495,6 +1540,44 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
             }
         }
         sw(low+0xa60,resourceError);sw(low+0xa5a,NativeResources::current());if(trap==0xa99a)regs[0]=(uint16_t)resourceError;consumed=2;break;
+    }
+    case 0xa9ab: {
+        // Adapt Alone in the Dark's argument/ownership checks; metadata and
+        // payload ownership remain in the shared ResourceDirectory.
+        if(!validMemory((uint32_t)usp,14)) {fail("RESOURCE / ADD ARGUMENTS");goto failed;}
+        auto h=(MacHeap::Handle)l(usp+10);uint32_t name=l(usp);
+        Resource* existing=byHandle(h);
+        if(!heap.isHandle(h) || !*h || (existing && !existing->detached) ||
+           !validMemory(name,1) || !validMemory(name,uint32_t(*(uint8_t*)name)+1)) {
+            fail("RESOURCE / ADD OWNERSHIP OR NAME");goto failed;
+        }
+        unsigned index=existing ? unsigned(existing-resources) : 0;
+        if(!existing)while(index<resourceCount && resources[index].handle)++index;
+        if(index==1024) {fail("RESOURCE / ADD SLOT CAPACITY");goto failed;}
+        uint32_t size=heap.handleSize(h);const uint8_t* label=(const uint8_t*)name;
+        ResourceWriter::Entry entry={l(usp+6),(int16_t)w(usp+4),0,label+1,label[0],{h,size,resourceHandleRead},0,size};
+        NativeResources::Item item={};resourceError=NativeResources::add(entry,item);
+        if(resourceError) {fail("RESOURCE / ADD UNMEASURED RESULT");goto failed;}
+        Resource& r=resources[index];r.type=item.type;r.id=item.id;r.detached=false;
+        r.identity=item.identity;r.fileRef=item.file;r.source={0,size,item.attributes};r.handle=h;r.changes=3;
+        if(index==resourceCount)++resourceCount;
+        error=heap.setState(h,(heap.state(h)|0x20)&~0x40);
+        sw(low+0xa60,0);regs[0]=0;consumed=14;break;
+    }
+    case 0xa9b0: {
+        auto h=(MacHeap::Handle)l(usp);Resource* r=byHandle(h);
+        if(!r || r->detached || !heap.isHandle(h) || !*h) {fail("RESOURCE / WRITE OWNER");goto failed;}
+        resourceError=(r->changes&1) ? publishResources(r->fileRef,r) : 0;
+        if(resourceError) {fail("RESOURCE / WRITE PUBLICATION");goto failed;}
+        error=0;sw(low+0xa60,0);regs[0]=0;consumed=4;break;
+    }
+    case 0xa9ad: {
+        auto h=(MacHeap::Handle)l(usp);Resource* r=byHandle(h);
+        if(!r || r->detached || !heap.isHandle(h) || !*h) {fail("RESOURCE / REMOVE OWNER");goto failed;}
+        resourceError=NativeResources::remove(r->identity);
+        if(resourceError) {fail("RESOURCE / REMOVE UNMEASURED RESULT");goto failed;}
+        r->detached=true;r->changes=0;error=heap.setState(h,heap.state(h)&~0x20);
+        sw(low+0xa60,0);regs[0]=0;consumed=4;break;
     }
     case 0xa9a4:case 0xa9a8: {
         if(trap==0xa9a8 && !validMemory((uint32_t)usp,16)) {fail("RESOURCE / INFO ARGUMENTS");goto failed;}
@@ -1528,12 +1611,14 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
         if(trap==0xa9a5)sl(usp+4,r->source.size);
         if(trap==0xa9a6)sw(usp+4,r->source.attributes);
         if(trap==0xa9a2 && !load(*r))goto failed;
+        if(trap==0xa992 && r->changes) {fail("RESOURCE / DETACH DIRTY HANDLE");goto failed;}
         if(trap==0xa992) { r->detached=true;heap.setState(h,heap.state(h)&~0x20);regs[0]=0; }
         if(trap==0xa9a3) {
 #ifdef POP2_VERIFY
             if(seg==1 && off==0x120)copy(initial,world,g_coreBelow);
 #endif
             if(r->detached) { fail("RESOURCE / RELEASE DETACHED");goto failed; }
+            if(r->changes) {fail("RESOURCE / RELEASE DIRTY HANDLE");goto failed;}
             error=heap.disposeHandle(h);r->handle=0;r->detached=true;
         }
         consumed=4;break;

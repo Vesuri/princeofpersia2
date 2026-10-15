@@ -55,7 +55,7 @@ and bounded captures. Original bytes, saved state and captures remain ignored.
 | Level 5 | Meaningful gameplay route and original level-exit decision | Clean assisted original repeat and native pair pass all 46 checkpoints; carpet NIS 1 returns and level six begins |
 | Level 6 | Meaningful gameplay route and original level-exit decision | Native reaches level seven; intermediate state/pixel comparison failures unresolved |
 | Level 7 | Meaningful gameplay route and original level-exit decision | Clean original and fresh repeat reach level eight; native first-frame boundary differs by two frames |
-| Level 8 | Meaningful gameplay route and original level-exit decision | Clean original repeat passes; native AddResource loud stop in sword cutscene |
+| Level 8 | Meaningful gameplay route and original level-exit decision | Native reaches level nine after cache-write fix; one-step early boundary and full-context differences remain |
 | Level 9 | Meaningful gameplay route and original level-exit decision | Original repeat and native pair pass all 15 checkpoints |
 | Level 10 | Meaningful gameplay route and original level-exit decision | Clean original repeat passes; native reaches level eleven two frames early, comparison remains open |
 | Level 11 | Meaningful gameplay route and original level-exit decision | Original repeat passes; native reaches level twelve two frames early, comparison remains open |
@@ -1103,6 +1103,17 @@ The dedicated `--readback` check passes resource metadata, complete payload,
 A1200-030 configuration, fixture completion and restoration. Its controls reject
 missing completion, changed payload/metadata, an unfinished shell and the wrong
 CPU. The generic core launcher check lacks `CORE_REFERENCE`; this dedicated
-result establishes only the resource fixture, not full core or gameplay acceptance. The gameplay run still stops at CODE 15+39A4,
-`DISPLAY / PIXMAP OWNERSHIP`, after publication. Full transition and resource-write
-integration acceptance remain open.
+result establishes only the resource fixture, not full core or gameplay acceptance. That earlier gameplay run stops at CODE 15+39A4,
+`DISPLAY / PIXMAP OWNERSHIP`, after publication; the corrected run below
+supersedes that failure.
+
+Native `.run-IRSLhX`, using the shared heap-owned writer layout, passes the
+former AddResource and graphics-ownership stops and reaches level nine, room 10,
+at step 489 (491 key reads). Original `gameplay-assisted-level8-clean-2` reaches
+that boundary at step 490 (492 reads); the strict first-frame guard therefore
+rejects this route. All 48 captured pre-stop checkpoints pass `paired_frame`.
+Full context differs at checkpoints 11..47, with differing bytes within
+context offsets 0x2008..0x2027; their meaning is not yet established. Code/input
+and hardware/heap restoration pass. The published cache passes the original
+initialized-payload comparison. `manifest/gameplay-level8-native-write.sha256`
+pins this partial evidence; it does not establish full route acceptance.

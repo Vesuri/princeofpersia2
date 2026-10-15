@@ -3,6 +3,8 @@
 #include "mac/FileTransfers.h"
 namespace NativeFiles {
 bool prepare();
+bool mutableResource(uint32_t id);
+int32_t resourcePublished(int16_t ref,uint32_t size);
 bool handles(uint16_t trap,uint16_t selector);
 int32_t dispatch(uint16_t trap,uint16_t selector,uint8_t* parameterBlock,uint8_t* buffer,const char* name,uint8_t* nameOutput=0);
 int32_t openFork(int16_t volume,uint32_t directory,const char* name,bool resource,uint8_t permission,int16_t& ref);
