@@ -18,8 +18,19 @@ def check(native, original=ROOT/'tmp/resource-write-original', manifest=ROOT/'ma
     assert set(expected)=={(b'DSLV',6400),(b'DSLV',6401)}, 'RESOURCE WRITE / ORIGINAL CACHE MEMBERS'
     assert len(expected[(b'DSLV',6401)][2])==373788, 'RESOURCE WRITE / ORIGINAL CACHE SIZE'
     actual=records(native)
-    assert actual==expected, 'RESOURCE WRITE / PERSISTED MAP OR PAYLOAD'
-    print('RESOURCE WRITE FILE PASS: original-paired names, attributes and both DSLV payloads; boot/load still requires live evidence')
+    assert actual.keys()==expected.keys(), 'RESOURCE WRITE / PERSISTED MAP OR PAYLOAD'
+    for key,(attrs,name,body) in expected.items():
+        got_attrs,got_name,got_body=actual[key]
+        assert (got_attrs,got_name,len(got_body))==(attrs,name,len(body)), 'RESOURCE WRITE / PERSISTED MAP OR PAYLOAD'
+        if key==(b'DSLV',6401):
+            # DERIVED: MakeDisolveData leaves bytes 12..19 uninitialized.
+            # InitDissolve publishes at CODE 15+2D0E before SetDisolveDelays
+            # at +2D1C writes both timing fields (+3C4A/+3C54). Compare all
+            # initialized bytes, without imposing either heap's old contents.
+            assert got_body[:12]==body[:12] and got_body[20:]==body[20:], 'RESOURCE WRITE / PERSISTED MAP OR PAYLOAD'
+        else:
+            assert got_body==body, 'RESOURCE WRITE / PERSISTED MAP OR PAYLOAD'
+    print('RESOURCE WRITE FILE PASS: original-paired map and initialized payloads (DSLV 6401 pre-calibration bytes 12..19 excluded); boot/load still requires live evidence')
 
 
 if __name__=='__main__':

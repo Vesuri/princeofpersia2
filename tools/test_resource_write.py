@@ -23,5 +23,17 @@ class ResourceWrite(unittest.TestCase):
             changed=Path(folder)/'changed.rsrc';changed.write_bytes(body)
             with self.assertRaises(AssertionError):check(changed)
 
+    def test_precalibration_fields_only(self):
+        source=ROOT/'tmp/resource-write-original/Prince2.opt.rsrc'
+        payload=next(r.body for r in read_resource_fork(source) if r.kind==b'DSLV' and r.rid==6401)
+        body=bytearray(source.read_bytes());at=body.find(payload)
+        self.assertGreaterEqual(at,0)
+        with tempfile.TemporaryDirectory(dir=ROOT/'tmp',prefix='resource-write-control-') as folder:
+            changed=Path(folder)/'changed.rsrc'
+            body[at+12:at+20]=bytes(8);changed.write_bytes(body);check(changed)
+            for offset in (0,11,20,len(payload)-1):
+                corrupt=body.copy();corrupt[at+offset]^=1;changed.write_bytes(corrupt)
+                with self.assertRaises(AssertionError):check(changed)
+
 
 if __name__=='__main__':unittest.main()

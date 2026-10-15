@@ -1082,7 +1082,24 @@ DSLV 6400 (176,668 bytes) and the generated DSLV 6401 (373,788 bytes) in
 `Prince2.opt`. The exported forks and MacBinary wrapper are pinned in
 `manifest/resource-write-output.sha256` and retained in ignored
 `tmp/resource-write-original`. `tools/check_resource_write.py` compares names,
-attributes and complete payloads rather than requiring identical resource-map
+attributes and initialized payloads rather than requiring identical resource-map
 packing. Its controls reject an unchanged original file and a corrupted cache.
 This exported oracle does not itself establish native write or fresh-boot load
 acceptance.
+
+Native `.run-dyQmd3` publishes both cache resources and passes that comparison.
+The generated cache differs only at bytes 12..19. DERIVED: `MakeDisolveData`
+(CODE 15+2D7A) leaves those timing fields uninitialized; `InitDissolve` saves the
+cache at +2D0E before calling `SetDisolveDelays` at +2D1C. The latter writes both
+fields at +3C4A/+3C54 after three calibration passes. The checker excludes only
+those eight pre-calibration bytes of DSLV 6401; controls reject changes immediately
+outside that range, missing publication and corrupted drawing data. DSLV 6400
+remains compared in full.
+
+Fresh boot `.run-ZTGAT7` loads DSLV 6401 through the resource-service probe;
+all 373,788 bytes match the native-written payload, including the timing fields.
+`manifest/resource-write-native-observation.sha256` pins this bounded evidence.
+The generic launcher checker lacks `CORE_REFERENCE` and does not pass; this is
+payload-readback evidence only. The gameplay run still stops at CODE 15+39A4,
+`DISPLAY / PIXMAP OWNERSHIP`, after publication. Full transition and resource-write
+integration acceptance remain open.

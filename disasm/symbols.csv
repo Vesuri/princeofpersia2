@@ -1118,3 +1118,8 @@ segment,offset,name,evidence,notes
 6,0x4AD2,HorseExitAdvanceLevel,DERIVED,Original room-eight top-row running jump advances level nine to ten in assisted level9-1
 5,0x2304,GetLinkCell,DERIVED,Original link record index uses context plus 0x1680 with stride 10 and cell at offset 2; MacsBug name at 0x2334
 5,0x23CE,GetLinkRoom,DERIVED,Original link record index uses context plus 0x1680 with stride 10 and room at offset 0; MacsBug name at 0x23FC
+15,0x2C40,InitDissolve,DERIVED,Loads or generates cache then always calibrates present data before drawing
+15,0x2D7A,MakeDisolveData,DERIVED,Writes header bytes 0..11 and drawing records from byte 20; timing fields 12..19 untouched
+15,0x396C,DissolveTime,DERIVED,Calibration workload consumes drawing records starting at byte 20
+15,0x3B9A,DisolveDelay,DERIVED,Reads calibrated timing fields at cache offsets 12 and 16
+15,0x3BFA,SetDisolveDelays,DERIVED,Three timing passes; stores timing fields at CODE 15+3C4A and +3C54
