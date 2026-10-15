@@ -1076,3 +1076,13 @@ checkpoint matches, and the observer and reference launcher complete.
 `manifest/gameplay-level10-audio.sha256` pins its trace and commands.
 The exit interval contains driver clock queries (selector 15); this is evidence
 for the timing investigation, not a proven cause or a native acceptance result.
+
+The stopped original `gameplay-assisted-level8-resource-1` disk contains
+DSLV 6400 (176,668 bytes) and the generated DSLV 6401 (373,788 bytes) in
+`Prince2.opt`. The exported forks and MacBinary wrapper are pinned in
+`manifest/resource-write-output.sha256` and retained in ignored
+`tmp/resource-write-original`. `tools/check_resource_write.py` compares names,
+attributes and complete payloads rather than requiring identical resource-map
+packing. Its controls reject an unchanged original file and a corrupted cache.
+This exported oracle does not itself establish native write or fresh-boot load
+acceptance.
