@@ -92,7 +92,7 @@ The original procedure names identify these targets:
 | 4 | NISTitle | Existing startup presentation gate; full natural-return coverage requires audit |
 | 5 | TransPrincessRoom | Paired coverage remains to be established |
 | 6 | NISThroneRoom | Clean level-eight original return; native pair pending |
-| 7 | Opening1 | Unskipped original return and visible checkpoint recorded below; native pair pending |
+| 7 | Opening1 | Unskipped normal return and illustrated/return checkpoint pair pass on A1200-030 |
 | 8 | Opening2 | Paired coverage remains to be established |
 | 9 | AboardShip | Existing level-one route; cinematic checkpoints require audit |
 | 10 | Discovery | Paired coverage remains to be established |
@@ -113,14 +113,38 @@ completion. Selector 8 is not called on this path; its coverage remains open.
 `manifest/gameplay-natural-opening.sha256` pins the log and selected indexed,
 palette and A5 checkpoints. Visual inspection confirms the text-8 checkpoint
 shows the illustrated Princess/young-traveller passage; several other samples
-are black during transitions. This is original-only evidence, not a native
-pixel match or a full natural title timeout.
+are black during transitions. The paired native evidence below covers Opening1; this is not a full natural
+title timeout.
 
 The opt-in `POP2_CUTSCENE_OBSERVER=1` requires discovery mode and observes the
 existing CODE 2 NIS caller before CODE 15 loads, then guarded CODE 15 copy,
 text and return sites. An entry breakpoint in CODE 15 misses its first invocation;
 the failed `gameplay-natural-opening-captures-1` is not accepted evidence.
 The observer changes no original instructions or state.
+
+MEASURED: native `.run-4ymwYZ` observes the same selector-7 result 0,
+5 copy and 21 text returns, with zero Escape reads. Its text-8 illustration and
+normal-return viewport indices and displayed colours match the original exactly.
+`tools/check_gameplay_opening.py` verifies those captures, reference pins,
+A1200-030 restoration, clean audits and positive route completion, and rejects
+four pixel/colour corruptions. Native colour-table bytes pass through the existing
+pinned video transfer table before comparison with Macintosh hardware RGB.
+The first text/copy samples differ only within the visible Macintosh cursor box
+(101,111)–(111,126); D8 removes that pointer on Amiga. These samples are retained
+but are not the exact-checkpoint assertions.
+
+`manifest/gameplay-natural-opening-native.sha256` pins the native evidence.
+Reproduce with the verification integration build (CORE, DISPLAY, INPUT, UI,
+AUDIO and INTEGRATION_PROBE), `AMIGA_SETUP=a1200-030 CORE=1`, and
+`GDBSCRIPT=amiga/natural_opening.gdb` and `GAMEPLAY_OPENING_REFERENCE` set to
+the absolute path of the pinned original run. The observer is read-only and records the
+original cutscene sites after the segment-load callback. The run subsequently
+reaches the first playable room and the existing death/restoration endpoint.
+The recorded run used the generic core checker, which rejects its integration
+completion under the default core-only expectation; the dedicated opening
+checker passes. The launcher now selects it with `GAMEPLAY_OPENING_REFERENCE`. Title phase 64
+versus the existing phase-16 title fixture is not accepted as a title match;
+the selector-4 return pixels differ. Restore `make release` after diagnostics.
 
 ## Walkthrough reference
 

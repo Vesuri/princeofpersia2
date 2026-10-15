@@ -99,6 +99,8 @@ for ((i=0;i<20;i++)); do [ -f "$DH1/Shell.done" ] && break; sleep 1; done
 if [ "${CORE:-0}" = 1 ]; then
   if [ "${RELEASE_STARTUP:-0}" = 1 ]; then
     python3 ../tools/check_release_startup.py "$RUN" "$RELEASE_REFERENCE"
+  elif [ -n "${GAMEPLAY_OPENING_REFERENCE:-}" ]; then
+    python3 ../tools/check_gameplay_opening.py "$RUN" "$GAMEPLAY_OPENING_REFERENCE"
   elif [ "${PERFORMANCE:-0}" = 1 ]; then
     python3 ../tools/check_performance.py "$RUN" "$PERFORMANCE_REFERENCE" --setup "$AMIGA_SETUP"
   elif [ "${TIMING_TM:-0}" = 1 ]; then
