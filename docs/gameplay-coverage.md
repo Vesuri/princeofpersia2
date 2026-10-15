@@ -99,6 +99,14 @@ The original procedure names identify these targets:
 | 11 | HappyEnding | Included in the passing ending/Hall pair |
 | 12–20 | TreeCheck indices 1–9 | Each selected story and its positive return remain to be audited |
 
+The table uses the actual CODE 15 argument. DERIVED from CODE 2+0308–0322:
+the outer PlayNIS wrapper subtracts eight from story selectors before calling
+CODE 15, so wrapper selector 20 means actual selector 12 (TreeCheck index 1).
+Wrapper selector 100 invokes copy protection without calling CODE 15. Existing
+`GAMEPLAY_ROUTE_NIS_*` records name outer selectors; cutscene-observer records
+now sample the actual call sites at CODE 2+031E/+033E/+037E. Do not count a
+wrapper-20 record as execution of TreeCheck index 9.
+
 This table enumerates dispatch cases, not additional passes. Route entry/return
 markers alone do not prove visible checkpoints match or identify whether a
 scene took an early-return path.
@@ -117,7 +125,7 @@ are black during transitions. The paired native evidence below covers Opening1; 
 title timeout.
 
 The opt-in `POP2_CUTSCENE_OBSERVER=1` requires discovery mode and observes the
-existing CODE 2 NIS caller before CODE 15 loads, then guarded CODE 15 copy,
+actual CODE 2 NIS call arguments before CODE 15 loads, then guarded CODE 15 copy,
 text and return sites. An entry breakpoint in CODE 15 misses its first invocation;
 the failed `gameplay-natural-opening-captures-1` is not accepted evidence.
 The observer changes no original instructions or state.
@@ -183,6 +191,26 @@ and stops positively after the first room. Ordinary release has none of this
 instrumentation. The recorded run predates launcher selection of the dedicated
 checker and therefore ends with the generic core check rejecting its diagnostic
 completion reason; the dedicated checker passes on its frozen evidence.
+
+### Transition survey cutscene observations
+
+MEASURED: `gameplay-survey-cutscenes-2` repeats every checkpoint of the pinned
+assisted entry survey in full context, actor/RNG state, counters, pixels and
+palette, and positively completes all six observed CODE 15 calls. Actual
+selectors are 7, 4, 10, 12, 2 and 3. Discovery (10) returns 0 after 7 copy and
+15 text callbacks; TreeCheck index 1 (12) returns 0 after 1 copy and 4 text
+callbacks; temple (2) returns 0 after 7 copies; tower (3) returns 0 after 5.
+`manifest/gameplay-survey-cutscenes.sha256` pins the bounded captures and log.
+Visual inspection confirms the tree text-4 and temple copy-4 illustrations.
+The sampled tower copies are black, so they do not establish visible tower
+coverage. Native comparisons remain pending.
+
+The observer samples callbacks 1, 2, 4, 8, 32, 128 and 512 plus each normal
+return, and requires every actual call to return before discovery completion.
+The first survey observer run is rejected: its wrapper-based entry tracking
+created an unmatched copy-protection entry and labelled the story by its outer
+selector. The corrected actual-call probes exclude that branch and retain
+byte guards without changing original state or control flow.
 
 ## Walkthrough reference
 

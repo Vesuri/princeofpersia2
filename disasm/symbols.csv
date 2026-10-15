@@ -9,6 +9,9 @@ segment,offset,name,evidence,notes
 2,0x00D0,EraseScreenBeforeNIS_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x0288,IsTimeForNIS_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x2F8,PlayNIS_CopyProtectionChoice,MEASURED,Reference route logs cutscene selector before original comparison with 100
+2,0x031E,PlayNIS_CallRemappedStory,DERIVED,CODE 2 subtracts eight from the wrapper selector before this CODE 15 NIS call
+2,0x033E,PlayNIS_CallTransition,DERIVED,CODE 2 calls CODE 15 NIS with transition selectors one through six
+2,0x037E,PlayNIS_CallDirect,DERIVED,CODE 2 calls CODE 15 NIS with the unchanged selector
 2,0x03C8,PlayNIS_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x04E6,DrawRoomFromNIS_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x052E,DialogDrawNumber_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point

@@ -441,7 +441,6 @@ function M.poll()
  elseif label=='nis-enter' then
   local selector=mem:readv_u16(cpu.state.SP.value+4)
   currentNIS[#currentNIS+1]=selector;print('GAMEPLAY_ROUTE_NIS_ENTER selector='..selector)
-  if cutscenes then cutscenes.enter(selector)end
  elseif label=='nis-return' then
   assert(#currentNIS>0,'GAMEPLAY ROUTE NIS RETURN OWNER')
   print('GAMEPLAY_ROUTE_NIS_RETURN selector='..table.remove(currentNIS))

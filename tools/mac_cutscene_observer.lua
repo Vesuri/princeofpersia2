@@ -5,7 +5,7 @@ local cpu=manager.machine.devices[':maincpu'];local mem=cpu.spaces.program
 local dbg=manager.machine.debugger;local run=assert(os.getenv('POP2_REFERENCE_RUN'))
 local frame=dofile('tools/mame_mac_frame.lua')
 local points={};local calls={};local serial=0;local returned=0
-local selected={[1]=true,[8]=true,[32]=true,[128]=true,[512]=true}
+local selected={[1]=true,[2]=true,[4]=true,[8]=true,[32]=true,[128]=true,[512]=true}
 local function capture(call,kind,count)
  local prefix='nis-'..call.ordinal..'-'..call.selector..'-'..kind..'-'..count
  frame.indexed(run..'/'..prefix..'.indices');frame.palette(run..'/'..prefix..'.rgb')
@@ -16,15 +16,16 @@ local function capture(call,kind,count)
  print(string.format('CUTSCENE_FRAME ordinal=%d selector=%d kind=%s count=%d prefix=%s',call.ordinal,call.selector,kind,count,prefix))
 end
 function M.map(seg,base,guard,condition)
- if seg~=15 then return end
- for _,site in ipairs({{0x0166,'return'},{0x3310,'copy'},{0x0418,'text'}})do
+ if seg~=2 and seg~=15 then return end
+ local sites=seg==2 and {{0x031e,'enter'},{0x033e,'enter'},{0x037e,'enter'}} or {{0x0166,'return'},{0x3310,'copy'},{0x0418,'text'}}
+ for _,site in ipairs(sites)do
   guard(seg,base,site[1],2);points[base+site[1]]=site[2]
   cpu.debug:bpset(base+site[1],condition,'logerror "CUTSCENE_STOP\\n"')
  end
 end
--- The CODE 2 wrapper is mapped before the first LoadSeg of CODE 15.
--- A CODE 15 entry breakpoint would miss that first call.
-function M.enter(selector)
+-- Observe actual arguments at the CODE 2 call sites before LoadSeg.
+-- The wrapper remaps story selectors and handles copy protection separately.
+local function enter(selector)
  serial=serial+1
  calls[#calls+1]={ordinal=serial,selector=selector,copy=0,text=0}
  print(string.format('CUTSCENE_ENTER ordinal=%d selector=%d',serial,selector))
@@ -33,7 +34,9 @@ function M.poll()
  if dbg.execution_state~='stop' then return false end
  local kind=points[cpu.state.PC.value]
  if not kind then return false end
- if #calls>0 then
+ if kind=='enter' then
+  enter(mem:readv_u16(cpu.state.SP.value&0xffffff))
+ elseif #calls>0 then
   local call=calls[#calls]
   if kind=='return' then
    capture(call,'return',1)
