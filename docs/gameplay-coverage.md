@@ -89,11 +89,11 @@ The original procedure names identify these targets:
 | 1 | NISCarpet | Included in the passing clean level-five pair |
 | 2 | NISTemple | Paired coverage remains to be established |
 | 3 | NISTower | Paired coverage remains to be established |
-| 4 | NISTitle | Existing startup presentation gate; full natural-return coverage requires audit |
+| 4 | NISTitle | Existing paired title presentation plus natural timeout/black return pair below |
 | 5 | TransPrincessRoom | Paired coverage remains to be established |
 | 6 | NISThroneRoom | Clean level-eight original return; native pair pending |
 | 7 | Opening1 | Unskipped normal return and illustrated/return checkpoint pair pass on A1200-030 |
-| 8 | Opening2 | Paired coverage remains to be established |
+| 8 | Opening2 | Natural return and three illustrated checkpoints match on A1200-030 |
 | 9 | AboardShip | Existing level-one route; cinematic checkpoints require audit |
 | 10 | Discovery | Paired coverage remains to be established |
 | 11 | HappyEnding | Included in the passing ending/Hall pair |
@@ -145,6 +145,44 @@ completion under the default core-only expectation; the dedicated opening
 checker passes. The launcher now selects it with `GAMEPLAY_OPENING_REFERENCE`. Title phase 64
 versus the existing phase-16 title fixture is not accepted as a title match;
 the selector-4 return pixels differ. Restore `make release` after diagnostics.
+
+### Natural title and Opening2
+
+MEASURED: original `gameplay-natural-attract-captures-1` and native
+`.run-fYhJr4` run selectors 7, 4 and 8 without Space or Escape, then reach
+level 1 room 4. Selector 4 returns 0 after its title timeout; selector 8
+returns 0 after 43 CopyNIS and 23 NISTextDraw callbacks on both systems.
+Opening2 copy-8, copy-32 and text-8 illustrated checkpoints, and its return,
+match in viewport indices and displayed colours. The first-room 8,704-byte
+context, actor records, level/room and RNG match exactly. Native restoration
+and code/input audits pass with zero exception and zero Right/Space/Escape reads.
+
+The title-return palettes match and both viewports render completely black.
+Stored title-return indices differ in 78,821 pixels, so the checker explicitly
+requires a black transition there rather than claiming an indexed match.
+Visible title rendering remains covered by the existing state-paired title gate.
+`tools/check_gameplay_opening.py --attract` checks seven checkpoints, lifecycle,
+state and restoration, rejecting fourteen pixel/colour corruptions (including a
+visible pixel inserted into the black transition). The evidence is pinned by
+`manifest/gameplay-natural-attract.sha256` and
+`manifest/gameplay-natural-attract-native.sha256`.
+
+Original reproduction uses discovery and cutscene-observer mode with
+`POP2_NATURAL_OPENING=1 POP2_NATURAL_TITLE=1`, followed by `finish` after the
+first-room checkpoint. The recorded run used the older `POP2_DEMO_ROUTE=1`
+input switch; its aggregate demo report rejected the missing second seed/demo
+exit, which this first-room capture does not exercise. Its normal opening
+report and dedicated paired checker pass. `POP2_NATURAL_TITLE` now suppresses
+Space without selecting that unrelated demo-exit report.
+
+Native reproduction adds `POP2_CUTSCENE_ATTRACT_PROBE` to the verification
+integration flags, uses `amiga/natural_opening.gdb` on `a1200-030`, and supplies
+`GAMEPLAY_ATTRACT_REFERENCE` as the absolute original-run path. The probe
+requires verification and integration, withholds the diagnostic Space pulse,
+and stops positively after the first room. Ordinary release has none of this
+instrumentation. The recorded run predates launcher selection of the dedicated
+checker and therefore ends with the generic core check rejecting its diagnostic
+completion reason; the dedicated checker passes on its frozen evidence.
 
 ## Walkthrough reference
 

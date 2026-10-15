@@ -48,6 +48,9 @@ void pop2_call_mac(void*,void*,void*);
 void pop2_timer_callback();
 uint32_t pop2WallTicks();
 extern volatile uint32_t g_clockFault;
+#if defined(POP2_CUTSCENE_ATTRACT_PROBE) && (!defined(POP2_VERIFY) || !defined(POP2_INTEGRATION_PROBE))
+#error Attract observation requires explicit verification and integration probes
+#endif
 #ifdef POP2_INTEGRATION_PROBE
 void pop2_integration_seed(void*,void*);void pop2_integration_title();
 uint32_t g_integrationOpeningReturn=0,g_integrationTitleTarget=0,g_integrationRoomReturn=0,g_integrationDeathTarget=0,g_integrationDeathReturn=0,g_integrationDeathKind=0;
@@ -1060,7 +1063,10 @@ extern "C" void pop2IntegrationTitleHook(uint8_t* originalSP){
     // depends on service cost, so schedule test input from the reached cue.
     // The result checker still compares the captured reference pixels.
     if(phase>=3 && w(a5-0x1f6e)==0x72 && g_integrationStage==1){
-        integrationPress(0x40,120);g_integrationStage=2;recordIntegrationStage();
+#ifndef POP2_CUTSCENE_ATTRACT_PROBE
+        integrationPress(0x40,120);
+#endif
+        g_integrationStage=2;recordIntegrationStage();
     }
 }
 #endif
@@ -1154,6 +1160,9 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
     }
 #endif
 #ifdef POP2_INTEGRATION_PROBE
+#ifdef POP2_CUTSCENE_ATTRACT_PROBE
+    if(g_integrationStage==3)return stop(frame,usp,"GAMEPLAY / ATTRACT COMPLETE",trap,seg,off);
+#endif
 #ifdef POP2_GAMEPLAY_RESTART_PROBE
 #ifdef POP2_GAMEPLAY_SAVE_PROBE
 #ifdef POP2_GAMEPLAY_IMPORT_PROBE

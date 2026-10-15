@@ -401,7 +401,7 @@ mac.run(function()
    end
    assert(mac.wait_for('title',function()return routeStage=='title'end,18000),'DISPLAY TITLE')
    if audio then print('AUDIO_PHASE title');mac.wait(120)end
-   if not os.getenv('POP2_DEMO_ROUTE') then mac.press('Space')end
+   if not os.getenv('POP2_DEMO_ROUTE') and not os.getenv('POP2_NATURAL_TITLE') then mac.press('Space')end
    if gameplay then
     assert(mac.wait_for('gameplay-first-frame',function()return gameplay.rooms()>=1 end,18000),'GAMEPLAY FIRST FRAME')
     if os.getenv('POP2_GAMEPLAY')=='route' then
