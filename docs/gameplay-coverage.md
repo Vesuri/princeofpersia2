@@ -248,6 +248,18 @@ file as `GDBSCRIPT` with the ordinary verification assisted-survey build and
 `GAMEPLAY_LEVEL=0`. Each launch freezes its observer and build; captures are
 read-only, and the regular route checker still requires all 79 paired checkpoints.
 
+### Throne-room cutscene reference
+
+MEASURED: `gameplay-level8-cutscenes-1` repeats every checkpoint of
+`gameplay-assisted-level8-clean-2` with the same logged assistance and direct
+keys, then enters level 9 room 10 at step 490. Its actual selector-6 call returns
+0 after one CopyNIS and nine NISTextDraw callbacks. Visual inspection confirms
+the ruined throne room after fade-in, and the restored room with the apparition
+at text-4 and text-8. The observer accounts for all three actual NIS calls and
+positively finishes discovery. `manifest/gameplay-throne-reference.sha256`
+pins the cutscene captures and route log. Native throne pairing and the existing
+level-eight timing/context differences remain open.
+
 ## Walkthrough reference
 
 The owner-supplied [walkthrough](https://gamefaqs.gamespot.com/pc/564689-prince-of-persia-2-the-shadow-and-the-flame/faqs/23644)

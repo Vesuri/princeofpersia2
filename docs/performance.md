@@ -117,3 +117,11 @@ hotspot: the paired route in `docs/gameplay-coverage.md` covers NIS 1 returning
 to level six. `Profile 05` supplies a level-entry starting point, not a save
 immediately before the carpet. Retain it as a comparison workload when measuring
 any suspected transition slowdown.
+
+The level-eight throne-room dissolve is another candidate workload. The original
+generates/persists dissolve data when its cache is absent; retain both a clean
+cache and an already generated cache for comparison. The pinned clean route in
+`manifest/gameplay-assisted-level8-clean.sha256` and its visible cutscene captures
+in `manifest/gameplay-throne-reference.sha256` reproduce the scene. Measure
+release execution on `a1200-030` before calling it a bottleneck; current debugger
+and verification wall times are not performance measurements.
