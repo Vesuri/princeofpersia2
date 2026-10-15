@@ -1428,3 +1428,13 @@ the final checkpoint, so this is not a completed paired route. The earlier
 context discrepancy is absent from the captured portion; the boundary timing
 remains unresolved. Native evidence is pinned in
 `manifest/gameplay-level6-door-native.sha256`.
+
+### Ship cutscene reference
+
+MEASURED: `gameplay-ship-cutscene-1` repeats all 95 level-one route checkpoints,
+reaches level two at step 1001 and positively finishes discovery. Actual NIS
+selector 9 returns 0 after 13 CopyNIS and eight NISTextDraw callbacks; all three
+actual NIS calls are accounted for. Visible captures show the departing ship,
+the sleeping prince and the storm/ lightning sequence. The return image is
+black. `manifest/gameplay-ship-reference.sha256` pins those captures and the
+completed route log. Native cinematic comparison remains pending.
