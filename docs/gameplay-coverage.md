@@ -1262,6 +1262,14 @@ viewport pixels, displayed palette, full context, actors, RNG, level and room;
 its step count is 290 rather than 292. The strict completion gate remains
 failed. `manifest/gameplay-level10-rejected-entry.sha256` pins this evidence.
 
+`tools/inspect_gameplay_rejected_entry.py NATIVE REFERENCE --manifest MANIFEST`
+reproduces the rejected-entry comparison for the assisted level-six and
+level-ten routes. It verifies build identity, A1200-030 configuration,
+restoration, every preceding checkpoint and the captured next-level state.
+Its JSON report always records `route_accepted: false`; it does not replace
+the strict completion checker. Controls reject a missing entry capture,
+altered final context and a false successful-route marker.
+
 Fresh `gameplay-assisted-level12-repeat-1` matches every recorded checkpoint
 of the pinned level-twelve route and passes the original launcher. Native
 pairing remains pending.
