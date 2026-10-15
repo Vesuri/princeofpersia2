@@ -55,7 +55,7 @@ and bounded captures. Original bytes, saved state and captures remain ignored.
 | Level 5 | Meaningful gameplay route and original level-exit decision | Clean assisted original repeat and native pair pass all 46 checkpoints; carpet NIS 1 returns and level six begins |
 | Level 6 | Meaningful gameplay route and original level-exit decision | Alternate door route and level-seven entry state match; native enters one frame early, so completion remains rejected |
 | Level 7 | Meaningful gameplay route and original level-exit decision | Route captures and level-eight entry state match; native enters two frames early, so completion remains rejected |
-| Level 8 | Meaningful gameplay route and original level-exit decision | Native reaches level nine after cache-write fix; one-step early boundary and full-context differences remain |
+| Level 8 | Meaningful gameplay route and original level-exit decision | Direct-entry route captures and level-nine entry state match; native enters two frames early, so completion remains rejected |
 | Level 9 | Meaningful gameplay route and original level-exit decision | Original repeat and native pair pass all 15 checkpoints |
 | Level 10 | Meaningful gameplay route and original level-exit decision | Route captures and level-eleven entry state match; native enters two frames early, so completion remains rejected |
 | Level 11 | Meaningful gameplay route and original level-exit decision | Route captures and level-twelve entry state match; native enters two frames early, so completion remains rejected |
@@ -1696,4 +1696,10 @@ opponent copy on the preceding route records none here.
 original route. Fresh `gameplay-level8-direct-stairs-repeat-1` matches all 78
 checkpoints and passes the reference launcher;
 `manifest/gameplay-assisted-level8-direct-stairs-repeat.sha256` pins that repeat.
-Native comparison remains pending.
+MEASURED: native `.run-EhJVft` matches all 77 preceding checkpoints and the
+rejected level-nine entry in viewport pixels, displayed palette, full context,
+actors and RNG. The entry is room 10 at native step 1191/1193 key reads, versus
+original 1193/1195. The invalid-copy context mismatch is absent on this assisted
+route, but the strict timing gate remains failed.
+`tools/inspect_gameplay_rejected_entry.py` records `route_accepted: false`;
+`manifest/gameplay-level8-direct-stairs-native.sha256` pins this evidence.
