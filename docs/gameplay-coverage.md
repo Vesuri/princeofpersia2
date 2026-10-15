@@ -78,6 +78,17 @@ complete cutscene coverage. These static facts establish scope, not execution.
 
 ## Cutscene dispatch scope
 
+DERIVED and MEASURED: selector 5 is called through the exported PlayNIS entry
+at A5+012A from CODE 9+071E. Its final-level room-two caller was bypassed by
+the assisted ending route. `gameplay-princess-room-1` uses logged level, health,
+room and position assistance, then executes the original trigger. Selector 5
+returns normally and the following completed gameplay frame reaches room four.
+Fresh `gameplay-princess-room-repeat-1` matches all 11 route checkpoints and
+all nine cinematic capture files. The route has two key reads and nine logged
+writes. `manifest/gameplay-princess-reference.sha256` and
+`manifest/gameplay-princess-repeat.sha256` pin the original evidence; native
+pairing remains pending.
+
 DERIVED from original CODE 15 dispatch at +0088 and Transition at +07C8:
 the numbered cinematic cases are 1–11. Cases 12–20 call TreeCheck with
 indices 1–9. Out-of-range selectors take the default path, so a recorded
@@ -90,7 +101,7 @@ The original procedure names identify these targets:
 | 2 | NISTemple | Illustrated and normal-return checkpoints match in the completed A1200-030 survey |
 | 3 | NISTower | Visible post-fade and normal-return checkpoints match in the completed A1200-030 survey |
 | 4 | NISTitle | Existing paired title presentation plus natural timeout/black return pair below |
-| 5 | TransPrincessRoom | Paired coverage remains to be established |
+| 5 | TransPrincessRoom | Final-level room-two original route and fresh repeat pass; native pairing pending |
 | 6 | NISThroneRoom | Four visible/return checkpoints paired; normal return; containing level-eight route remains open |
 | 7 | Opening1 | Unskipped normal return and illustrated/return checkpoint pair pass on A1200-030 |
 | 8 | Opening2 | Natural return and three illustrated checkpoints match on A1200-030 |
