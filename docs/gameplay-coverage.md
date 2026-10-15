@@ -1363,3 +1363,30 @@ and effective machine. Add `--controls` to the standalone Hall-view checker
 with `--native RUN` to exercise evidence rejection. All new input sequencing
 and completion probes require explicit verification flags and are excluded from
 ordinary release builds.
+
+### Timed-story discovery limit
+
+MEASURED: `gameplay-timed-stories-1` used logged remaining-minute assistance
+and forward level-four-to-five transitions to reach actual selectors 12, 13
+and 14. Selectors 12 and 13 returned normally; selector 14 reached its fade-in
+checkpoint but had no return before the original reference's execution limit.
+The reference ended with `GAMEPLAY ROUTE INCOMPLETE`, and the launcher rejected
+it. This run is diagnostic only, not accepted story coverage or a native failure.
+The attempted timer assistance remains unvalidated for the complete story route.
+
+MEASURED: `gameplay-level6-context-2` repeats every checkpoint of the clean
+level-six reference with a read-only write tap. The complete context allocation
+is checked against its physical alias before arming the tap. The differing
+0x2008–0x2027 bytes are written by original `AddOppToRoom`, CODE 6+3602 and
+its structure-copy loop at +3616/+361C (the tap reports the following PC).
+This localizes the discrepancy to an original opponent-record copy; it does
+not yet establish that any of those bytes may be excluded from comparison.
+The trace reaches the same level-seven endpoint and passes the original repeat.
+
+The more specific original repeat `gameplay-level6-context-3` also matches every
+checkpoint. At step 6, `TransferOppInfo` calls `AddOppToRoom` with both room
+and record index equal to signed -1, copying 38 bytes to context+0x2002.
+The source record is captured before the copy. This is evidence of the original
+path, not yet a justification for ignoring its differing bytes. The trace log
+and source record are pinned in `manifest/gameplay-level6-context.sha256`;
+`POP2_ROUTE_CONTEXT_TRACE=1` enables this read-only reference diagnostic.

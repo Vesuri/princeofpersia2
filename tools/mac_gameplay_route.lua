@@ -38,8 +38,20 @@ local function dump(path,address,size)
  for i=0,size-1 do f:write(string.char(mem:readv_u8(address+i)))end
  f:close()
 end
+local contextWatch=nil;local contextCopies=0
 local function capture(reason)
  local a5=cpu.state.A5.value&0xffffff
+ if os.getenv('POP2_ROUTE_CONTEXT_TRACE')=='1' and not contextWatch and mem:readv_u16(a5-0x4fd2)==6 then
+  local context=mem:readv_u32(a5-0x5014)&0xffffff
+  -- The pinned IIci mapping was calibrated by the shared static/live observer.
+  -- Verify the complete allocation before using that physical alias for a tap.
+  local physical=context+0x50000
+  for i=0,0x49c9 do assert(mem:read_u8(physical+i)==mem:readv_u8(context+i),'CONTEXT TRACE / PHYSICAL ALIAS')end
+  contextWatch=mem:install_write_tap(physical+0x2008,physical+0x2027,'context-link-write',function(address,data,mask)
+   print(string.format('CONTEXT_WRITE pc=%08X offset=%04X data=%08X mask=%08X',cpu.state.PC.value,address-physical,data,mask))
+  end)
+  print(string.format('CONTEXT_TRACE_ARMED virtual=%08X physical=%08X',context,physical))
+ end
  local prefix='route-'..sequence..(reason=='assist-before' and '-before' or '')
  dump(prefix..'-a5.bin',a5-22266,22266)
  dump(prefix..'-context.bin',mem:readv_u32(a5-0x5014)&0xffffff,0x2200)
@@ -51,6 +63,10 @@ local function capture(reason)
 end
 function M.map(seg,base,guard,condition)
  bases[seg]=base
+ if seg==6 and os.getenv('POP2_ROUTE_CONTEXT_TRACE')=='1' then
+  guard(seg,base,0x3612,2);points[base+0x3612]='context-copy'
+  cpu.debug:bpset(base+0x3612,condition,'logerror "CONTEXT_COPY_STOP\\n"')
+ end
  if cutscenes then cutscenes.map(seg,base,guard,condition)end
  if profileSave then profileSave.map(seg,base,guard)end
  if seg==15 and os.getenv('POP2_ROUTE_RESOURCE_WRITE_TRACE')=='1' then
@@ -284,7 +300,16 @@ function M.poll()
  if waiting then await_command();return true end
  local label=points[cpu.state.PC.value];if not label then return false end
  local a5=cpu.state.A5.value&0xffffff
- if label=='victory' then
+ if label=='context-copy' then
+  local context=mem:readv_u32(a5-0x5014)&0xffffff
+  local destination=(cpu.state.A3.value&0xffffff)-context
+  if destination<0x2080 then
+   contextCopies=contextCopies+1
+   local source=cpu.state.A2.value&0xffffff
+   dump('context-copy-'..contextCopies..'.bin',source,38)
+   print(string.format('CONTEXT_COPY ordinal=%d destination=%04X room=%04X index=%04X source=%08X caller=%08X step=%d',contextCopies,destination,cpu.state.D3.value&65535,cpu.state.D4.value&65535,source,mem:readv_u32((cpu.state.A6.value&0xffffff)+4),mem:readv_u16(a5-0x349a)))
+  end
+ elseif label=='victory' then
   assert(cpu.state.D4.value&65535==15 and #currentNIS==0,'ENDING VICTORY RESULT')
   victory=true;release();capture('victory')
   print('GAMEPLAY_VICTORY result=15')
