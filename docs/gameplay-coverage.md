@@ -1218,6 +1218,13 @@ through checkpoint 86; the final six checkpoints differ, beginning at step
 1673 in room 27. These observations delimit the unresolved comparison and
 do not classify the later actor differences as ambient-only.
 
+MEASURED: the complete 62-byte player record at A5 minus 0x50D2 matches at
+all 93 level-four checkpoints, including entry to level five. The late actor
+differences are confined to zero-based slot 3 at checkpoint 87 (word +24),
+and slot 4 at checkpoints 87–92 (words +10, +36, +38 and +40). The existing
+CODE 4+3272 mapping identifies the player record. Matching the player does
+not establish equivalence of the other actors or relax the full-state gate.
+
 Original `gameplay-assisted-level10-1` activates the room-19 lower-left plate
 (link 44) and enters the exit above, naturally reaching level eleven, room 5,
 at step 4086. The link target is DERIVED from CODE 5 GetLinkRoom/GetLinkCell
