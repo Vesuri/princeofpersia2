@@ -102,7 +102,8 @@ The original procedure names identify these targets:
 | 14 | TreeCheck index 3 | Three cinematic checkpoints and normal return match within the completed isolated assisted route |
 | 15 | TreeCheck index 4 | Three cinematic checkpoints and normal return match within the completed isolated assisted route |
 | 16 | TreeCheck index 5 | Three cinematic checkpoints and normal return match within the completed isolated assisted route |
-| 17–20 | TreeCheck indices 6–9 | Each selected story and its positive return remain to be audited |
+| 17 | TreeCheck index 6 | Three cinematic checkpoints and normal return match within the completed isolated assisted route |
+| 18–20 | TreeCheck indices 7–9 | Each selected story and its positive return remain to be audited |
 
 The table uses the actual CODE 15 argument. DERIVED from CODE 2+0308–0322:
 the outer PlayNIS wrapper subtracts eight from story selectors before calling
@@ -1437,7 +1438,20 @@ remaining minutes. Fresh `gameplay-story17-isolated-repeat-1` matches every
 route checkpoint and all nine cinematic capture files. Both sessions record
 normal story return and discovery completion. The original evidence is pinned
 in `manifest/gameplay-story17-reference.sha256` and
-`manifest/gameplay-story17-repeat.sha256`; native pairing remains pending.
+`manifest/gameplay-story17-repeat.sha256`.
+
+MEASURED: native `.run-UuAc30` completes story 17 and its assisted route.
+The story checker passes all three cinematic checkpoints and all 21 route
+checkpoints, with normal return, restoration and no deferred differences.
+The launcher also passes the route comparison.
+`manifest/gameplay-story17-native.sha256` pins the native evidence.
+
+MEASURED: `gameplay-story18-isolated-1` selects actual story 18 with 10
+remaining minutes. Fresh `gameplay-story18-isolated-repeat-1` matches every
+route checkpoint and all nine cinematic capture files. Both sessions record
+normal story return and discovery completion. The original evidence is pinned
+in `manifest/gameplay-story18-reference.sha256` and
+`manifest/gameplay-story18-repeat.sha256`; native pairing remains pending.
 
 MEASURED: `gameplay-level6-context-2` repeats every checkpoint of the clean
 level-six reference with a read-only write tap. The complete context allocation
