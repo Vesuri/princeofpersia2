@@ -88,7 +88,7 @@ The original procedure names identify these targets:
 |---|---|---|
 | 1 | NISCarpet | Included in the passing clean level-five pair |
 | 2 | NISTemple | Illustrated and normal-return checkpoints match in the completed A1200-030 survey |
-| 3 | NISTower | Paired coverage remains to be established |
+| 3 | NISTower | Visible post-fade and normal-return checkpoints match in the completed A1200-030 survey |
 | 4 | NISTitle | Existing paired title presentation plus natural timeout/black return pair below |
 | 5 | TransPrincessRoom | Paired coverage remains to be established |
 | 6 | NISThroneRoom | Clean level-eight original return; native pair pending |
@@ -239,8 +239,7 @@ a direct palette fade, so that convenience-routine probe does not supply its
 visible checkpoint. Original `gameplay-survey-cutscenes-4` adds the direct fade's
 return at CODE 15+72DC and again repeats the entire survey. Its tower capture
 visibly shows the tower and sky; its hash-pinned evidence is in
-`manifest/gameplay-survey-cutscenes-tower.sha256`. This tower evidence remains
-original-only until the native pair completes.
+`manifest/gameplay-survey-cutscenes-tower.sha256`. The native pair is recorded below.
 
 `tools/gameplay_cutscene_observer.py OUTPUT` combines the existing route observer
 with the cutscene commands from `amiga/natural_opening.gdb`. Use the generated
@@ -259,6 +258,16 @@ at text-4 and text-8. The observer accounts for all three actual NIS calls and
 positively finishes discovery. `manifest/gameplay-throne-reference.sha256`
 pins the cutscene captures and route log. Native throne pairing and the existing
 level-eight timing/context differences remain open.
+
+MEASURED: native `.run-JsjtjO` matches the original tower post-fade and return
+viewport indices, displayed RGB, actors, RNG, level/room and story-index state.
+It returns normally from selector 3 after five CopyNIS callbacks, and completes
+all 79 survey checkpoints with no deferred mismatches and clean restoration.
+`tools/check_gameplay_survey_cutscenes.py --tower` checks Discovery, tree index 1,
+temple and tower together against `gameplay-survey-cutscenes-4` and the pinned
+survey route. `manifest/gameplay-tower-native.sha256` pins the tower captures and
+native completion evidence. The tower's visible checkpoint is the guarded return
+from its direct fade at CODE 15+72DC, not an earlier black CopyNIS sample.
 
 ## Walkthrough reference
 

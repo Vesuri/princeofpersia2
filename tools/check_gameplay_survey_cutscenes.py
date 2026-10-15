@@ -9,8 +9,11 @@ from extract_original_data import ROOT, pins
 from gameplay_assisted_inputs import REFERENCE
 
 
-def check(native, reference, *, expanded=False):
+def check(native, reference, *, expanded=False, tower=False):
+    expanded = expanded or tower
     manifest = "gameplay-survey-cutscenes-expanded.sha256" if expanded else "gameplay-survey-cutscenes.sha256"
+    if tower:
+        manifest = "gameplay-survey-cutscenes-tower.sha256"
     for name, digest in pins(ROOT / 'manifest' / manifest).items():
         assert hashlib.sha256((reference / Path(name).name).read_bytes()).hexdigest() == digest, 'CUTSCENES / ORIGINAL PIN'
     original_log = (reference / 'session.log').read_text()
@@ -30,6 +33,10 @@ def check(native, reference, *, expanded=False):
             assert log.count(marker) == original_log.count(marker) == 1, 'CUTSCENES / EXPANDED RETURN'
         labels += ['nis-4-12-text-4', 'nis-4-12-return-1',
                    'nis-5-2-copy-4', 'nis-5-2-return-1']
+    if tower:
+        marker = 'CUTSCENE_RETURN ordinal=6 selector=3 result=0 copy=5 text=0\n'
+        assert log.count(marker) == original_log.count(marker) == 1, 'CUTSCENES / TOWER RETURN'
+        labels += ['nis-6-3-tower-1', 'nis-6-3-return-1']
     for label in labels:
         args = [(native / (label + '-screen.bin')).read_bytes(),
                 (native / (label + '-colors.bin')).read_bytes(), transfer,
@@ -41,7 +48,8 @@ def check(native, reference, *, expanded=False):
         assert len(actual) == len(expected) == 22266, 'CUTSCENES / A5 EXTENT'
         for distance, size in ((0x18fc, 4), (0x4fd2, 2), (0x4fc2, 2), (0x245c, 2), (0x5208, 372)):
             assert actual[-distance:-distance+size] == expected[-distance:-distance+size], 'CUTSCENES / RNG ACTORS AND SCENE STATE'
-    print('CUTSCENES PASS:', 'Discovery, tree index 1 and temple' if expanded else 'Discovery',
+    print('CUTSCENES PASS:', 'Discovery, tree index 1, temple and tower' if tower else
+          'Discovery, tree index 1 and temple' if expanded else 'Discovery',
           'normal returns, illustrated and return pixels/colors/state; complete paired survey')
 
 
@@ -50,5 +58,6 @@ if __name__ == '__main__':
     parser.add_argument('native', type=Path)
     parser.add_argument('reference', type=Path)
     parser.add_argument('--expanded', action='store_true')
+    parser.add_argument('--tower', action='store_true')
     args = parser.parse_args()
-    check(args.native, args.reference, expanded=args.expanded)
+    check(args.native, args.reference, expanded=args.expanded, tower=args.tower)
