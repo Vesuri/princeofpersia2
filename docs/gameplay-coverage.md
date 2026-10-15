@@ -1653,3 +1653,13 @@ a corrupted visible pixel. `manifest/gameplay-ship-native.sha256` pins the nativ
 evidence. The launcher's Bash 3.2 empty-array expansion error occurred after
 normal restoration; the standalone checker supplies the passing comparison.
 The launcher now handles both empty and nonempty optional argument lists.
+
+MEASURED: alternate level-eight original `gameplay-level8-direct-room-1`
+enters the throne room directly through logged assistance, retaining the throne
+interaction and natural stair exit. It reaches level nine, room 10, at step 479
+with 481 key reads. Fresh `gameplay-level8-direct-room-repeat-2` matches all 49
+recorded checkpoints. The two `manifest/gameplay-assisted-level8-direct-room`
+SHA-256 manifests pin the original and repeat. This variation still reaches
+the invalid opponent-record copy at step 180 while crossing into room 24;
+it does not establish a fix or native acceptance. The first repeat preparation
+failed before emulator launch and is not reference evidence.
