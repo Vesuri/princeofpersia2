@@ -772,6 +772,10 @@ context differ. Context differences are at 0x07D9 and 0x07F1; 326 viewport pixel
 differ within x168–480/y276–312. Code/input audits and restoration pass.
 `manifest/gameplay-level3-rejected-entry.sha256` pins this diagnostic evidence;
 its report explicitly retains `route_accepted: false`.
+The endpoint player record at A5 minus 0x50D2 matches in full. Actor differences
+are confined to zero-based slot 0; the significance of those differences is not
+yet established. Visual comparison places the pixel differences in the two
+wall torches. These observations do not extend the owner-approved exception.
 
 The first additional level-three mismatch occurs at checkpoint 121. Checkpoints
 114–120 match full context, actors and RNG; the frame verifier passes their
