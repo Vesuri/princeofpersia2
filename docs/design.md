@@ -30,6 +30,15 @@ completed assisted routes with those exceptions explicitly identified, provided
 there are no unresolved loud stops and the game reaches the ending. This does
 not turn unexecuted routes or unreached endpoints into passes.
 
+D12 (owner-authorized item-12 closure): accept the recorded routes through all
+levels and the ending while deferring the observed one- or two-frame exit
+counter differences and remaining level-3/4/13 animation, RNG and actor-slot
+differences to item 16. The gameplay relevance of differing non-player actor
+slots is not yet established. Preserve the failed strict comparisons and their
+captures; this acceptance does not claim exact equivalence or waive unknown
+service calls, unreached exits, or new differences on other routes. Positive
+original/native exit and session-action evidence remains required. Release/040 and 68020 validation remain deferred.
+
 ## Faithfulness boundary
 
 The original Macintosh execution under the D2 reference is the correctness reference.

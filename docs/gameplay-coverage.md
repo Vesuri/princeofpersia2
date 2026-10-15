@@ -1,16 +1,62 @@
 # Gameplay coverage
 
-Item 12 remains open. Completion requires positive original/Amiga pairs for
-all entries below on `a1200-030`, with the owner-authorized D11 exception for
-already recorded torch/RNG differences, which remain in item 16. Completed
-assisted routes and absence of unresolved loud stops are required; exact matches
-are claimed only where observed. Entry into a level does not prove its route
-or completion. Service fixtures do not prove the corresponding session action.
+Item 12 is accepted on `a1200-030` under owner decisions D10–D12. Recorded
+original/native routes reach every level exit, all cinematic cases, session
+save/load, death, restart, Hall persistence/readback and the ending. Assistance
+is explicitly logged and replayed. This is coverage by multiple reproducible
+routes, not a claim of one uninterrupted unassisted playthrough.
+
+D12 accepts the recorded one- or two-frame exit differences and remaining
+level-3/4/13 animation, RNG and non-player actor-slot differences for this item;
+item 16 retains their investigation, including unknown gameplay implications.
+The strict diagnostic reports deliberately remain failed (`route_accepted:
+false` where present). Their captured next-level entries are positive exit
+evidence; an entry obtained solely by a level cheat is not exit evidence.
+No unresolved service stop remains in the accepted routes. Earlier failing
+runs below are diagnostic controls, not accepted substitutes for later endpoints.
+Unknown services and new differences remain failures. Release/040, 68020 and
+real-hardware validation are not established by this acceptance.
 
 The harness follows Vette's named route/checkpoint approach and Alone in the
 Dark's ordinary-input session routes. Any supplied checkpoint must be identified
 separately from uninterrupted play. Diagnostic input and observations are excluded
 from ordinary release builds.
+
+## Closure audit
+
+MEASURED: the closure audit rechecked 22 cinematic, route and session checks
+against the retained evidence. All pass within their documented D11 scope.
+This includes all 20 cinematic selectors, levels 1/2/5/9/14, save/load,
+restart, Hall insertion/readback and the opening/death route. The death run
+`.run-4ymwYZ` records stage 4, kind 3, followed by route completion and
+restoration; its opening comparison uses `gameplay-natural-opening-captures-3`.
+The original audio route `integration-natural-title-1` independently records
+kind-3 death followed by continued death audio and observer completion.
+
+The nine D12 exceptions below have verified native build identities,
+code/input audits and restoration. All 3,097 files in their native manifests
+were rehashed. The six counter-only endpoint comparisons were rerun and retain
+`route_accepted: false`; D12 accepts coverage without changing those results.
+`manifest/gameplay-closure.sha256` pins the ignored audit indexes, containing
+check names, run identities and results. Level-four native evidence is now
+pinned by `manifest/gameplay-level4-native.sha256`. The ordinary release link
+audit also passes; no runtime code or diagnostic defaults changed for closure.
+
+| Level | Native run | Original run | Native manifest (under `manifest/`) |
+|---|---|---|---|
+| 3 | `.run-Vz4heJ` | `gameplay-level3-fresh-1` | `gameplay-level3-rejected-entry.sha256` |
+| 4 | `.run-0c0hOQ` | `gameplay-assisted-level4-1` | `gameplay-level4-native.sha256` |
+| 6 | `.run-7yMRHs` | `gameplay-level6-door-1` | `gameplay-level6-rejected-entry.sha256` |
+| 7 | `.run-vyUFKZ` | `gameplay-assisted-level7-clean-1` | `gameplay-level7-rejected-entry.sha256` |
+| 8 | `.run-EhJVft` | `gameplay-level8-direct-stairs-1` | `gameplay-level8-direct-stairs-native.sha256` |
+| 10 | `.run-CeIpbt` | `gameplay-assisted-level10-clean-1` | `gameplay-level10-rejected-entry.sha256` |
+| 11 | `.run-sm9wiN` | `gameplay-assisted-level11-1` | `gameplay-level11-rejected-entry.sha256` |
+| 12 | `.run-XYaGwq` | `gameplay-assisted-level12-1` | `gameplay-level12-rejected-entry.sha256` |
+| 13 | `.run-jXfO5v` | `gameplay-assisted-level13-flame-1` | `gameplay-level13-rejected-entry.sha256` |
+
+The acceptance matrix above governs current status. Detailed failed discovery
+controls and intermediate comparison findings below remain evidence for item 16;
+they do not reopen item 12 or establish exact equivalence.
 
 ## Current evidence
 
@@ -50,19 +96,19 @@ and bounded captures. Original bytes, saved state and captures remain ignored.
 |---|---|---|
 | Level 1 | Meaningful gameplay route and original level-exit decision | Completed native/original pair; two pinned RNG exceptions under D11 |
 | Level 2 | Meaningful gameplay route and original level-exit decision | Completed native/original pair; inherited level-one RNG exceptions only |
-| Level 3 | Meaningful gameplay route and original level-exit decision | Original repeats pass; native completion boundary unresolved, with recorded torch differences deferred |
-| Level 4 | Meaningful gameplay route and original level-exit decision | Original repeat passes; unloaded-instrument stop fixed, later first-frame boundary and intermediate comparisons unresolved |
+| Level 3 | Meaningful gameplay route and original level-exit decision | Accepted under D12: level-four entry captured; one-frame exit, torch/RNG/context and non-player actor differences retained in item 16 |
+| Level 4 | Meaningful gameplay route and original level-exit decision | Accepted under D12: all 93 checkpoints and level-five entry reached; recorded animation/RNG/context and actor-slot differences retained in item 16 |
 | Level 5 | Meaningful gameplay route and original level-exit decision | Clean assisted original repeat and native pair pass all 46 checkpoints; carpet NIS 1 returns and level six begins |
-| Level 6 | Meaningful gameplay route and original level-exit decision | Alternate door route and level-seven entry state match; native enters one frame early, so completion remains rejected |
-| Level 7 | Meaningful gameplay route and original level-exit decision | Route captures and level-eight entry state match; native enters two frames early, so completion remains rejected |
-| Level 8 | Meaningful gameplay route and original level-exit decision | Direct-entry route captures and level-nine entry state match; native enters two frames early, so completion remains rejected |
+| Level 6 | Meaningful gameplay route and original level-exit decision | Accepted under D12: alternate door route and level-seven entry state match; one-frame exit difference retained in item 16 |
+| Level 7 | Meaningful gameplay route and original level-exit decision | Accepted under D12: route and level-eight entry state match; two-frame exit difference retained in item 16 |
+| Level 8 | Meaningful gameplay route and original level-exit decision | Accepted under D12: direct-entry route and level-nine entry state match; two-frame exit difference retained in item 16 |
 | Level 9 | Meaningful gameplay route and original level-exit decision | Original repeat and native pair pass all 15 checkpoints |
-| Level 10 | Meaningful gameplay route and original level-exit decision | Route captures and level-eleven entry state match; native enters two frames early, so completion remains rejected |
-| Level 11 | Meaningful gameplay route and original level-exit decision | Route captures and level-twelve entry state match; native enters two frames early, so completion remains rejected |
-| Level 12 | Meaningful gameplay route and original level-exit decision | Route captures and level-thirteen entry state match; native enters two frames early, so completion remains rejected |
-| Level 13 | Meaningful gameplay route and original level-exit decision | Original and repeat pass; native reaches level fourteen two steps early with pixel/context differences |
+| Level 10 | Meaningful gameplay route and original level-exit decision | Accepted under D12: route and level-eleven entry state match; two-frame exit difference retained in item 16 |
+| Level 11 | Meaningful gameplay route and original level-exit decision | Accepted under D12: route and level-twelve entry state match; two-frame exit difference retained in item 16 |
+| Level 12 | Meaningful gameplay route and original level-exit decision | Accepted under D12: route and level-thirteen entry state match; two-frame exit difference retained in item 16 |
+| Level 13 | Meaningful gameplay route and original level-exit decision | Accepted under D12: level-fourteen entry captured; two-frame exit and recorded altar animation/context/RNG differences retained in item 16 |
 | Level 14 | Meaningful gameplay route and original level-exit decision | Assisted final encounter and original decision 15 paired through the ending and Hall insertion |
-| Main cutscenes, individually | Original natural return and paired visible/state checkpoints | Selectors 1–11 individually paired; the containing level-eight gameplay route remains open |
+| Main cutscenes, individually | Original natural return and paired visible/state checkpoints | Selectors 1–11 individually paired; level-eight route accepted with the separately recorded D12 exceptions |
 | Timed story scenes, individually | Original natural return for each selected scene | Selectors 12–20 individually paired through normal return; time-expired selector 20 included |
 | Save/load | Save through session command, move, load, restored game state | Two original/native pairs; 22 rejection controls |
 | Death | Original death routine returns after gameplay input | Existing first-room integration route |
@@ -110,7 +156,7 @@ The original procedure names identify these targets:
 | 3 | NISTower | Visible post-fade and normal-return checkpoints match in the completed A1200-030 survey |
 | 4 | NISTitle | Existing paired title presentation plus natural timeout/black return pair below |
 | 5 | TransPrincessRoom | Two cinematic copies, normal return and following gameplay frame paired within the completed room-two route |
-| 6 | NISThroneRoom | Four visible/return checkpoints paired; normal return; containing level-eight route remains open |
+| 6 | NISThroneRoom | Four visible/return checkpoints paired; containing level-eight route accepted under D12 |
 | 7 | Opening1 | Unskipped normal return and illustrated/return checkpoint pair pass on A1200-030 |
 | 8 | Opening2 | Natural return and three illustrated checkpoints match on A1200-030 |
 | 9 | AboardShip | Four cinematic checkpoints and normal return paired within the completed level-one route |

@@ -1,20 +1,11 @@
 # Open work
 
-Owner-approved order: gameplay validation (12), release including 68040 validation
-(14), then 68020 support (15). The current validation target is `a1200-030`;
+Owner-approved order: release including 68040 validation (14), then 68020
+support (15). Gameplay coverage (12) is accepted under D10–D12. The current validation target is
+`a1200-030`;
 the owner deferred both 68040 and 68020 work. Items remain open until their
 acceptance gates pass.
 
-12. **Gameplay validation.** Fixed-seed, state-paired routes through all levels and
-    cutscenes, save/load, death, restart, Hall of Fame and the ending.
-    Owner permits cheats and checkpoints to bypass traps/combat (D10). Prioritize
-    loud-stop discovery and reaching completion over unassisted route practice.
-    Acceptance: coverage matrix with positive completion records for every entry,
-    identifying assistance and matching it between original and native runs.
-    Owner-approved exception: the already recorded torch/RNG differences remain
-    in item 16 and do not block this item. Require completed assisted routes,
-    the ending and no unresolved loud stops; record those differences explicitly
-    rather than reporting exact matches where they do not hold.
 14. **WHDLoad and release.** Installer that decodes the user's archive and verifies
     SHA-256; KickEmu slave with `WHDLF_EmulLineA`, CPU compatibility and AGA checks;
     deferred 68040 timing-service and original game-step cadence validation,
@@ -29,14 +20,21 @@ acceptance gates pass.
     `a1200-fast`, matched gameplay regressions pass, and the release hardware and
     installer requirements accurately include the validated configuration.
 
-16. **Deferred torch animation and RNG timing investigation.** Investigate the
-    recorded original/native ambient-audio RNG timing differences and level-three
-    torch animation mismatch after the current gameplay coverage work. Existing
-    evidence is described in `docs/gameplay-coverage.md`; preserve failed
-    comparisons without treating them as passes. Do not launch further deep RNG
-    investigations while establishing routes through the remaining levels and ending.
-    Acceptance: explain and resolve the recorded differences with original-paired
-    evidence, including checks for any effect on gameplay decisions.
+16. **Deferred gameplay timing and state differences (D11/D12).** Investigate
+    the recorded one- or two-frame early exits in levels 3, 6–8 and 10–13;
+    ambient-audio RNG timing; level-three wall-torch animation and final-entry
+    actor slot 0; level-four animation/context, RNG and late actor slots 3/4;
+    and level-thirteen altar flame/context and RNG differences. The player
+    record matches the recorded level-three entry and all level-four captures;
+    the gameplay relevance of the other actor differences is not established.
+    Keep the earlier invalid opponent-record copies in the level-six/eight
+    discovery routes as separate failed controls; the accepted alternate routes
+    avoid those copies. Evidence and exact run/manifest identities are in
+    `docs/gameplay-coverage.md`. Item 12's owner-authorized acceptance is not
+    an exact-match result: preserve failed strict reports and named guards.
+    Acceptance: explain and resolve the differences with original-paired
+    evidence, including any effects on gameplay decisions. Check the other
+    ports before service changes; keep diagnostics opt-in and release ordinary.
 
 17. **Deferred discovery-state input continuity.** Investigate why restored
     Macintosh discovery attempts can consume different input after identical
