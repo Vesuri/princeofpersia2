@@ -95,7 +95,7 @@ The original procedure names identify these targets:
 | 7 | Opening1 | Unskipped normal return and illustrated/return checkpoint pair pass on A1200-030 |
 | 8 | Opening2 | Natural return and three illustrated checkpoints match on A1200-030 |
 | 9 | AboardShip | Existing level-one route; cinematic checkpoints require audit |
-| 10 | Discovery | Paired coverage remains to be established |
+| 10 | Discovery | Illustrated checkpoint and normal return match in the completed A1200-030 survey |
 | 11 | HappyEnding | Included in the passing ending/Hall pair |
 | 12–20 | TreeCheck indices 1–9 | Each selected story and its positive return remain to be audited |
 
@@ -211,6 +211,17 @@ The first survey observer run is rejected: its wrapper-based entry tracking
 created an unmatched copy-protection entry and labelled the story by its outer
 selector. The corrected actual-call probes exclude that branch and retain
 byte guards without changing original state or control flow.
+
+MEASURED: native `.run-ju4RWD` completes all 79 assisted survey checkpoints
+(14 entries, 390 frames, 403 key reads) with no deferred mismatches, and observes
+the same six cutscene returns. Discovery selector 10 text-8 and return captures
+match the original viewport indices, displayed RGB, actor records, RNG,
+level/room and story-index state. `tools/check_gameplay_survey_cutscenes.py`
+reuses the full route checker and indexed/palette comparison, verifies the pinned
+original and identical survey commands, and requires the normal Discovery return.
+`manifest/gameplay-discovery-native.sha256` pins these native captures and
+completion/restoration evidence. This establishes Discovery coverage; the other
+new survey scenes still require their visible native checkpoints.
 
 ## Walkthrough reference
 
