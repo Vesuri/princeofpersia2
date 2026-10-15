@@ -54,7 +54,7 @@ and bounded captures. Original bytes, saved state and captures remain ignored.
 | Level 4 | Meaningful gameplay route and original level-exit decision | Original repeat passes; unloaded-instrument stop fixed, later first-frame boundary and intermediate comparisons unresolved |
 | Level 5 | Meaningful gameplay route and original level-exit decision | Clean assisted original repeat and native pair pass all 46 checkpoints; carpet NIS 1 returns and level six begins |
 | Level 6 | Meaningful gameplay route and original level-exit decision | Alternate door route and level-seven entry state match; native enters one frame early, so completion remains rejected |
-| Level 7 | Meaningful gameplay route and original level-exit decision | Clean original and fresh repeat reach level eight; native first-frame boundary differs by two frames |
+| Level 7 | Meaningful gameplay route and original level-exit decision | Route captures and level-eight entry state match; native enters two frames early, so completion remains rejected |
 | Level 8 | Meaningful gameplay route and original level-exit decision | Native reaches level nine after cache-write fix; one-step early boundary and full-context differences remain |
 | Level 9 | Meaningful gameplay route and original level-exit decision | Original repeat and native pair pass all 15 checkpoints |
 | Level 10 | Meaningful gameplay route and original level-exit decision | Route captures and level-eleven entry state match; native enters two frames early, so completion remains rejected |
@@ -1178,6 +1178,13 @@ level/room before checking the strict expected boundary. Diagnostic native
 `.run-oqFGdv` confirms level-seven replay enters level eight, room 16, at
 step 357, with 359 key reads. The original enters at step 359. This establishes
 the endpoint but does not pass the timing comparison; the guard is unchanged.
+
+MEASURED: diagnostic `.run-vyUFKZ` matches all 23 preceding checkpoints and
+the rejected level-eight entry in viewport pixels, displayed palette, full
+context, actors and RNG. The destination is room 16; native counts remain
+357 frames/359 key reads versus original 359/361.
+`tools/inspect_gameplay_rejected_entry.py` records `route_accepted: false`;
+`manifest/gameplay-level7-rejected-entry.sha256` pins the evidence.
 
 Fresh original `gameplay-assisted-level8-clean-2` completes the successful
 sword/plate/stairs route in 490 frames and enters level nine, room 10.
