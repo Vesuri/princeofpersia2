@@ -764,6 +764,15 @@ step 2766 and 2769 consumed keys differ from the original's step 2767 and
 Original-code, input, heap and hardware restoration pass, and the ordinary
 release build is restored afterward.
 
+MEASURED: `.run-Vz4heJ` reproduces all 180 retained native captures in screen,
+full context and curated actor/RNG/counter spans, then captures the rejected
+level-four entry in room 1. Counts remain 2766 frames/2769 key reads versus
+original 2767/2770. The endpoint palette matches; pixels, actors, RNG and full
+context differ. Context differences are at 0x07D9 and 0x07F1; 326 viewport pixels
+differ within x168–480/y276–312. Code/input audits and restoration pass.
+`manifest/gameplay-level3-rejected-entry.sha256` pins this diagnostic evidence;
+its report explicitly retains `route_accepted: false`.
+
 The first additional level-three mismatch occurs at checkpoint 121. Checkpoints
 114–120 match full context, actors and RNG; the frame verifier passes their
 pixels, planes and palette. At checkpoint 121 all six actor records still match,
