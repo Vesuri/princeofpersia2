@@ -91,7 +91,7 @@ The original procedure names identify these targets:
 | 3 | NISTower | Visible post-fade and normal-return checkpoints match in the completed A1200-030 survey |
 | 4 | NISTitle | Existing paired title presentation plus natural timeout/black return pair below |
 | 5 | TransPrincessRoom | Paired coverage remains to be established |
-| 6 | NISThroneRoom | Clean level-eight original return; native pair pending |
+| 6 | NISThroneRoom | Four visible/return checkpoints paired; normal return; containing level-eight route remains open |
 | 7 | Opening1 | Unskipped normal return and illustrated/return checkpoint pair pass on A1200-030 |
 | 8 | Opening2 | Natural return and three illustrated checkpoints match on A1200-030 |
 | 9 | AboardShip | Existing level-one route; cinematic checkpoints require audit |
@@ -256,8 +256,19 @@ keys, then enters level 9 room 10 at step 490. Its actual selector-6 call return
 the ruined throne room after fade-in, and the restored room with the apparition
 at text-4 and text-8. The observer accounts for all three actual NIS calls and
 positively finishes discovery. `manifest/gameplay-throne-reference.sha256`
-pins the cutscene captures and route log. Native throne pairing and the existing
-level-eight timing/context differences remain open.
+pins the cutscene captures and route log.
+
+MEASURED: native `.run-M9Mmmf` matches the original fade-in, text-4, text-8
+and return viewport indices, displayed RGB, actors, RNG, level/room and story
+index. Selector 6 returns normally with the same callback counts. The checker
+`tools/check_gameplay_throne.py` verifies those four captures, build identity,
+A1200-030 restoration and code/input audits. Native evidence is pinned in
+`manifest/gameplay-throne-native.sha256`.
+
+This is a cutscene pass only: the containing route stops at `GAMEPLAY ROUTE /
+FIRST FRAME`, entering level 9 at step 489 rather than the original's 490.
+The level-eight timing/context differences remain open; the cutscene checker
+reports that separate route outcome and does not accept the full route.
 
 MEASURED: native `.run-JsjtjO` matches the original tower post-fade and return
 viewport indices, displayed RGB, actors, RNG, level/room and story-index state.
