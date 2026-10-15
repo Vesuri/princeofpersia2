@@ -5,15 +5,18 @@ Adapted from Alone in the Dark's extract_original_data.py and installed_metadata
 at the commit in manifest/references.tsv. No HFS image or installer is involved.
 Every original name holds its data fork (including empty forks); name.rsrc holds
 its raw resource fork when present; name.finfo is Alone's 32-byte AFI1 record.
-Scratch is retained under ignored tmp/. Differing destinations move to .replaced/.
+Scratch lives under ignored tmp/ and is removed on exit. Differing destinations
+move to .replaced/.
 """
 from __future__ import annotations
 
 import argparse
+import atexit
 from datetime import datetime, timezone
 import hashlib
 import json
 import os
+import shutil
 from pathlib import Path, PurePosixPath
 import struct
 import subprocess
@@ -179,7 +182,11 @@ def verify_output(directory):
 
 def scratch_directory():
     (ROOT / 'tmp').mkdir(exist_ok=True)
-    return Path(tempfile.mkdtemp(prefix='extract-', dir=ROOT / 'tmp'))
+    directory = Path(tempfile.mkdtemp(prefix='extract-', dir=ROOT / 'tmp'))
+    # Callers keep Paths through their checks; retain them for this process only.
+    # Installed output is moved out first. Preserve .replaced/ backups separately.
+    atexit.register(shutil.rmtree, directory, ignore_errors=True)
+    return directory
 
 
 def install(output, destination):

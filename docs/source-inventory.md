@@ -107,7 +107,9 @@ relative to `AMIGA_PYLIB`; these are checked before import. Archive verification
 precedes unpacking; complete output verification precedes installation. Identical
 existing output stays untouched. A differing tree, including any extra saves,
 is moved intact under ignored `.replaced/` before the verified tree is installed.
-Scratch extractions remain in ignored `tmp/extract-*/`.
+Scratch extractions and volume-import round trips use ignored `tmp/extract-*/`
+and are removed when the host process exits. Installed data and `.replaced/`
+backups remain intact.
 
 `make check-extraction` checks two independent extractions against the manifest,
 including a changed caller timezone, rejects altered inputs and malformed fork
