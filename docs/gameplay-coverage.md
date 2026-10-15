@@ -53,7 +53,7 @@ and bounded captures. Original bytes, saved state and captures remain ignored.
 | Level 3 | Meaningful gameplay route and original level-exit decision | Original repeats pass; native completion boundary unresolved, with recorded torch differences deferred |
 | Level 4 | Meaningful gameplay route and original level-exit decision | Original repeat passes; unloaded-instrument stop fixed, later first-frame boundary and intermediate comparisons unresolved |
 | Level 5 | Meaningful gameplay route and original level-exit decision | Clean assisted original repeat and native pair pass all 46 checkpoints; carpet NIS 1 returns and level six begins |
-| Level 6 | Meaningful gameplay route and original level-exit decision | Native reaches level seven; intermediate state/pixel comparison failures unresolved |
+| Level 6 | Meaningful gameplay route and original level-exit decision | Alternate door route and level-seven entry state match; native enters one frame early, so completion remains rejected |
 | Level 7 | Meaningful gameplay route and original level-exit decision | Clean original and fresh repeat reach level eight; native first-frame boundary differs by two frames |
 | Level 8 | Meaningful gameplay route and original level-exit decision | Native reaches level nine after cache-write fix; one-step early boundary and full-context differences remain |
 | Level 9 | Meaningful gameplay route and original level-exit decision | Original repeat and native pair pass all 15 checkpoints |
@@ -101,7 +101,8 @@ The original procedure names identify these targets:
 | 13 | TreeCheck index 2 | Paired coverage remains to be established |
 | 14 | TreeCheck index 3 | Three cinematic checkpoints and normal return match within the completed isolated assisted route |
 | 15 | TreeCheck index 4 | Three cinematic checkpoints and normal return match within the completed isolated assisted route |
-| 16–20 | TreeCheck indices 5–9 | Each selected story and its positive return remain to be audited |
+| 16 | TreeCheck index 5 | Three cinematic checkpoints and normal return match within the completed isolated assisted route |
+| 17–20 | TreeCheck indices 6–9 | Each selected story and its positive return remain to be audited |
 
 The table uses the actual CODE 15 argument. DERIVED from CODE 2+0308–0322:
 the outer PlayNIS wrapper subtracts eight from story selectors before calling
@@ -1423,7 +1424,20 @@ actual story 16. Fresh `gameplay-story16-isolated-repeat-1` matches every route
 checkpoint and all nine cinematic capture files, with normal return and
 discovery completion in both sessions. The original evidence is pinned in
 `manifest/gameplay-story16-reference.sha256` and
-`manifest/gameplay-story16-repeat.sha256`; native pairing remains pending.
+`manifest/gameplay-story16-repeat.sha256`.
+
+MEASURED: native `.run-6qIcjr` completes story 16 and the containing assisted
+route. The story checker passes all three cinematic checkpoints and all 21
+route checkpoints, with normal return, restoration and no deferred differences.
+The launcher also passes the route comparison.
+`manifest/gameplay-story16-native.sha256` pins the native evidence.
+
+MEASURED: `gameplay-story17-isolated-1` selects actual story 17 with 19
+remaining minutes. Fresh `gameplay-story17-isolated-repeat-1` matches every
+route checkpoint and all nine cinematic capture files. Both sessions record
+normal story return and discovery completion. The original evidence is pinned
+in `manifest/gameplay-story17-reference.sha256` and
+`manifest/gameplay-story17-repeat.sha256`; native pairing remains pending.
 
 MEASURED: `gameplay-level6-context-2` repeats every checkpoint of the clean
 level-six reference with a read-only write tap. The complete context allocation
