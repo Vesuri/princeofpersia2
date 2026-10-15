@@ -7,6 +7,18 @@ from gameplay_assisted_inputs import ROOT, REFERENCE, generate, metadata
 
 
 class AssistedInputs(unittest.TestCase):
+    def test_pinned_minute_assistance(self):
+        reference=ROOT/'ref/mame/runs/gameplay-story14-isolated-1'
+        manifest=ROOT/'manifest/gameplay-story14-reference.sha256'
+        keys,points,writes,_=metadata(reference,manifest)
+        self.assertEqual((len(keys),len(points),len(writes)),(6,21,22))
+        self.assertEqual([w for w in writes if w[1] in (0x4fce,0x4fcc,0x4fca,0x4fa2)],
+                         [(11,0x4fce,75,46),(11,0x4fcc,0,0),
+                          (11,0x4fca,0,0),(11,0x4fa2,0,1)])
+        from gameplay_assist import assist
+        for value in (-1,76):
+            with self.assertRaises(ValueError):assist(reference,'minutes',value)
+
     def test_pinned_ending_and_completion_controls(self):
         reference=ROOT/'ref/mame/runs/gameplay-assisted-ending-10'
         manifest=ROOT/'manifest/gameplay-assisted-ending.sha256'

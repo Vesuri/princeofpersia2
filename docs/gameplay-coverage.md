@@ -1374,6 +1374,22 @@ The reference ended with `GAMEPLAY ROUTE INCOMPLETE`, and the launcher rejected
 it. This run is diagnostic only, not accepted story coverage or a native failure.
 The attempted timer assistance remains unvalidated for the complete story route.
 
+MEASURED: the isolated `gameplay-story14-isolated-1` route and fresh
+`gameplay-story14-isolated-repeat-1` both complete actual story selector 14,
+with normal return and explicit discovery completion. All route checkpoints
+repeat, and all nine selector-14 capture files are byte-identical. The references
+are pinned in `manifest/gameplay-story14-reference.sha256` and
+`manifest/gameplay-story14-repeat.sha256`. Native pairing remains pending;
+this does not resolve the combined-route execution limit above.
+
+The opt-in `assist minutes VALUE` command accepts 0–75 remaining minutes for
+a live actor. It logs the minute write and resets the two subminute words and
+timer redraw flag, following the original minute-cheat fields. The assisted
+input checker verifies the complete before/after A5 captures and unchanged
+context and pixels. This route uses 46 minutes and first runs story selector 12
+before a further forward level transition selects 14. Four input-checker tests
+pass, including the pinned timer writes and rejection of out-of-range values.
+
 MEASURED: `gameplay-level6-context-2` repeats every checkpoint of the clean
 level-six reference with a read-only write tap. The complete context allocation
 is checked against its physical alias before arming the tap. The differing

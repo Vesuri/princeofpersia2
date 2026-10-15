@@ -6,7 +6,7 @@ from extract_original_data import ROOT, pins
 
 REFERENCE = ROOT / 'ref/mame/runs/gameplay-assisted-survey-3'
 MANIFEST = ROOT / 'manifest/gameplay-assisted-survey.sha256'
-ALLOWED = {0x50ca, 0x509c, 0x50b4, 0x50b2, 0x50ce, 0x4faa, 0x4f92, 0x4fac, 0x50bc, 0x50cc, 0x50c4, 0x4fc2, 0x5244}
+ALLOWED = {0x4fce, 0x4fcc, 0x4fca, 0x4fa2, 0x50ca, 0x509c, 0x50b4, 0x50b2, 0x50ce, 0x4faa, 0x4f92, 0x4fac, 0x50bc, 0x50cc, 0x50c4, 0x4fc2, 0x5244}
 
 
 def metadata(reference=REFERENCE, manifest=MANIFEST):
@@ -28,7 +28,7 @@ def metadata(reference=REFERENCE, manifest=MANIFEST):
         write = re.fullmatch(r'GAMEPLAY_ASSIST sequence=(\d+) kind=(\w+) a5minus=([0-9A-F]+) before=([0-9A-F]+) after=([0-9A-F]+)', line)
         if write:
             sequence, kind, offset, before, after = write.groups()
-            assert int(offset,16) in ALLOWED and kind in ('health','level','x','room','y','shadow'), 'ASSIST INPUT / WRITE'
+            assert int(offset,16) in ALLOWED and kind in ('health','level','x','room','y','shadow','minutes'), 'ASSIST INPUT / WRITE'
             pending.append((int(sequence), int(offset,16), int(before,16), int(after,16)))
         if not line.startswith('GAMEPLAY_ROUTE_CHECKPOINT '):
             continue

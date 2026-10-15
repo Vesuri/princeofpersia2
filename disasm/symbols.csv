@@ -1128,6 +1128,9 @@ segment,offset,name,evidence,notes
 15,0x3BFA,SetDisolveDelays,DERIVED,Three timing passes; stores timing fields at CODE 15+3C4A and +3C54
 2,0x28C2,ShowHallOfFame,DERIVED,LINK entry and MacsBug name at 0x29CC; menu view loads the persisted table and returns at 0x29CA
 15,0x72DC,NISTower_FirstFadeReturned,DERIVED,Original direct palette fade at 72D8 has returned before animation begins
+2,0x49C2,CheatSubtractMinute,DERIVED,Decrements minutes above one and resets both sub-minute counters plus redraw flag
+2,0x49E4,CheatAddMinute,DERIVED,Increments minutes and resets both sub-minute counters plus redraw flag
+2,0x7194,ExpiredTimeStory,DERIVED,Calls PlayNIS with wrapper selector 28 then clears minutes and story progress
 6,0x3304,TransferOppInfo,DERIVED,Entry copies a 38-byte source record via GetOppInfoIdx then updates fields and calls AddOppToRoom; name follows return at 0x33A8
 6,0x358E,AddOppToRoom,MEASURED,Level-six context trace observes room and index FFFF at original structure copy; name follows return at 0x3632
 6,0x3642,GetOppInfoIdx,DERIVED,Computes context plus room stride 0xC0 and record stride 38; signed indices reach below ordinary opponent records
