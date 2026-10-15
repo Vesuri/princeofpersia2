@@ -59,7 +59,7 @@ and bounded captures. Original bytes, saved state and captures remain ignored.
 | Level 9 | Meaningful gameplay route and original level-exit decision | Original repeat and native pair pass all 15 checkpoints |
 | Level 10 | Meaningful gameplay route and original level-exit decision | Clean original repeat passes; native reaches level eleven two frames early, comparison remains open |
 | Level 11 | Meaningful gameplay route and original level-exit decision | Original repeat passes; native reaches level twelve two frames early, comparison remains open |
-| Level 12 | Meaningful gameplay route and original level-exit decision | Original assisted exit and fresh repeat pass; native pair pending |
+| Level 12 | Meaningful gameplay route and original level-exit decision | Original repeat passes; native reaches level thirteen two frames early, comparison remains open |
 | Level 13 | Meaningful gameplay route and original level-exit decision | Entry survey passes; exit route incomplete |
 | Level 14 | Meaningful gameplay route and original level-exit decision | Assisted final encounter and original decision 15 paired through the ending and Hall insertion |
 | Main cutscenes, individually | Original natural return and paired visible/state checkpoints | Incomplete |
@@ -1063,3 +1063,9 @@ A diagnostic comparison of the 23 captured pre-stop checkpoints in each of
 `.run-OZOTgb` and `.run-GYU6Ag` passes `paired_frame` and full context
 comparison. The missing final checkpoint and early boundary remain failures;
 this diagnostic is not route acceptance.
+
+Native level-twelve `.run-bAamYp` reaches level thirteen, room 3, at
+step 290 with 292 key reads, versus original step 292. The strict first-frame
+guard rejects the run. All 23 captured pre-stop checkpoints pass the diagnostic
+`paired_frame` and full-context comparison; the final endpoint comparison
+remains missing. Code/input and hardware/heap restoration pass.
