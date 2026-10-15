@@ -1399,3 +1399,23 @@ with clean restoration and code/input audits. Its full-context checker still
 rejects ordinals 10–26. This localizes the mismatch to the source record rather
 than a differing copy implementation; it is not a full-route pass.
 `manifest/gameplay-level6-context-native.sha256` pins the diagnostic evidence.
+
+### Level-six alternate assisted door route
+
+MEASURED: `gameplay-level6-door-1` starts from the original level-six entry,
+uses logged health and position assistance, and walks left in room 16 to
+activate the door. It waits in room 22, returns to the opened door and reaches
+level seven, room 32, at step 333. The reference positively finishes discovery;
+`manifest/gameplay-assisted-level6-door.sha256` pins 25 checkpoints, 335 key
+reads and 20 assistance writes. The same context observer that detected the
+invalid opponent-record copy on the earlier route records none on this route.
+Fresh `gameplay-level6-door-repeat-1` matches every recorded checkpoint and
+the same level-seven endpoint. Its log/actions are pinned in
+`manifest/gameplay-level6-door-repeat.sha256`. Full native comparison remains
+required; the earlier context failures are not reclassified as passes.
+
+The discarded `gameplay-level6-direct-1` and `gameplay-level6-plate-1` attempts
+missed the door trigger and do not establish exit coverage. A neutral frame
+following the old room teleport (`gameplay-level6-refresh-1`) did not prevent
+its invalid-index copy. These controls do not replace or relax the failed
+full-context comparisons recorded above.
