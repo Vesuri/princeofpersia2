@@ -1663,3 +1663,11 @@ SHA-256 manifests pin the original and repeat. This variation still reaches
 the invalid opponent-record copy at step 180 while crossing into room 24;
 it does not establish a fix or native acceptance. The first repeat preparation
 failed before emulator launch and is not reference evidence.
+
+MEASURED: native `.run-R8yRkz` replays that alternate level-eight route.
+All 48 captured pre-entry checkpoints pass `paired_frame`; full context matches
+through ordinal 27, then differs at 0x2008–0x2027 for ordinals 28–47 after
+the room-24 crossing. Native reaches level nine, room 10, at step 478 with
+480 key reads, versus original 479/481, and the strict first-frame guard rejects
+completion. `manifest/gameplay-level8-direct-room-native.sha256` pins the
+failed run. This variation moves the invalid copy later but does not resolve it.
