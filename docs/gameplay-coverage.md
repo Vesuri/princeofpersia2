@@ -94,7 +94,7 @@ The original procedure names identify these targets:
 | 6 | NISThroneRoom | Four visible/return checkpoints paired; normal return; containing level-eight route remains open |
 | 7 | Opening1 | Unskipped normal return and illustrated/return checkpoint pair pass on A1200-030 |
 | 8 | Opening2 | Natural return and three illustrated checkpoints match on A1200-030 |
-| 9 | AboardShip | Existing level-one route; cinematic checkpoints require audit |
+| 9 | AboardShip | Four cinematic checkpoints and normal return paired within the completed level-one route |
 | 10 | Discovery | Illustrated checkpoint and normal return match in the completed A1200-030 survey |
 | 11 | HappyEnding | Included in the passing ending/Hall pair |
 | 12 | TreeCheck index 1 | Illustrated and normal-return checkpoints match in the completed A1200-030 survey |
@@ -1438,3 +1438,13 @@ actual NIS calls are accounted for. Visible captures show the departing ship,
 the sleeping prince and the storm/ lightning sequence. The return image is
 black. `manifest/gameplay-ship-reference.sha256` pins those captures and the
 completed route log. Native cinematic comparison remains pending.
+
+MEASURED: native `.run-usSSPj` matches the ship fade-in, text-4, storm copy-8
+and black return checkpoints, including displayed colour and curated game
+state. Selector 9 returns normally with matching callback counts. The containing
+level-one route passes all 96 checkpoints with only its two previously pinned
+D11 RNG exceptions. `tools/check_gameplay_ship.py` checks both scopes and rejects
+a corrupted visible pixel. `manifest/gameplay-ship-native.sha256` pins the native
+evidence. The launcher's Bash 3.2 empty-array expansion error occurred after
+normal restoration; the standalone checker supplies the passing comparison.
+The launcher now handles both empty and nonempty optional argument lists.
