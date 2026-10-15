@@ -452,13 +452,15 @@ mac.run(function()
    if audio then
     assert(mac.wait_for('first-room',function()return routeStage=='first-room'end,18000),'AUDIO GAMEPLAY')
     print('AUDIO_PHASE gameplay')
-    mac.wait(120);mac.key_down('Right Arrow')
+    -- POP2_NO_RIGHT: the idle opening (guard fight and fall) for item-19 profiling.
+    local noRight=os.getenv('POP2_NO_RIGHT')
+    if not noRight then mac.wait(120);mac.key_down('Right Arrow')end
     if os.getenv('POP2_DEMO_ROUTE') then
      mac.wait(120);mac.key_up('Right Arrow');mac.wait(120)
      audio.finish();print('AUDIO_DEMO_COMPLETE');finished=true;manager.machine:exit();return
     end
     assert(mac.wait_for('death',audio.dead,3600),'AUDIO DEATH NOT REACHED')
-    mac.key_up('Right Arrow');mac.wait(240)
+    if not noRight then mac.key_up('Right Arrow')end;mac.wait(240)
     audio.finish();print('AUDIO_ROUTE_COMPLETE');finished=true;manager.machine:exit();return
    end
    mac.wait(18000);error('DISPLAY FIRST ROOM NOT REACHED')

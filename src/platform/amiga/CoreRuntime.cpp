@@ -156,6 +156,16 @@ volatile uint32_t g_timingSetCount=0,g_timingSetRows[512][5]={};
 __attribute__((noinline)) void pop2TimingWindowComplete(){__asm__ volatile("nop" ::: "memory");}
 volatile uint32_t g_timingPhase=0x1000,g_timingSamples[0x1005]={};
 #endif
+#ifdef POP2_OPENING_PROFILE
+#if !defined(POP2_TIMING_PROBE) || !defined(POP2_INTEGRATION_NO_RIGHT) || defined(POP2_VERIFY)
+#error Opening profile requires the PROFILE=1 timing probe and the no-input route
+#endif
+// Opening-sequence cycle profile (item 19): one row per completed frame from
+// the first room to the death song, buffered in Fast RAM and read once after
+// restoration. Landing and Kid health changes end profiler phases.
+volatile uint32_t g_openingCount=0,g_openingPhases=0,g_openingRows[1024][20]={};
+__attribute__((noinline)) void pop2OpeningPhase(){__asm__ volatile("nop" ::: "memory");}
+#endif
 uint32_t g_timerCallbackCode=0,g_timerCallbackTask=0,g_timerCallbackActive=0,g_timerCallbacks=0;
 void pop2_audio_callback();void pop2_audio_lookup();void pop2_audio_invoke();void pop2_audio_fixture_end();
 uint32_t g_audioCallbackCode=0,g_audioCallbackContext=0;
@@ -1340,6 +1350,20 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
 #ifdef POP2_TIMING_PROBE
         if(timing){timing[5]=wallTicks();timing[6]=g_scaffoldFields;}
         if(g_timingCount==6)pop2TimingWindowComplete();
+#endif
+#ifdef POP2_OPENING_PROFILE
+        if(g_integrationStage==3 && g_openingCount<1024){
+            volatile uint32_t* row=g_openingRows[g_openingCount];
+            // Phases end when the Kid first lands on the roof (y 226, A5-50CC)
+            // and at each health change.
+            static uint16_t health;static bool landed;
+            bool land=!landed && w(a5-0x50cc)==226;
+            if(g_openingCount && (w(a5-0x50b4)!=health || land)){++g_openingPhases;pop2OpeningPhase();}
+            health=w(a5-0x50b4);landed=landed||land;
+            row[0]=w(a5-0x349a);row[1]=wallTicks();row[2]=g_scaffoldFields;row[3]=g_openingPhases;
+            for(unsigned i=0;i<16;++i)row[4+i]=l(a5-0x50d2+4*i);
+            ++g_openingCount;
+        }
 #endif
     }
 #ifdef POP2_UI

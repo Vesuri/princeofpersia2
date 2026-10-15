@@ -142,6 +142,108 @@ Both reject all twelve altered-evidence controls. Host helper tests and shared
 source pins pass. Full gameplay coverage and fixed-68020 cadence remain in their
 separate open items.
 
+## Opening-sequence profile (item 19)
+
+The first profiled scene is the start of play without input: the Kid comes
+through the window and lands on the roof, a guard attacks from the left and
+hits him three times, and the Kid falls off the roof. The window runs from the
+first room (integration stage 3) to the original `AddKidDeathSong` kind-3 return
+(stage 4), 81 game frames. Phases end at game events, never frame numbers: the
+Kid's first landing (y 226, A5−50CC) and each Kid health change (A5−50B4).
+
+| Phase | Frames | Content |
+|---|---:|---|
+| 0 | 6 | through the window to the landing |
+| 1 | 28 | standing; the guard approaches and strikes |
+| 2–3 | 9 + 9 | health 2 and 1 under attack |
+| 4 | 29 | health 0, fall off the roof, until the death song |
+
+```sh
+. amiga/env.sh
+amiga/aprof.sh opening-030-b                  # exact-cycle 68030, one profile per phase
+amiga/aprof.sh opening-020-a a1200-fast       # 68020 (item 15)
+APROF_CYCLES=0 amiga/aprof.sh cadence-x       # ordinary emulator, unmodified a1200-030
+python3 tools/aprof_report.py opening opening-030-c --compare opening-030-b \
+  --original ref/mame/runs/opening-noright-1
+python3 tools/aprof_report.py report opening-030-b --phase 0
+python3 tools/aprof_report.py work opening-030-b --phase 0     # outside the timer wait
+```
+
+`aprof.sh` builds `PROFILE=1 VERIFY=0` with the no-input route and the
+`POP2_OPENING_PROFILE` recorder; ordinary release contains neither. The recorder
+buffers one row per completed frame in Fast RAM (counter, ticks, fields, phase
+and the 62-byte Kid record) and the observer stops only at phase boundaries.
+Outputs go to ignored `tmp/aprof/NAME/`; existing names are refused. `run.sh`
+accepts the run only with route completion, zero Right reads, the kind-3 death,
+consecutive phase boundaries, hardware restoration and no clock fault.
+`aprof_report.py` is adapted from Alone in the Dark's report (same profile
+format and call-tree rules) with this port's segment, MacsBug and cached-service
+names. Flat PC times are exact; call-tree attribution, including `work`, is
+approximate because of tail jumps and interrupts.
+
+The original Macintosh run `opening-noright-1` (`POP2_AUDIO=route
+POP2_TIMING_TRACE=1 POP2_DISPLAY_ROUTE=1 POP2_NO_RIGHT=1`) reaches the same
+death and requests timer 1 with **34 five-tick delays followed by 47 six-tick
+delays**: the original deliberately slows to six ticks from the first hit. It
+meets every request. Native runs request the identical delays (the native
+window starts one frame earlier). Cadence is therefore judged per requested
+SetTimer interval, not against a fixed five ticks.
+
+FS-UAE deterministic mode fails GLib queue assertions and never serves the
+debugger stub with either emulator, so repeats establish reproducibility. The
+cycle profiler refuses an MMU model, so `a1200-030` is profiled with
+`PROFILE_NO_MMU` (the option must follow the preset arguments). MEASURED: the
+ordinary emulator with the same no-MMU model reproduces the profiler run (393
+fields, the same late landing frames), while the unmodified preset is faster in
+the landing (24 against 35–36 fields). The profiles are thus a conservative model
+of the selected preset; neither establishes hardware timing.
+
+### Results
+
+MEASURED, all runs with identical Kid records in all 81 frames:
+
+| Run | Machine | Fields | Late requested intervals |
+|---|---|---:|---:|
+| `opening-030-cadence-a/b/c` | `a1200-030`, ordinary emulator | 375–376 | 0 (b, c); a predates the request dump |
+| `opening-030-b`, `-c` | 68030 no MMU, cycle profiler | 393–394 | 10 of 81 (landing, first hit) |
+| `opening-030-nommu-control` | 68030 no MMU, ordinary emulator | 393 | landing as above |
+| `opening-020-a`, `-b`, `-cadence-a` | `a1200-fast` | 964–967 | 81 of 81 |
+
+The selected `a1200-030` preset meets the original cadence in this scene. CPU
+time per frame from the exact profiles (`report`, all work; `work` excludes the
+original wait loop CODE 17+31B8, whose polling is idle time):
+
+| Phase | 68030 total | 68030 outside wait | 68030 original | 68020 total | 68020 original |
+|---|---:|---:|---:|---:|---:|
+| 0 landing | 143.1 ms | 143.1 ms | 23.0 ms | 499.5 ms | 99.8 ms |
+| 1 stand-off | 86.2 ms | 66.9 ms | 12.0 ms | 258.8 ms | 49.3 ms |
+| 2–3 attack | 97.9–99.1 ms | 65.3–66.5 ms | 12.2–12.5 ms | 252.4–255.5 ms | 48.6–49.1 ms |
+| 4 fall | 97.5 ms | 40.3 ms | 8.5 ms | 153.9 ms | 28.5 ms |
+
+The budgets are 83.3 ms (five ticks) and 100 ms (six ticks). Port work is four
+to five times the original game's instructions. DERIVED: on the 68020 the
+original's own landing work (99.8 ms/frame) already exceeds its five-tick
+budget, so no port optimization alone can meet the landing cadence there.
+
+68030 landing (phase 0) costs per frame. Inclusive rows overlap: the veneer
+and publication costs contain dispatch, waits and helpers listed separately.
+
+| Cost | ms/frame | Evidence |
+|---|---:|---|
+| `pop2_cached_services` veneers (`SectRect` 217, `UnionRect` 36, `ClipRect` 33, `EmptyRect` 26 calls) | 38.4 | 123 µs per call through Line-A `$AFFE`, full dispatch and an argument `memmove` |
+| Frame publication | 35.0 | Kalms C2P 18.6; `PrinceScreen::synchronize` blitter wait 14.1 |
+| Trap entry and dispatch bucket (exclusive) | 30.6 | `pop2Dispatch` ~220 and `pop2UserDispatch` ~120 instructions per trap |
+| `pop2WallTicks` + `selectVBL` on every trap | 8.6 | five Chip-bus beam/CIA reads per sample, 30–54 cycles each |
+| Audio driver calls | 9.2 | 14 `NativeAudio::dispatch` at 654 µs with Paula DMA waits; effect conversion 3.0 |
+| `NewHandle` | 4.1 | 3.5 ms per call (15.9 ms on 68020); heap coalescing in resize/dispose |
+| Original game code | 23.0 | `SaveRect`, RLE blitters CODE 20+03C0/+083A |
+
+Trivial traps (`SystemTask`, `HLock`, `HGetState`, `StripAddress`,
+`SwapMMUMode`) cost 77–101 µs each on the 68030 and 340–500 µs on the 68020.
+Averaged over the scene, the trap-entry/dispatch bucket is 35.3 ms per 68030
+frame and 66.8 ms per 68020 frame. Item 19's plan in `docs/open-work.md` orders
+the reductions. The pins are in `manifest/opening-profile.sha256`.
+
 ## Scenes to retain for future profiling
 
 Record suspected heavy scenes encountered during gameplay validation here,

@@ -1,17 +1,21 @@
 # Open work
 
 The owner brought 68020 support (15) ahead of release including 68040 validation
-(14). Gameplay coverage (12) remains accepted under D10–D12 on `a1200-030`; 68040
-validation remains part of release work. Items remain open until their acceptance
-gates pass.
+(14); item 19's reductions serve both. Gameplay coverage (12) remains accepted
+under D10–D12 on `a1200-030`; 68040 validation remains part of release work.
+Items remain open until their acceptance gates pass.
 
 15. **68020 support.** Measure and optimize
     the fixed 68020 configuration without changing original game decisions.
     Two current baseline runs miss all 53 five-tick intervals and measure
     424–428 ms/update in the matched five-update window. Full-route death pixels
-    also differ from the pinned parent. See `docs/performance.md`. Recommend
-    extending item 19 profiling to 68020 before optimization; this does not
-    establish that the target is impossible or waive its acceptance gate.
+    also differ from the pinned parent. Item 19's opening profile on `a1200-fast`
+    misses all 81 requested intervals (about 12 fields per frame) and shows port
+    work about four times the original's. The original's own landing work is
+    99.8 ms/frame, above the 83.3 ms five-tick budget, so port optimization alone
+    cannot meet that scene's cadence (DERIVED). See `docs/performance.md`. This
+    does not waive the acceptance gate; changing it requires an owner decision.
+    Pursue item 19's reductions first.
     Acceptance: original timing-service contracts and game-step cadence pass on
     `a1200-fast`, matched gameplay regressions pass, and the release hardware and
     installer requirements accurately include the validated configuration.
@@ -61,9 +65,79 @@ gates pass.
     Acceptance: paired controls establish supported cases without accepting
     unknown pointers or silently changing the free list.
 
-19. **Deferred scene profiling.** During gameplay validation, record suspected
-    heavy scenes in `docs/performance.md` with their route/save and observation;
-    do not interrupt item 12 for deep performance investigations. Later measure
-    these workloads on `a1200-030`, separating release execution from debugger
-    and verification overhead. Acceptance: reproducible matched-workload results
-    for the recorded candidates; no slowdown claims based on elapsed harness time.
+19. **Scene profiling and reductions.** The opening sequence (window entry,
+    guard attack, fall; `docs/performance.md#opening-sequence-profile-item-19`) is
+    profiled with `amiga/aprof.sh`. It meets the original's requested cadence on
+    the selected `a1200-030` preset, but the exact no-MMU 68030 model misses 10
+    of 81 intervals in the landing and the 68020 misses all. Port work is four to
+    five times the original game's. Work through the reductions in order, one
+    commit each. For every step report the opening profile before and after
+    (`opening`, `report`, `work` per phase) with two repeats, the per-step
+    service gates named below, `make integration-check`, the timing cadence and
+    VBL/Time Manager fixtures, and an unchanged ordinary release audit. Check
+    Vette! and Alone in the Dark first; Alone in the Dark's FRAME.4, FRAME.6 and
+    HEAP items solved similar costs. Figures are 68030 ms per landing frame
+    unless noted.
+
+    - **19.1 Direct pure rectangle veneers.** `SectRect`, `UnionRect` and
+      `EmptyRect` reached through `pop2_cached_services` cost 117–128 µs per
+      call (68020: 473–555 µs) because each veneer raises Line-A `$AFFE` and
+      runs the full dispatcher and an argument `memmove`; 137 calls per frame
+      on average and 278 in the landing. Give pure services a directly callable
+      native body with the Pascal ABI and condition codes, keeping the dispatch
+      path for patched traps. `ClipRect` changes port state and stays on the
+      full path unless separately validated.
+      Acceptance: `check_equal_rect.py` and new boundary/empty/overlap fixtures
+      paired with the original pass, and these calls average ≤ 15 µs.
+    - **19.2 Cheaper ordinary trap dispatch.** Trivial traps (`SystemTask`,
+      `HLock`, `HGetState`, `StripAddress`, `SwapMMUMode`) cost 77–101 µs
+      (68020: 340–500 µs): about 120 instructions of user entry, a ~220
+      instruction compare chain in `pop2Dispatch`, and VBL selection per trap.
+      Use table dispatch and Alone in the Dark's tick-scoped reuse of validated
+      checks, keeping frame-owner, stack and return checks and named stops.
+      Acceptance: core, file, display, UI and audio service gates pass; these
+      traps cost ≤ 25 µs; the dispatch bucket falls from 35.3 to ≤ 12 ms per
+      frame averaged over the scene.
+    - **19.3 Clock sampling without per-trap beam reads.** `pop2WallTicks` runs
+      about 900 times per frame through `selectVBL`, each with five Chip-bus
+      beam/CIA reads (9.3 ms/frame scene average). Sample the beam only for
+      TickCount results and due VBL/Time Manager work; keep backward-clock and
+      ambiguous-position failures.
+      Acceptance: `VideoTicks` host tests, VBL and Time Manager fixtures and the
+      cadence gate pass; clock sampling ≤ 2 ms per frame.
+    - **19.4 Non-blocking buffer synchronization.** `PrinceScreen::synchronize`
+      spins 14.1 ms on the blitter in the landing (3.6 attack, 1.3 fall). Start
+      the copy and wait only before the next write to that buffer.
+      Acceptance: the four-frame display fixture and integration planes pass;
+      CPU blitter waiting ≤ 2 ms per landing frame.
+    - **19.5 Landing conversion bounds.** C2P takes 18.6 ms per landing frame
+      (6.7 stand-off, 4.9 fall). Establish whether the dirty rectangles are the
+      minimal combined Kid, glass and guard bounds; consider Alone in the Dark's
+      disjoint-band conversion.
+      Acceptance: converted planes equal the chunky image at every checkpoint
+      and C2P falls by at least 30%, or the bounds are shown minimal.
+    - **19.6 Audio call cost.** Fourteen audio driver calls per landing frame
+      cost 654 µs each (9.2 ms), including Paula DMA line waits and 3.0 ms of
+      repeated sample conversion. Reuse converted immutable samples and skip
+      waits for settled channels, as Alone in the Dark did.
+      Acceptance: audio contract, callback-order and route checks pass with
+      unchanged events and timing; audio ≤ 2 ms per landing frame.
+    - **19.7 Heap allocation cost.** `NewHandle` takes 3.5 ms per call (68020:
+      15.9 ms) and resize/dispose coalescing adds about 1.8 ms per landing
+      frame. AmigaXDev holds Alone in the Dark's shared heap fixes, whose
+      adoption here the owner deferred while work was ongoing; adopting them
+      requires the owner's release of that deferral.
+      Acceptance: heap host tests, the measured freed-handle and low-memory
+      cases and gameplay save/restart regressions pass; `NewHandle` ≤ 0.5 ms.
+    - **19.8 Further scenes.** After 19.1–19.3, profile the level-five carpet
+      exit and the level-eight throne dissolve (clean and generated cache) as
+      recorded above, and add scenes whose frames exceed their requested delays.
+    - **19.9 Share the profile report.** Move the common profile parsing and
+      call-tree code of `tools/aprof_report.py` and Alone in the Dark's report
+      into AmigaXDev once its tree is clean, keeping port-specific names and
+      buckets local.
+
+    Acceptance: each step's gates and measured targets; finally the opening
+    profile meets every requested interval on the exact 68030 model, with
+    reproducible matched-workload results for the further scenes. Emulator
+    results are not hardware performance claims.

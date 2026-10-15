@@ -13,10 +13,10 @@ ifeq ($(filter 0 1,$(VERIFY)),)
 $(error VERIFY must be 0 or 1)
 endif
 EXTRA_DEFINES ?= -DPOP2_CORE -DPOP2_DISPLAY -DPOP2_INPUT -DPOP2_UI -DPOP2_AUDIO
-PROFILE_ALLOWED = $(if $(filter 1,$(PROFILE)),-DPOP2_INTEGRATION_PROBE -DPOP2_TIMING_PROBE)
+PROFILE_ALLOWED = $(if $(filter 1,$(PROFILE)),-DPOP2_INTEGRATION_PROBE -DPOP2_TIMING_PROBE -DPOP2_INTEGRATION_NO_RIGHT -DPOP2_OPENING_PROFILE)
 ifeq ($(VERIFY),0)
 ifneq ($(filter-out $(PROFILE_ALLOWED) -DPOP2_CORE -DPOP2_DISPLAY -DPOP2_INPUT -DPOP2_UI -DPOP2_AUDIO,$(filter -DPOP2_%,$(EXTRA_DEFINES))),)
-$(error Diagnostic POP2 defines require VERIFY=1; PROFILE=1 permits only integration and timing measurement probes)
+$(error Diagnostic POP2 defines require VERIFY=1; PROFILE=1 permits only integration, timing and opening-profile measurement probes)
 endif
 endif
 VERIFY_DEFINES = $(if $(filter 1,$(VERIFY)),-DPOP2_VERIFY)
@@ -98,6 +98,9 @@ obj/MacEntry.o: ../src/platform/amiga/MacEntry.s Makefile
 	$(AS) -mcpu=68020 -g --register-prefix-optional $(if $(filter -DPOP2_AUDIO_ORDER_PROBE,$(EXTRA_DEFINES)),--defsym POP2_AUDIO_ORDER_PROBE=1) $(if $(filter -DPOP2_GAMEPLAY_ROUTE_PROBE,$(EXTRA_DEFINES)),--defsym POP2_GAMEPLAY_ROUTE_PROBE=1) $(if $(filter -DPOP2_GAMEPLAY_SAVE_PROBE,$(EXTRA_DEFINES)),--defsym POP2_GAMEPLAY_SAVE_PROBE=1) $(if $(filter -DPOP2_TIMING_TM_PROBE,$(EXTRA_DEFINES)),--defsym POP2_TIMING_TM_PROBE=1) $(if $(filter -DPOP2_TIMING_VBL_PROBE,$(EXTRA_DEFINES)),--defsym POP2_TIMING_VBL_PROBE=1) $(if $(filter -DPOP2_INTEGRATION_PROBE,$(EXTRA_DEFINES)),--defsym POP2_INTEGRATION_PROBE=1) "$<" -o "$@"
 ifneq (,$(filter -DPOP2_TIMING_PROBE,$(EXTRA_DEFINES)))
 PROBES += g_profileFreeFast g_profileLargestFast g_profileFreeChip g_c2pPasses g_c2pRects g_c2pPixels g_c2pUnbatched g_timingCount g_timingRows g_timingPhase g_timingSamples g_timingSetCount g_timingSetRows
+endif
+ifneq (,$(filter -DPOP2_OPENING_PROFILE,$(EXTRA_DEFINES)))
+PROBES += g_openingCount g_openingPhases g_openingRows
 endif
 ifneq (,$(filter -DPOP2_TIMING_VBL_PROBE,$(EXTRA_DEFINES)))
 PROBES += g_timingVblRecords g_timingVblResult g_timingVblElapsed g_timingVblUserCalls g_timingVblDeferredFields

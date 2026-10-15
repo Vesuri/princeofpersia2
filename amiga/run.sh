@@ -75,7 +75,14 @@ printf '%s\n' "$RUN" > .run-last.txt
 shasum -a 256 "$DH1/PrinceOfPersia2" "$RUN/PrinceOfPersia2.elf" > "$RUN/build.sha256"
 fsuae_claim_port
 fsuae_options
-fsuae_launch --floppy_drive_volume=0 --floppy_drive_volume_empty=0 --logs_dir="$PWD/$RUN/logs" --hard_drive_0="$DH0" --hard_drive_1="$DH1" --remote_debugger_trigger=PrinceOfPersia2 --state_dir="$RUN/state" --joystick_port_0=nothing --joystick_port_1=nothing
+# The cycle profiler refuses an MMU model. UAE options apply in order, so this
+# opt-in override must follow the preset's arguments.
+LATE_ARGS=()
+if [ "${PROFILE_NO_MMU:-0}" = 1 ]; then
+  [ "${OPENING_PROFILE:-0}" = 1 ] && [ "$AMIGA_SETUP" = a1200-030 ] || { echo 'PROFILE_NO_MMU / REQUIRES OPENING_PROFILE ON a1200-030'; exit 2; }
+  LATE_ARGS=(--uae_mmu_model=0)
+fi
+fsuae_launch ${LATE_ARGS[@]+"${LATE_ARGS[@]}"} --floppy_drive_volume=0 --floppy_drive_volume_empty=0 --logs_dir="$PWD/$RUN/logs" --hard_drive_0="$DH0" --hard_drive_1="$DH1" --remote_debugger_trigger=PrinceOfPersia2 --state_dir="$RUN/state" --joystick_port_0=nothing --joystick_port_1=nothing
 for ((i=0;i<60;i++)); do
  kill -0 "$FSUAE_PID" 2>/dev/null || { echo 'SCAFFOLD / EMULATOR EXIT'; exit 1; }
  lsof -nP -iTCP:"$DEBUG_PORT" -sTCP:LISTEN >/dev/null 2>&1 && break
@@ -103,6 +110,8 @@ if [ "${CORE:-0}" = 1 ]; then
     python3 ../tools/check_gameplay_opening.py "$RUN" "$GAMEPLAY_ATTRACT_REFERENCE" --attract
   elif [ -n "${GAMEPLAY_OPENING_REFERENCE:-}" ]; then
     python3 ../tools/check_gameplay_opening.py "$RUN" "$GAMEPLAY_OPENING_REFERENCE"
+  elif [ "${OPENING_PROFILE:-0}" = 1 ]; then
+    python3 ../tools/aprof_report.py check-run "$RUN"
   elif [ "${PERFORMANCE:-0}" = 1 ]; then
     python3 ../tools/check_performance.py "$RUN" "$PERFORMANCE_REFERENCE" --setup "$AMIGA_SETUP"
   elif [ "${TIMING_TM:-0}" = 1 ]; then
