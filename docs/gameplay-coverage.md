@@ -58,8 +58,8 @@ and bounded captures. Original bytes, saved state and captures remain ignored.
 | Level 8 | Meaningful gameplay route and original level-exit decision | Clean original repeat passes; native AddResource loud stop in sword cutscene |
 | Level 9 | Meaningful gameplay route and original level-exit decision | Original repeat and native pair pass all 15 checkpoints |
 | Level 10 | Meaningful gameplay route and original level-exit decision | Clean original repeat passes; native reaches level eleven two frames early, comparison remains open |
-| Level 11 | Meaningful gameplay route and original level-exit decision | Original repeat passes; native pair pending |
-| Level 12 | Meaningful gameplay route and original level-exit decision | Original assisted exit reaches level thirteen; fresh repeat and native pair pending |
+| Level 11 | Meaningful gameplay route and original level-exit decision | Original repeat passes; native reaches level twelve two frames early, comparison remains open |
+| Level 12 | Meaningful gameplay route and original level-exit decision | Original assisted exit and fresh repeat pass; native pair pending |
 | Level 13 | Meaningful gameplay route and original level-exit decision | Entry survey passes; exit route incomplete |
 | Level 14 | Meaningful gameplay route and original level-exit decision | Assisted final encounter and original decision 15 paired through the ending and Hall insertion |
 | Main cutscenes, individually | Original natural return and paired visible/state checkpoints | Incomplete |
@@ -1051,3 +1051,15 @@ Native level-ten `.run-OZOTgb` reaches level eleven, room 5, at step 290
 with 292 key reads; the original boundary is step 292. The strict first-frame
 guard rejects this run. Code/input and hardware/heap restoration pass, but
 this does not establish a passing paired route.
+
+Fresh `gameplay-assisted-level12-repeat-1` matches every recorded checkpoint
+of the pinned level-twelve route and passes the original launcher. Native
+pairing remains pending.
+
+Native level-eleven `.run-GYU6Ag` reaches level twelve, room 19, at step
+290 with 292 key reads, versus original step 292. The strict first-frame
+guard rejects the run; code/input and hardware/heap restoration pass.
+A diagnostic comparison of the 23 captured pre-stop checkpoints in each of
+`.run-OZOTgb` and `.run-GYU6Ag` passes `paired_frame` and full context
+comparison. The missing final checkpoint and early boundary remain failures;
+this diagnostic is not route acceptance.
