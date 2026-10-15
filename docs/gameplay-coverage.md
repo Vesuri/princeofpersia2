@@ -60,7 +60,7 @@ and bounded captures. Original bytes, saved state and captures remain ignored.
 | Level 10 | Meaningful gameplay route and original level-exit decision | Clean original repeat passes; native reaches level eleven two frames early, comparison remains open |
 | Level 11 | Meaningful gameplay route and original level-exit decision | Original repeat passes; native reaches level twelve two frames early, comparison remains open |
 | Level 12 | Meaningful gameplay route and original level-exit decision | Original repeat passes; native reaches level thirteen two frames early, comparison remains open |
-| Level 13 | Meaningful gameplay route and original level-exit decision | Original altar death/flame/exit and fresh repeat pass; native pair pending |
+| Level 13 | Meaningful gameplay route and original level-exit decision | Original and repeat pass; native reaches level fourteen two steps early with pixel/context differences |
 | Level 14 | Meaningful gameplay route and original level-exit decision | Assisted final encounter and original decision 15 paired through the ending and Hall insertion |
 | Main cutscenes, individually | Original natural return and paired visible/state checkpoints | Incomplete |
 | Timed story scenes, individually | Original natural return for each selected scene | Incomplete |
@@ -1124,10 +1124,20 @@ at step 1517 with 1519 key reads. The altar route uses logged health and positio
 assistance; the original guard kills the Prince, and the original shadow sequence
 revives him with special state 13. The later moves and unsuccessful door attempts
 remain in the route log. `manifest/gameplay-assisted-level13.sha256` pins all
-37 checkpoints and interventions. Fresh-repeat and native-pair acceptance remain
-pending; this is positive original exit evidence, not a native completion claim.
+37 checkpoints and interventions. This is positive original exit evidence;
+native acceptance remains incomplete.
 
 Fresh `gameplay-assisted-level13-repeat-1` completes the same level-thirteen
 route and passes the reference launcher. All 37 checkpoints, including
 pre-assistance captures, match pixels, palette, full context and the curated
-A5 actor/RNG/counter spans. Native pairing remains pending.
+A5 actor/RNG/counter spans.
+
+Native `.run-t1THYa` traverses the altar/flame/exit route and enters level
+fourteen, room 1, at step 1515 with 1517 key reads, two steps earlier than the
+original. The strict first-frame guard rejects that boundary. Of 36 retained
+captures, checkpoints 0..13 pass the paired-frame and full-context comparisons;
+pixel/context differences start at checkpoint 14, and checkpoint 25 also
+differs in RNG. These differences have not been classified as the D11 exception.
+The final expected checkpoint is absent. Code/input and hardware/heap restoration
+pass. `manifest/gameplay-level13-native.sha256` pins this partial evidence,
+not full route acceptance.
