@@ -1383,6 +1383,13 @@ The final expected checkpoint is absent. Code/input and hardware/heap restoratio
 pass. `manifest/gameplay-level13-native.sha256` pins this partial evidence,
 not full route acceptance.
 
+MEASURED: closer comparison of those 36 retained captures finds identical
+actor records throughout. The only differing full-context byte is 0x0915
+at checkpoints 14–35. Pixel differences occur at checkpoints 14–24; the first
+is confined to viewport x44–85/y134–205, visually the blue altar flame.
+Later checkpoints 25–35 have identical viewport pixels. This localizes the
+remaining state/pixel difference but does not establish its cause or extend
+the D11 exception; final-entry timing and capture coverage still fail.
 
 Original fresh-session `gameplay-hall-view-4` imports the pinned Hall file
 written by `gameplay-assisted-hall-4`. Command-H runs `ShowHallOfFame`
