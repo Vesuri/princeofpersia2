@@ -1418,6 +1418,13 @@ checkpoints and all 21 route checkpoints, with normal return, hardware
 restoration and no deferred differences. The native launcher also passes the
 route comparison. `manifest/gameplay-story15-native.sha256` pins the evidence.
 
+MEASURED: `gameplay-story16-isolated-1` uses 28 remaining minutes to select
+actual story 16. Fresh `gameplay-story16-isolated-repeat-1` matches every route
+checkpoint and all nine cinematic capture files, with normal return and
+discovery completion in both sessions. The original evidence is pinned in
+`manifest/gameplay-story16-reference.sha256` and
+`manifest/gameplay-story16-repeat.sha256`; native pairing remains pending.
+
 MEASURED: `gameplay-level6-context-2` repeats every checkpoint of the clean
 level-six reference with a read-only write tap. The complete context allocation
 is checked against its physical alias before arming the tap. The differing
