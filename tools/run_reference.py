@@ -41,6 +41,9 @@ def run(name=None, control=None, deadline=None):
     if os.environ.get('POP2_GAMEPLAY_IMPORT_FROM'):
         from gameplay_saved_file import install_reference
         install_reference(Path(os.environ['POP2_GAMEPLAY_IMPORT_FROM']),destination)
+    if os.environ.get('POP2_HALL_IMPORT_FROM'):
+        from gameplay_hall_file import install_reference
+        install_reference(Path(os.environ['POP2_HALL_IMPORT_FROM']),destination)
     generate(destination/'metadata.lua')
     subprocess.run(['python3','tools/check_mame_literals.py','--syntax-wrapper',str(destination/'syntax.lua')],cwd=ROOT,check=True)
     env=os.environ.copy()
@@ -116,6 +119,7 @@ def run(name=None, control=None, deadline=None):
         marker='GAMEPLAY_DISCOVERY_COMPLETE' if env.get('POP2_ROUTE_DISCOVERY')=='1' and env['POP2_GAMEPLAY']=='route' else 'GAMEPLAY_ROUTE_COMPLETE level=1 next=2' if env['POP2_GAMEPLAY']=='route' else 'GAMEPLAY_REFERENCE_COMPLETE route='+env['POP2_GAMEPLAY']+' '+endpoint
         if env.get('POP2_ROUTE_ENDING')=='1':marker='GAMEPLAY_ENDING_COMPLETE'
         if env.get('POP2_ROUTE_HALL')=='1':marker='GAMEPLAY_HALL_COMPLETE'
+        if env['POP2_GAMEPLAY']=='hall-view':marker='GAMEPLAY_HALL_VIEW_COMPLETE'
         if log.count(marker+'\n')!=1 or 'FAIL REFERENCE' in log:
             raise ValueError('REFERENCE / GAMEPLAY COMPLETION MISSING')
     if env.get('POP2_TITLE_STATE'):

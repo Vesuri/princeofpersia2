@@ -1,7 +1,7 @@
 """Export the positively completed original Hall of Fame write without altering its disk."""
-import argparse,struct,subprocess
+import argparse,struct,subprocess,hashlib
 from pathlib import Path
-from extract_original_data import ROOT
+from extract_original_data import ROOT,pins
 from install_reference_volume import hfs
 
 def export(reference):
@@ -27,6 +27,20 @@ def export(reference):
     if out.exists():assert out.read_bytes()==data,'HALL / EXISTING EXPORT DIFFERS'
     else:out.write_bytes(data)
     print('HALL EXPORT PASS: preserved original-written data fork')
+
+def install_reference(reference,destination):
+    export(reference)
+    data=(reference/'saved-Prince.hof.data').read_bytes()
+    assert hashlib.sha256(data).hexdigest()==pins(ROOT/'manifest/gameplay-hall-reference.sha256')['saved-Prince.hof.data'],'HALL / IMPORT PIN'
+    wrapper=reference/'saved-Prince.hof.macbin'
+    raw=wrapper.read_bytes();size=struct.unpack_from('>I',raw,83)[0]
+    assert raw[128:128+size]==data,'HALL / IMPORT WRAPPER'
+    hfs('hmount',str(destination/'volume.hd'))
+    try:
+        parent=':Desktop Folder' if 'Desktop Folder' in hfs('hls','-1a',':').splitlines() else ''
+        hfs('hcopy','-m',str(wrapper.resolve()),parent+':Prince of Persia 2:Data:Prince.hof')
+    finally:hfs('humount')
+    (destination/'imported-Prince.hof.data').write_bytes(data)
 
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('reference',type=Path);export(p.parse_args().reference)

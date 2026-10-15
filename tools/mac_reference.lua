@@ -413,6 +413,13 @@ mac.run(function()
      end
      assert(mac.wait_for('route-complete',gameplay.complete,216000),'GAMEPLAY ROUTE INCOMPLETE')
      return
+    elseif os.getenv('POP2_GAMEPLAY')=='hall-view' then
+     mac.wait(60);mac.press('h',{mac.CMD})
+     assert(mac.wait_for('hall-view',function()return gameplay.phase()=='shown'end,3600),'HALL VIEW NOT SHOWN')
+     mac.wait(30);mac.press('Esc')
+     assert(mac.wait_for('hall-returned',function()return gameplay.phase()=='resumed' or gameplay.phase()=='paused'end,3600),'HALL VIEW NOT RETURNED')
+     if gameplay.phase()=='paused' then mac.press('Space')end
+     assert(mac.wait_for('hall-resumed',function()return gameplay.phase()=='resumed'end,3600),'HALL VIEW NOT DISMISSED')
     elseif os.getenv('POP2_GAMEPLAY')=='restart' then
      mac.wait(60);mac.press('r',{mac.CMD})
     else
@@ -431,7 +438,9 @@ mac.run(function()
      mac.wait(120);dofile('tools/mame_mac_frame.lua').rgb(run..'/load-picker.ppm');mac.press('Down Arrow');mac.press('Return')
      assert(mac.wait_for('load-complete',function()return gameplay.phase()=='load-return'end,3600),'GAMEPLAY LOAD COMPLETE')
     end
-    if os.getenv('POP2_GAMEPLAY')=='restart' then
+    if os.getenv('POP2_GAMEPLAY')=='hall-view' then
+     assert(gameplay.phase()=='resumed','HALL VIEW RESUME')
+    elseif os.getenv('POP2_GAMEPLAY')=='restart' then
      assert(mac.wait_for('gameplay-second-frame',function()return gameplay.rooms()==2 end,3600),'GAMEPLAY SECOND FRAME')
     else
      assert(mac.wait_for('gameplay-loaded-frame',function()return gameplay.loadedFrames()==1 end,3600),'GAMEPLAY LOADED FRAME')

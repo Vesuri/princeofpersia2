@@ -1123,3 +1123,4 @@ segment,offset,name,evidence,notes
 15,0x396C,DissolveTime,DERIVED,Calibration workload consumes drawing records starting at byte 20
 15,0x3B9A,DisolveDelay,DERIVED,Reads calibrated timing fields at cache offsets 12 and 16
 15,0x3BFA,SetDisolveDelays,DERIVED,Three timing passes; stores timing fields at CODE 15+3C4A and +3C54
+2,0x28C2,ShowHallOfFame,DERIVED,LINK entry and MacsBug name at 0x29CC; menu view loads the persisted table and returns at 0x29CA

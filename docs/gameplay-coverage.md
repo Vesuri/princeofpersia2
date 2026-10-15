@@ -1141,3 +1141,15 @@ differs in RNG. These differences have not been classified as the D11 exception.
 The final expected checkpoint is absent. Code/input and hardware/heap restoration
 pass. `manifest/gameplay-level13-native.sha256` pins this partial evidence,
 not full route acceptance.
+
+
+Original fresh-session `gameplay-hall-view-4` imports the pinned Hall file
+written by `gameplay-assisted-hall-4`. Command-H runs `ShowHallOfFame`
+(CODE 2+28C2); its loaded table and visible display contain `codex`, score 75.
+After the original fade-in returns, Escape dismisses the table. The original
+pause loop is then reached; Space resumes gameplay, observed at FrameAdv return.
+No original control flow is bypassed. `manifest/gameplay-hall-view-reference.sha256`
+pins the imported file, loaded table, visible/returned captures and completion log.
+`tools/check_gameplay_hall_view.py` checks these positive lifecycle endpoints and
+six altered-input/completion controls reject. Fresh repeat and native Hall-view
+pairing remain pending; the prior ending/name-entry/write pair is separate.
