@@ -9,6 +9,9 @@
 extern "C" {
 volatile uint32_t g_uiOverlay=0,g_uiOverlayCount=0;
 uint8_t g_uiOverlayPixels[640*480];
+#ifdef POP2_GAMEPLAY_HALL_VIEW_PROBE
+extern volatile uint32_t g_hallViewPhase,g_hallViewOwner,g_hallViewOwnerReturn;
+#endif
 #ifdef POP2_GAMEPLAY_HALL_PROBE
 volatile uint32_t g_uiHallAccepted=0;
 #endif
@@ -192,6 +195,10 @@ bool replacement(uint16_t selector,uint32_t* regs,uint8_t* args){
         if(!hallTable((const uint8_t*)l(args),5,nullptr))return false;
         if(!text("Return / Escape: Continue",32,328))return false;
         if(!NativeDisplay::showOverlay(g_uiOverlayPixels))return fail(NativeDisplay::error());
+#ifdef POP2_GAMEPLAY_HALL_VIEW_PROBE
+        if(g_hallViewPhase || !valid(regs[14],8))return fail("HALL VIEW / DRAW OWNER");
+        g_hallViewOwner=regs[14];g_hallViewOwnerReturn=l((uint8_t*)regs[14]+4);g_hallViewPhase=1;
+#endif
         g_uiOverlay=7005;++g_uiOverlayCount;pop2UIOverlayShown();g_uiOverlay=0;
         return true;
     }

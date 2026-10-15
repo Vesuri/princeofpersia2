@@ -117,6 +117,8 @@ if [ "${CORE:-0}" = 1 ]; then
     python3 ../tools/check_gameplay_import.py "$RUN" "$GAMEPLAY_IMPORT_REFERENCE" "$GAMEPLAY_IMPORT_PAIRED_REFERENCE"
   elif [ "${GAMEPLAY_SAVE:-0}" = 1 ]; then
     python3 ../tools/check_gameplay_save.py "$RUN" "$GAMEPLAY_REFERENCE" --setup "$AMIGA_SETUP"
+  elif [ -n "${GAMEPLAY_HALL_VIEW_REFERENCE:-}" ]; then
+    python3 ../tools/check_gameplay_hall_view.py "$GAMEPLAY_HALL_VIEW_REFERENCE" --native "$RUN"
   elif [ "${GAMEPLAY_RESTART:-0}" = 1 ]; then
     python3 ../tools/check_gameplay_restart.py "$RUN" "$GAMEPLAY_REFERENCE" --setup "$AMIGA_SETUP"
   elif [ "${INTEGRATION:-0}" = 1 ]; then

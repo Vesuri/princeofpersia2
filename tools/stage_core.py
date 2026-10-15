@@ -96,3 +96,11 @@ if profile_save:
     from export_profile_saves import install_profile
     levels=range(1,15) if os.environ.get('PROFILE_SAVE_LEVEL','all')=='all' else [int(os.environ['PROFILE_SAVE_LEVEL'])]
     for level in levels:install_profile(Path(profile_save),level,Path(sys.argv[1]))
+
+
+hall_reference=os.environ.get('GAMEPLAY_HALL_VIEW_REFERENCE')
+if hall_reference:
+    if not {'-DPOP2_VERIFY','-DPOP2_GAMEPLAY_HALL_VIEW_PROBE'}.issubset(verify_receipt()['flags'].split()):
+        raise RuntimeError('HALL VIEW / DIAGNOSTIC BUILD REQUIRED')
+    from gameplay_hall_file import install_native
+    install_native(Path(os.environ['GAMEPLAY_HALL_IMPORT_REFERENCE']),Path(sys.argv[1]))

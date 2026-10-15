@@ -42,5 +42,17 @@ def install_reference(reference,destination):
     finally:hfs('humount')
     (destination/'imported-Prince.hof.data').write_bytes(data)
 
+def install_native(reference,destination):
+    from gameplay_saved_file import macbinary_files
+    for name,expected in pins(ROOT/'manifest/gameplay-hall-import.sha256').items():
+        assert hashlib.sha256((reference/name).read_bytes()).hexdigest()==expected,'HALL / NATIVE INPUT PIN '+name
+    files=macbinary_files((reference/'saved-Prince.hof.macbin').read_bytes(),'Prince.hof')
+    assert files['Prince.hof']==(reference/'saved-Prince.hof.data').read_bytes(),'HALL / NATIVE FORK'
+    for name in files:
+        assert not (destination/'Data'/name).exists(),'HALL / FRESH DESTINATION REQUIRED'
+    for name,body in files.items():
+        (destination/'Data'/name).write_bytes(body)
+    print('HALL NATIVE IMPORT PASS: original data/resource forks and Finder metadata')
+
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('reference',type=Path);export(p.parse_args().reference)

@@ -22,6 +22,9 @@ extern "C" {extern volatile uint32_t g_uiOverlay,g_uiOverlayCount;}
 #ifdef POP2_INTEGRATION_PROBE
 extern "C" {extern volatile uint32_t g_integrationStage,g_integrationRightAt;volatile uint32_t g_integrationEscReads=0,g_integrationRightReads=0,g_integrationSpaceEvents=0,g_integrationKeys[4]={};volatile uint32_t g_integrationPulseRaw=128,g_integrationPulseStart=0,g_integrationPulseEnd=0;}
 #endif
+#ifdef POP2_GAMEPLAY_HALL_VIEW_PROBE
+extern "C" {volatile uint32_t g_hallViewKeyRequest=128,g_hallViewKeyRequests=0;}
+#endif
 namespace NativeInput {
 namespace {
 Library* cia;Interrupt handler;Interrupt* previous;
@@ -87,12 +90,25 @@ void field(uint32_t ticks) {
   }
  }
 #endif
+#ifdef POP2_GAMEPLAY_HALL_VIEW_PROBE
+ // Start diagnostic pulses on a live VBI, after the debugger has resumed.
+ if(g_hallViewKeyRequest<128){
+  g_integrationPulseRaw=g_hallViewKeyRequest;g_hallViewKeyRequest=128;
+  g_integrationPulseStart=ticks+30;g_integrationPulseEnd=ticks+34;
+  ++g_hallViewKeyRequests;
+ }
+#endif
  static uint32_t observed[4]={};
  for(unsigned group=0;group<4;++group){
   uint32_t keys=g_integrationKeys[group],pulse=g_integrationPulseRaw;
   if(pulse<128 && pulse/32==group && int32_t(ticks-g_integrationPulseStart)>=0 && int32_t(g_integrationPulseEnd-ticks)>0)keys|=1UL<<(pulse%32);
 #ifdef POP2_GAMEPLAY_RESTART_PROBE
-  if(pulse==0x13 && group==3 && int32_t(ticks-(g_integrationPulseStart-2))>=0 && int32_t(g_integrationPulseEnd-ticks)>0)keys|=1UL<<(0x66%32);
+#ifdef POP2_GAMEPLAY_HALL_VIEW_PROBE
+  const uint32_t commandPulse=0x25;
+#else
+  const uint32_t commandPulse=0x13;
+#endif
+  if(pulse==commandPulse && group==3 && int32_t(ticks-(g_integrationPulseStart-2))>=0 && int32_t(g_integrationPulseEnd-ticks)>0)keys|=1UL<<(0x66%32);
 #endif
 #if !defined(POP2_INTEGRATION_NO_RIGHT) && !defined(POP2_GAMEPLAY_RESTART_PROBE) && !defined(POP2_GAMEPLAY_ROUTE_PROBE)
   if(g_integrationStage==3 && int32_t(ticks-g_integrationRightAt)>=0 && group==2)keys|=1UL<<(0x4e%32);

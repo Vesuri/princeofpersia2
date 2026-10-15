@@ -67,7 +67,7 @@ and bounded captures. Original bytes, saved state and captures remain ignored.
 | Save/load | Save through session command, move, load, restored game state | Two original/native pairs; 22 rejection controls |
 | Death | Original death routine returns after gameplay input | Existing first-room integration route |
 | Restart | Original command followed by completed playable first frame | Original and native repeats pass; 15 rejection controls |
-| Hall of Fame | Show/dismiss and persistent score insertion/readback | Original ending/name/write repeats and native persisted name/score pair pass; separate show/dismiss and fresh-session readback open |
+| Hall of Fame | Show/dismiss and persistent score insertion/readback | Original/native ending/name/write pair and fresh-session show/dismiss/readback pair pass |
 | Ending | Final gameplay decision, ending return and subsequent session flow | Native/original ending route matches all 81 checkpoints and natural ending return, followed by successful Hall insertion |
 
 DERIVED: CODE 2 `RestartGame` accepts levels 1–14; the session loop at
@@ -844,8 +844,8 @@ its FILES.1 follow-up.
 Native `.run-f0UnbL` passes all 81 ending checkpoints, name entry, original
 62-byte Hall write and persisted name/score comparison. The named GetFInfo
 path fix is exercised through successful Create/GetFInfo/SetFInfo/Open/Write/Close;
-code, input, heap and hardware restoration pass. Separate Hall show/dismiss
-and fresh-session readback remain open.
+code, input, heap and hardware restoration pass. Separate show/dismiss and
+fresh-session readback now pass in the Hall-view fixture described below.
 
 The reviewed installed launcher helper adds only an A3000 preset; its A1200-030
 branch is unchanged. The installed bytes are hash-pinned in the scaffold manifest;
@@ -1153,5 +1153,36 @@ pins the imported file, loaded table, visible/returned captures and completion l
 `tools/check_gameplay_hall_view.py` checks these positive lifecycle endpoints and
 six altered-input/completion controls reject. Fresh `gameplay-hall-view-repeat-1`
 passes the same lifecycle endpoints, with an identical loaded table and complete
-visible Hall image. Native Hall-view pairing remains pending; the prior
-ending/name-entry/write pair is separate.
+visible Hall image.
+
+Native `.run-XGr0WK` passes the corresponding fresh-session Hall lifecycle on
+`a1200-030`. The imported data/resource forks and Finder metadata come from the
+original-written MacBinary wrapper, decoded by the existing save importer;
+`manifest/gameplay-hall-import.sha256` pins that input. The loaded table is
+byte-identical to the original, and the D8-owned display visibly shows `codex`
+and 75. Original fade-in, ShowHallOfFame return, pause entry and completed
+FrameAdv are observed in order. Native diagnostic code supplies Escape and Space
+through the existing VBI input harness and stops only after the resumed frame
+has been published. GDB observes without writing cached runtime variables.
+Code/input and heap/hardware restoration pass; seven altered native evidence
+controls reject. `manifest/gameplay-hall-view-native.sha256` pins this evidence.
+This closes the separate show/dismiss and fresh-session readback coverage;
+the ending/name-entry/write pair remains independently recorded above.
+
+Reproduce the native fixture using the pinned original Hall references:
+
+```sh
+. amiga/env.sh
+make -C amiga VERIFY=1 EXTRA_DEFINES='-DPOP2_CORE -DPOP2_DISPLAY -DPOP2_INPUT -DPOP2_UI -DPOP2_AUDIO -DPOP2_INTEGRATION_PROBE -DPOP2_GAMEPLAY_RESTART_PROBE -DPOP2_GAMEPLAY_HALL_VIEW_PROBE'
+CORE=1 GAMEPLAY_HALL_VIEW_REFERENCE="$PWD/ref/mame/runs/gameplay-hall-view-4" \
+  GAMEPLAY_HALL_IMPORT_REFERENCE="$PWD/ref/mame/runs/gameplay-assisted-hall-4" \
+  GDBSCRIPT=amiga/gameplay_hall_view.gdb AMIGA_SETUP=a1200-030 SOUND=0 \
+  DEADLINE=900 bash amiga/run.sh
+make release
+```
+
+The launcher checks the positive endpoint, imported/table bytes, build identity
+and effective machine. Add `--controls` to the standalone Hall-view checker
+with `--native RUN` to exercise evidence rejection. All new input sequencing
+and completion probes require explicit verification flags and are excluded from
+ordinary release builds.

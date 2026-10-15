@@ -76,6 +76,13 @@ static void recordIntegrationStage(){
 volatile uint32_t g_gameplayRooms=0,g_gameplayAudioSelector=0,g_gameplayMenu=0;
 volatile uint32_t g_gameplaySuspendCalls=0,g_gameplayResumeCalls=0,g_gameplaySuspendClock=0,g_gameplayResumeClock=0;
 #endif
+#if defined(POP2_GAMEPLAY_HALL_VIEW_PROBE) && !defined(POP2_GAMEPLAY_RESTART_PROBE)
+#error Hall view requires the verified gameplay lifecycle harness
+#endif
+#ifdef POP2_GAMEPLAY_HALL_VIEW_PROBE
+volatile uint32_t g_hallViewPhase=0,g_hallViewOwner=0,g_hallViewOwnerReturn=0;
+extern volatile uint32_t g_hallViewKeyRequest;
+#endif
 #ifdef POP2_GAMEPLAY_SAVE_PROBE
 #ifndef POP2_GAMEPLAY_RESTART_PROBE
 #error Save probe requires the verified gameplay harness
@@ -986,7 +993,11 @@ extern "C" void pop2IntegrationRoomHook(){
 #ifdef POP2_GAMEPLAY_SAVE_PROBE
         // The save fixture feeds measured keys at original ReadKeyboard steps.
 #else
+#ifdef POP2_GAMEPLAY_HALL_VIEW_PROBE
+        integrationPress(0x25,60);
+#else
         integrationPress(0x13,60);
+#endif
 #endif
     }
     recordIntegrationStage();
@@ -1151,7 +1162,11 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
     if(g_integrationStage==4)return stop(frame,usp,"GAMEPLAY / SAVE LOAD COMPLETE",trap,seg,off);
 #endif
 #else
+#ifdef POP2_GAMEPLAY_HALL_VIEW_PROBE
+    if(g_integrationStage==4)return stop(frame,usp,"GAMEPLAY / HALL VIEW COMPLETE",trap,seg,off);
+#else
     if(g_integrationStage==4)return stop(frame,usp,"GAMEPLAY / RESTART COMPLETE",trap,seg,off);
+#endif
 #endif
 #else
     if(g_integrationStage==4)return stop(frame,usp,"INTEGRATION / ROUTE COMPLETE",trap,seg,off);
@@ -1276,6 +1291,9 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
 #ifdef POP2_GAMEPLAY_SAVE_PROBE
         bool loadedFrame=g_gameplayLoadResult==1 && displayBatchReturn==g_coreSegments[2][0]+0x616e;
 #endif
+#ifdef POP2_GAMEPLAY_HALL_VIEW_PROBE
+        bool hallFrame=g_hallViewPhase==3 && displayBatchReturn==g_coreSegments[2][0]+0x616e;
+#endif
         displayBatchFrame=displayBatchParent=displayBatchReturn=0;
         // As in Alone in the Dark, finish the previous publication before
         // submitting this completed frame. The new picture can then reach
@@ -1289,6 +1307,9 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
 #endif
         if(!NativeDisplay::publish(displayBatchScene))return stop(frame,usp,NativeDisplay::error(),trap,seg,off);
         displayBatchScene=false;
+#ifdef POP2_GAMEPLAY_HALL_VIEW_PROBE
+        if(hallFrame){NativeDisplay::wait();g_hallViewPhase=4;g_integrationStage=4;recordIntegrationStage();}
+#endif
 #ifdef POP2_GAMEPLAY_SAVE_PROBE
         if(loadedFrame){NativeDisplay::wait();++g_gameplayLoadedFrames;g_integrationStage=4;recordIntegrationStage();}
 #endif
@@ -1303,6 +1324,24 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
 #ifdef POP2_UI
     if(NativeInput::error())return stop(frame,usp,NativeInput::error(),trap,seg,off);
     if(NativeUI::handles(trap)) {
+#ifdef POP2_GAMEPLAY_HALL_VIEW_PROBE
+        // Diagnostic input follows original wait callers, without debugger
+        // writes to cached runtime state or changes to original control flow.
+        if(trap==0xa860 && g_hallViewPhase && g_hallViewPhase<3){
+            uint32_t code=g_coreSegments[2][0];
+            if(g_hallViewPhase==1 && (uint32_t)usp<=g_hallViewOwner &&
+               g_hallViewOwner-(uint32_t)usp<=2048 && validMemory(g_hallViewOwner,8) &&
+               l((uint8_t*)g_hallViewOwner+4)==g_hallViewOwnerReturn){
+                if(l((uint8_t*)code+0x2928)!=0x4ead1192)return stop(frame,usp,"HALL VIEW / WAIT CALL BYTES",trap,seg,off);
+                for(uint32_t at=(uint32_t)usp;at+4<=g_hallViewOwner;at+=2){
+                    if(l((uint8_t*)at)==code+0x292c){g_hallViewKeyRequest=0x45;g_hallViewPhase=2;break;}
+                }
+            }else if(g_hallViewPhase==2 && validMemory(regs[14],8) && l((uint8_t*)regs[14]+4)==code+0x5916){
+                if(l((uint8_t*)code+0x5912)!=0x4ebad6f4)return stop(frame,usp,"HALL VIEW / PAUSE CALL BYTES",trap,seg,off);
+                g_hallViewKeyRequest=0x40;g_hallViewPhase=3;
+            }
+        }
+#endif
 #ifdef POP2_GAMEPLAY_ROUTE_PROBE
         bool routeRead=trap==0xa976 && l(frame+2)==g_coreSegments[2][0]+0x5622 && g_integrationStage==3;
         if(routeRead && !routeKeyboard(w(a5-0x349a)))return stop(frame,usp,g_coreReason,trap,seg,off);
