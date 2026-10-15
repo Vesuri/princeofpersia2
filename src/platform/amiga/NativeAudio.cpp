@@ -1,12 +1,43 @@
 #ifdef POP2_AUDIO
 #include <proto/exec.h>
+#include <exec/memory.h>
 #include "NativeAudio.h"
 #include "PaulaAudio.h"
 #include "mac/HalestormDma.h"
 #include "mac/SoundEffect.h"
+#include "mac/ImmutablePcmCache.h"
 using namespace HalestormInputs;
 namespace {
 HalestormEngine engine;
+struct SampleMemory {
+    static uint8_t* allocate(uint32_t n){return (uint8_t*)AllocMem(n,MEMF_CHIP);}
+    static void free(uint8_t* p,uint32_t n){FreeMem(p,n);}
+};
+struct SampleConversion {
+    static uint32_t bytes(const HalestormDma::Plan& p){return p.layout.allocated;}
+    static bool equal(const HalestormDma::Plan& a,const HalestormDma::Plan& b){
+        const auto& x=a.layout;const auto& y=b.layout;
+        return a.stride==b.stride && x.pcm==y.pcm && x.size==y.size
+            && x.loopStart==y.loopStart && x.loopEnd==y.loopEnd
+            && x.attackBytes==y.attackBytes && x.reloadOffset==y.reloadOffset
+            && x.reloadBytes==y.reloadBytes && x.allocated==y.allocated;
+    }
+    static void convert(const HalestormDma::Plan& p,uint8_t* data){HalestormDma::convert(p,data);}
+};
+// These samples point into the owned, immutable application resource image,
+// not movable game handles. Mutable effects and cursor-specific release tails
+// continue to use the four channel buffers.
+using SampleCache=ImmutablePcmCache<HalestormDma::Plan,SampleMemory,SampleConversion>;
+SampleCache sampleCache;
+SampleCache::Entry* channelSamples[4]={};
+void stopChannel(unsigned channel){
+    PaulaAudio::stop(channel);
+    sampleCache.release(channelSamples[channel]);channelSamples[channel]=nullptr;
+}
+void replaceChannel(unsigned channel){
+    PaulaAudio::halt(channel);
+    sampleCache.release(channelSamples[channel]);channelSamples[channel]=nullptr;
+}
 NativeAudio::Validate valid=nullptr;
 const char* failure=nullptr;
 volatile uint32_t fieldsClock=0;
@@ -24,7 +55,7 @@ void detach(unsigned channel){
     for(auto& v:engine.voices.music)if(v.paula==int16_t(channel))v.paula=-1;
     if(engine.voices.effect.paula==int16_t(channel))engine.voices.effect.paula=-1;
 }
-void stopVoice(HalestormVoices::Voice& v){if(v.paula>=0){PaulaAudio::stop(v.paula);v.paula=-1;}}
+void stopVoice(HalestormVoices::Voice& v){if(v.paula>=0){stopChannel(v.paula);v.paula=-1;}}
 bool completed(){
     uint32_t mask=engine.completed;engine.completed=0;
     for(unsigned i=0;i<5;++i)if(mask&(1u<<i)){stopVoice(engine.voices.music[i]);if(!queue(musicCallback,musicContext))return false;}
@@ -36,13 +67,14 @@ bool musicStart(unsigned slot){
     int channel=voice.paula;
     if(channel<0)channel=engine.voices.allocatePaula();
     if(channel<0)return fail("AUDIO / PAULA ALLOCATION");
-    PaulaAudio::stop(channel);detach(channel);
+    replaceChannel(channel);detach(channel);
     HalestormDma::Plan plan;
     const char* why=HalestormDma::describe(sound.sample,engine.cursors[slot].step,!sound.instrument.disableLoop,plan);
     if(why)return fail(why);
-    HalestormDma::convert(plan,PaulaAudio::buffer(channel));
+    auto* cached=sampleCache.acquire(plan);channelSamples[channel]=cached;
+    if(!cached)HalestormDma::convert(plan,PaulaAudio::buffer(channel));
     voice.paula=channel;
-    if(!PaulaAudio::start(channel,plan.layout,plan.period,engine.voices.volume(voice.volume)))return fail(PaulaAudio::error());
+    if(!PaulaAudio::start(channel,plan.layout,plan.period,engine.voices.volume(voice.volume),0,0,cached?cached->data:nullptr))return fail(PaulaAudio::error());
     return true;
 }
 bool effectStop(bool notify){
@@ -59,7 +91,7 @@ bool prepare(const uint8_t* pitch,HalestormEngine::Lookup lookup,Validate valida
     const char* why=engine.prepare(pitch,lookup);if(why)return fail(why);
     if(!PaulaAudio::prepare())return fail(PaulaAudio::error());return true;
 }
-void release(){PaulaAudio::release();}
+void release(){for(unsigned c=0;c<4;++c)stopChannel(c);sampleCache.clearUnused();PaulaAudio::release();}
 void take(){fieldsClock=observedClock=0;fraction=0;PaulaAudio::take();if(PaulaAudio::error())failure=PaulaAudio::error();}
 void restore(){PaulaAudio::restore();}
 void field(){fraction+=6;fieldsClock+=fraction/5;fraction%=5;}
@@ -109,7 +141,7 @@ bool dispatch(uint32_t selector,uint32_t argument,uint32_t& result,bool& retry){
             if(position>=sample.size)return fail("AUDIO / RELEASE CURSOR");
             auto tail=sample;tail.pcm+=position;tail.size-=position;tail.loopStart=tail.loopEnd=0;
             HalestormDma::Plan plan;why=HalestormDma::describe(tail,engine.cursors[slot].step,false,plan);if(why)return fail(why);
-            PaulaAudio::stop(voice.paula);HalestormDma::convert(plan,PaulaAudio::buffer(voice.paula));
+            replaceChannel(voice.paula);HalestormDma::convert(plan,PaulaAudio::buffer(voice.paula));
             if(!PaulaAudio::start(voice.paula,plan.layout,plan.period,engine.voices.volume(voice.volume),slot+1,position))return fail(PaulaAudio::error());
         }
         engine.voices.noteOff(word(p+2),word(p+8));break;
@@ -132,7 +164,9 @@ bool dispatch(uint32_t selector,uint32_t argument,uint32_t& result,bool& retry){
         if(why)return fail(why);
         why=engine.effectOn((const uint8_t*)source,size,rate,word(p+24));if(why)return fail(why);
         int channel=engine.voices.allocatePaula();if(channel<0)return fail("AUDIO / EFFECT PAULA ALLOCATION");
-        PaulaAudio::stop(channel);detach(channel);PaulaSample::convert(layout,PaulaAudio::buffer(channel));
+        replaceChannel(channel);detach(channel);
+        HalestormDma::Plan effectPlan;effectPlan.layout=layout;
+        HalestormDma::convert(effectPlan,PaulaAudio::buffer(channel));
         engine.voices.effect.paula=channel;effectCallback=longword(p+30);effectContext=longword(p+34);
         if(!PaulaAudio::start(channel,layout,period,engine.voices.volume(127)))return fail(PaulaAudio::error());break;
     }

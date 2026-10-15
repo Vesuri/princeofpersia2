@@ -116,12 +116,6 @@ Items remain open until their acceptance gates pass.
       disjoint-band conversion.
       Acceptance: converted planes equal the chunky image at every checkpoint
       and C2P falls by at least 30%, or the bounds are shown minimal.
-    - **19.6 Audio call cost.** Fourteen audio driver calls per landing frame
-      cost 654 µs each (9.2 ms), including Paula DMA line waits and 3.0 ms of
-      repeated sample conversion. Reuse converted immutable samples and skip
-      waits for settled channels, as Alone in the Dark did.
-      Acceptance: audio contract, callback-order and route checks pass with
-      unchanged events and timing; audio ≤ 2 ms per landing frame.
     - **19.7 Heap allocation cost.** `NewHandle` takes 3.5 ms per call (68020:
       15.9 ms) and resize/dispose coalescing adds about 1.8 ms per landing
       frame. AmigaXDev holds Alone in the Dark's shared heap fixes, whose
@@ -138,6 +132,10 @@ Items remain open until their acceptance gates pass.
       buckets local. Integrate the published shared rectangle-accessor commit
       `b61c323` from `codex/pure-rectangle-accessors` when the AmigaXDev main
       working tree is clean; Prince of Persia 2 already pins that canonical source.
+      The published `codex/audio-reuse-helpers` branch contains the bounded
+      immutable PCM cache and settled Paula state (`a3dd031`, with Amiga type
+      compatibility in `8ecd85f` and stopped-DMA state in `7759f0f`). This port
+      pins these helpers; integrate the branch when the main working tree is clean.
 
     Acceptance: each step's gates and measured targets; finally the opening
     profile meets every requested interval on the exact 68030 model, with

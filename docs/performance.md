@@ -351,6 +351,49 @@ rect-final-a --original ref/mame/runs/opening-noright-1` for the final repeat an
 costs. Before-change call labels are `CACHED SectRect`, `CACHED UnionRect` and
 `CACHED EmptyRect`. Restore ordinary play with `make release` after probes.
 
+### Audio call cost (19.6)
+
+The candidate reuses immutable instrument conversions through the shared bounded
+cache, uses the existing shared span converter for mutable one-shot effects,
+and records settled/stopped Paula state. Immediate replacements retain the
+two-sample-period DMA-off wait but omit the intermediate DAC-zero handshake;
+completed voices and hardware handoff still fully quiesce the DAC. Vette's
+immediate restart and Alone in the Dark's retained samples/quiet-channel state
+were inspected first. The audio and common gates pass on the combined working
+candidate; ordinary dispatch item 19.2 remains open.
+
+The complete audio gate passes in `tmp/audio-gate-8k7g_r3q`: original allocation
+contracts, 7,549 cutscene calls, two identical 9,329-call route replays, 62
+release tails per replay, ten evidence controls, six runtime controls, the
+original byte-guard rejection and the 144-call startup regression. The release
+audit passes after that suite. Callback-order fixture `.run-G8KcYK` matches the
+original seven-call control and passes all eighteen altered-evidence checks.
+The common gates were checked separately from these audio replays.
+The current integration gate passes in `tmp/integration-gate-6d9rdclj` on
+`a1200-030`: paired title rendering, two identical gameplay frame captures,
+the no-Right outcome control and 45 altered-evidence controls. The host suite
+and shared helper hashes pass on this candidate.
+
+MEASURED phase-0 inclusive `NativeAudio::dispatch` cost, using the existing
+audio-call metric rather than the broader exclusive Audio bucket:
+
+| Captures | Calls in six landing frames | ms/landing frame |
+|---|---:|---:|
+| `dispatch-owner-fixed-a`, `audio-before-b` | 63, 64 | 7.89, 8.08 |
+| `audio-restart-a`, `audio-restart-b` | 62, 59 | 1.989, 1.814 |
+
+The before pair uses the same frozen dispatch/clock candidate. The after pair
+passes its repeat comparison with 81 identical player records, original timer
+requests and phase cadence within tolerance. Call counts differ between the
+captures; these are scene costs, not equal-call microbenchmarks.
+An intermediate span-conversion pair measured 2.219/2.208 ms and failed the
+budget. Its comparison with the before capture also exceeded phase-0 repeat
+tolerance; retain that failed report. Per-phase `opening`, `report` and `work`
+outputs remain ignored. VBL (`.run-B4P3Uj`) and Time Manager (`.run-KuR8nM`)
+fixtures match their originals and each reject twelve alterations. Cadence
+(`.run-3jnfw4`) matches 59 consecutive original five-tick intervals and rejects
+six alterations. The restored release passes link and diagnostic-exclusion audits.
+
 ## Scenes to retain for future profiling
 
 Record suspected heavy scenes encountered during gameplay validation here,

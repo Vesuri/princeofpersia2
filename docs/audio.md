@@ -30,7 +30,8 @@ The application supplies 34 `INST` records and 34 format-1 `snd ` instruments.
 `manifest/audio-inputs.sha256` pins the expanded MIDI Synth 3.45 image and its
 512-byte quantized pitch table. `make audio-inputs` verifies those identities and
 writes the table to ignored `build/audio/audio-pitch.bin`; generated headers contain
-hashes only. The runtime checks that file before audio initialization.
+hashes only. Host tooling verifies that file before staging; verification builds
+also check its hash before audio initialization.
 
 Alone in the Dark's pinned native driver supplies logical/physical voice separation,
 integer period calculations, unsigned-to-signed PCM conversion, phase-preserving
@@ -72,17 +73,31 @@ uses a free channel, then steals the oldest audible music voice; music never ste
 the effect channel. A stolen logical voice continues its original bookkeeping.
 This authorized hardware reduction does not promise the original mixed waveform.
 
-Each channel owns a bounded Chip RAM buffer. Signed sample conversion happens in
-user mode. Integer periods use the PAL clock; high pitches use power-of-two sample
+Each channel owns a bounded Chip RAM fallback buffer. A shared cache retains at
+most 128 KiB of converted immutable application instruments, with at most sixteen
+variants. Playing channels hold references; eviction cannot replace active DMA
+data. Cache exhaustion uses the existing buffer. Mutable effects and release
+tails use those buffers, with the shared span converter. Signed sample conversion
+happens in user mode. Integer periods use the PAL clock; high pitches use power-of-two sample
 strides to keep the period at least 124. Odd loops retain their phase across word
 alignment. One-shots reload two zero bytes. Note-off publishes the original source
 tail from the measured logical cursor. Volume is bounded to Paula's six bits.
 
-DMA is disabled and quiesced before replacing a channel's data; the attack is
+DMA is disabled and its sample-period wait completes before replacing a channel's data; the attack is
 latched before its reload is published. Audio interrupts and ADK modulation are
 not used. Active system audio DMA is rejected before takeover. Shutdown stops all
 four channels and restores ADK state alongside the existing DMA/IRQ/View/vector
 restoration checks.
+
+Settled-channel bookkeeping is shared with AmigaXDev, based on Alone in the
+Dark's protocol. A completed DMA-off and DAC-zero handshake permits later stops
+and restart disables to skip their waits. A zero volume alone does not. Takeover
+resets the state to unknown; starting DMA invalidates quietness. The audio-cost
+gates and measurements are recorded in `performance.md`.
+Immediate replacements follow Vette's restart protocol: mute, disable DMA and
+wait before releasing/reusing sample memory, then publish the new attack. They
+do not perform an intermediate DAC-zero handshake. Completed voices, error
+cleanup and hardware handoff retain full DAC quiescence.
 
 VBI only advances a small audio clock (six ticks per five PAL fields). Allocation,
 conversion, completion processing and original callbacks run at user-mode service

@@ -27,3 +27,8 @@ AmigaXDev	9aab35291581d19fafea82ac0f63c75149d2ec0b	shared ResourceStage extracti
 AmigaXDev	a58c461c8164fac8f6e7416d1fd59a31a6af8898	shared resource writer with transaction-owned heap layout; clean checkout and portable publication controls
 Alone in the Dark	a39531ba15f9d9d21128d1b370b48eb89bc8a2df	quick-trap saved-image ABI, patched-entry fallback and shared RectBounds inspected for direct pure Pascal rectangle veneers
 AmigaXDev	b61c3235d115adb59ef4db3c2dd928f6e2b5823b	canonical rectangle load/store accessors, shared portable geometry with native BigEndianMemory specialization; clean checkout and sanitizer alias tests
+AmigaXDev	a3dd031b40ed2676185027e6d95d40cbba0ae3ed	canonical bounded immutable PCM cache and settled Paula state; sanitizer lifetime, exhaustion and restart controls
+AmigaXDev	8ecd85f94f3b1c4a76f533854590f2ce541f19ce	audio helper compatibility with caller-supplied Amiga fixed-width types
+AmigaXDev	7759f0f7e0de0e97e36e6c1a2a5f85aaf829233c	separate stopped-DMA and quiet-DAC state for bounded immediate sample replacement
+Alone in the Dark	54a2ed47fc931180f7419ef8d74743ca1671b075	immutable song variant preparation, bounded effect cache and settled Paula handshake inspected for 19.6
+Vette!	b3074ba6784a834864c222db9b4f0ccabd38de03	prepared Bogas samples and DMA-off immediate sample restart inspected for 19.6

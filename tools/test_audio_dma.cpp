@@ -36,5 +36,16 @@ int main(){
     if(!SoundEffect::describe(pcm.data(),131071,0x2b110000,0,0,layout,period,ticks,3546895))return 7;
     if(SoundEffect::describe(pcm.data(),pcm.size(),0x2b110000,0,0,layout,period,ticks,3546895))return 8;
     if(period!=322 || layout.reloadBytes!=2 || layout.attackBytes!=514)return 9;
+    // Raw effects use the shared span converter too. Cover odd/even sizes,
+    // every alignment and its longword/unrolled boundaries against the former
+    // conversion, with untouched destination guards.
+    for(unsigned offset=0;offset<4;++offset)for(unsigned size=1;size<=509;++size){
+        if(SoundEffect::describe(pcm.data()+offset,size,0x2b110000,0,0,layout,period,ticks,3546895))return 10;
+        std::vector<uint8_t> old(layout.allocated+16,0x5a),fast=old;
+        PaulaSample::convert(layout,old.data());
+        HalestormDma::Plan plan;plan.layout=layout;
+        HalestormDma::convert(plan,fast.data());
+        if(old!=fast)return 11;
+    }
     printf("AUDIO DMA SYNTHETIC PASS: %u phase/stride cases, integer division and extent/loop controls\n",cases);
 }
