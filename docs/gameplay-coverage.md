@@ -57,7 +57,7 @@ and bounded captures. Original bytes, saved state and captures remain ignored.
 | Level 7 | Meaningful gameplay route and original level-exit decision | Clean original and fresh repeat reach level eight; native first-frame boundary differs by two frames |
 | Level 8 | Meaningful gameplay route and original level-exit decision | Native reaches level nine after cache-write fix; one-step early boundary and full-context differences remain |
 | Level 9 | Meaningful gameplay route and original level-exit decision | Original repeat and native pair pass all 15 checkpoints |
-| Level 10 | Meaningful gameplay route and original level-exit decision | Clean original repeat passes; native reaches level eleven two frames early, comparison remains open |
+| Level 10 | Meaningful gameplay route and original level-exit decision | Route captures and level-eleven entry state match; native enters two frames early, so completion remains rejected |
 | Level 11 | Meaningful gameplay route and original level-exit decision | Original repeat passes; native reaches level twelve two frames early, comparison remains open |
 | Level 12 | Meaningful gameplay route and original level-exit decision | Original repeat passes; native reaches level thirteen two frames early, comparison remains open |
 | Level 13 | Meaningful gameplay route and original level-exit decision | Original and repeat pass; native reaches level fourteen two steps early with pixel/context differences |
@@ -1254,6 +1254,13 @@ Native level-ten `.run-OZOTgb` reaches level eleven, room 5, at step 290
 with 292 key reads; the original boundary is step 292. The strict first-frame
 guard rejects this run. Code/input and hardware/heap restoration pass, but
 this does not establish a passing paired route.
+
+MEASURED: `.run-CeIpbt` repeats that strict rejection and captures the
+level-eleven entry before teardown. All 23 preceding checkpoints pass
+`paired_frame` and complete-context comparison. The rejected entry matches
+viewport pixels, displayed palette, full context, actors, RNG, level and room;
+its step count is 290 rather than 292. The strict completion gate remains
+failed. `manifest/gameplay-level10-rejected-entry.sha256` pins this evidence.
 
 Fresh `gameplay-assisted-level12-repeat-1` matches every recorded checkpoint
 of the pinned level-twelve route and passes the original launcher. Native
