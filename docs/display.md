@@ -91,9 +91,10 @@ Publication occurs on an even field. The observer checks the actual selected
 copper list, both parity pointers and publication before line 16, with no late
 updates. Emulator evidence is not a real-hardware release result.
 
-CopyBits marks client rectangles dirty. The Kalms converter expands horizontal
-spans to its 32-pixel width/16-pixel start constraints and converts only those
-rectangles. Unchanged regions are carried forward between the two buffers.
+CopyBits marks client rectangles dirty. The shared disjoint-band planner unions
+clipped coordinates before expanding spans to Kalms’s 32-pixel width/16-pixel
+start constraints. It converts each covered pixel once, with a bounded
+bounding-box fallback if the rectangle capacity is exhausted. Unchanged regions are carried forward between the two buffers.
 Moving the viewport forces a full conversion. Palette-only publication preserves
 all indices while replacing both field palettes. Fades use the measured transfer
 and AGA high/low colour-bank writes at publication.

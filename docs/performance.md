@@ -2,7 +2,7 @@
 
 The current owner-directed target is `a1200-030`: the shared 50 MHz 68030,
 AGA, PAL, 2 MB Chip RAM and 8 MB Fast RAM preset with data cache enabled.
-The owner brought 68020 item 15 forward; its baseline below fails cadence.
+The owner deferred 68020 item 15 beyond 0.90 (D14); its baseline below fails cadence.
 These are emulator measurements, not
 real-hardware performance claims. The Fast RAM requirement is 8 MB (D5).
 
@@ -112,8 +112,8 @@ its caller return at CODE 2+616E, guarding the original call, entry and return
 instructions. It retains the owner, parent and return address until that
 invocation finishes. The existing DrawWorld guard also covers initial rendering.
 
-The current tested route has 59 updates and 59 conversion passes, 113 rectangles
-and 850,272 converted pixels, with no conversion outside frame end. Benchmark
+The current tested route has 58 updates and 58 conversion passes, 115 rectangles
+and 826,944 converted pixels, with no conversion outside frame end. Benchmark
 and death screen/context bytes match the pinned parent. Converted bitplanes match the chunky image at the
 benchmark endpoint and death checkpoint. Sixteen altered window, route and
 parent-identity records are rejected by the checker.
@@ -526,6 +526,95 @@ outputs remain ignored. VBL (`.run-B4P3Uj`) and Time Manager (`.run-KuR8nM`)
 fixtures match their originals and each reject twelve alterations. Cadence
 (`.run-3jnfw4`) matches 59 consecutive original five-tick intervals and rejects
 six alterations. The restored release passes link and diagnostic-exclusion audits.
+
+### Conversion bounds (19.5)
+
+`PrinceScreen` uses the coordinate-only disjoint-band planner extracted from
+Alone in the Dark into AmigaXDev (`16586b1`, `codex/dirty-bands`). Vette's
+completed-frame conversion and buffer synchronization were also inspected.
+The planner unions clipped draw coordinates before Kalms alignment, coalesces
+identical adjacent bands, and retains a bounded bounding-box fallback. It reads
+no pixels and adds no startup verification or release diagnostics.
+
+MEASURED on `a1200-030` with the same exact-cycle/no-MMU profile configuration:
+`bounds-before-c` / `bounds-before-d` versus `bounds-after-a` / `bounds-after-b`.
+Both repeats and both before/after comparisons pass with 81 identical Kid records
+and original timer requests. Each capture has `opening`, `report` and `work`
+outputs for every phase under ignored `tmp/aprof/`.
+
+| Phase | C2P inclusive, before | C2P inclusive, after | Publication inclusive, before | Publication inclusive, after |
+|---|---:|---:|---:|---:|
+| 0 landing | 18.50–18.51 | 17.36–17.45 | 34.52–34.60 | 33.40–33.51 |
+| 1 stand-off | 6.77–6.82 | 6.49–6.54 | 12.08–12.18 | 11.28–11.49 |
+| 2 attack | 5.90 | 4.74–4.86 | 12.46–12.79 | 11.67–11.96 |
+| 3 attack | 5.09–5.36 | 4.62–4.79 | 9.18–9.69 | 8.72–9.32 |
+| 4 fall | 4.67–4.87 | 4.60–4.86 | 7.57–7.69 | 7.59–7.75 |
+
+Numbers are ms per reported phase frame, retaining the established report's
+row denominator. The landing boundary fires after publication but before storing
+the next phase's row: phase 0 contains seven publications and six stored rows;
+the last phase contains 28 publications and 29 rows. Thus the phase-0 inclusive
+C2P cost per actual publication is 15.86–15.87 → 14.88–14.96 ms. This boundary
+accounting is unchanged between arms; no report is relabelled. Exclusive C2P
+measures 17.79–17.80 → 16.65–16.91 ms per reported phase-0 frame. The inclusive
+reduction is about 6%, not the 30% branch of the acceptance gate.
+
+The exact no-MMU opening has one late requested interval in both candidate
+runs, against two in both baselines, with 376–377 versus 377 total PAL fields.
+That remaining interval stays in item 19; these are emulator observations,
+not hardware performance claims.
+
+The separate ordinary-emulator bounds runs are `.run-kjl4g5` (before) and
+`.run-ypgCZO` (after). Each completes the no-input route and restoration and
+passes 81 full-frame chunky/bitplane comparisons. All 81 before/after viewports
+are byte-identical. The independent row optimizer considers every legal
+16-pixel-aligned interval of width divisible by 32; every candidate publication
+has minimum area and no overlap. This establishes minimum coverage of the
+original dirty coordinates, not that every pixel inside each original rectangle
+changed. No framebuffer shadow or pixel scanning is needed in the game.
+
+The landing scope's seven publications convert 285,184 → 271,840 pixels
+(4.68% less); the complete route converts 1,217,792 → 1,172,992 (3.68% less).
+The first six publications were already minimal; the landing publication and
+ten later updates had redundant coverage. **19.5 uses the minimum-bounds
+acceptance alternative**, not a claimed 30% timing reduction. The planner's
+release stack frame is 820 bytes and publication's is 604 bytes, before outer
+service frames and interrupts, within the existing 16 KiB program stack.
+
+Host controls cover 8,192 independently optimized row patterns across both
+ports' viewport sizes, 10,000 extraction-identity cases against Alone in the
+Dark's planner, clipping and capacity fallback, and 400 alternating-buffer
+updates with complete plane preservation. Six malformed/missing/overlapping/
+nonminimal coordinate controls are rejected. Captures remain ignored;
+`manifest/c2p-bounds.sha256` pins the measurement and native evidence.
+
+Reproduce the correctness capture separately from timing:
+
+```sh
+. amiga/env.sh
+python3 tools/capture_c2p_bounds.py
+python3 tools/check_c2p_bounds.py NATIVE_RUN --compare BEFORE_RUN
+python3 tools/test_c2p_bounds.py
+```
+
+The four-frame AGA fixture passes in `.run-jxzgEE`; the full host suite and
+`make integration-check` pass in `tmp/integration-gate-4dlowfhg` on
+`a1200-030`, with four fresh Macintosh service comparisons, ten contract
+controls, 20 native-title controls, six reference-title controls, 19 gameplay
+evidence controls, and the completed no-Right outcome control. VBL
+(`.run-nZX01L`) and Time Manager (`.run-M6BgsH`) match their original contracts
+and each reject twelve altered-evidence controls. Cadence (`.run-FZh0IY`)
+matches 58 consecutive original five-tick intervals and rejects six alterations;
+its performance checker rejects sixteen altered window/route/parent records.
+All 58 conversion passes occur at frame end. The restored ordinary release
+passes the link and no-runtime-hash/trace audits.
+
+The capture's debugger stops invalidate its timings. The unchanged
+`amiga/aprof.sh` route supplies the measurements above; run both repeats with
+`--original ref/mame/runs/opening-noright-1` and produce `report` and `work`
+for phases 0–4. The shared planner and its tests are published on AmigaXDev's
+isolated branch; integration into AmigaXDev's main branch and adoption by Alone
+in the Dark remain in 19.9.
 
 ## Scenes to retain for future profiling
 

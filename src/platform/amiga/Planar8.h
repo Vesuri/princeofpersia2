@@ -1,5 +1,6 @@
 #ifndef POP2_PLANAR8_H
 #define POP2_PLANAR8_H
+#include "mac/DirtyBands.h"
 #ifndef POP2_PLATFORM_AMIGA
 #include <stdint.h>
 #endif
@@ -17,51 +18,7 @@ inline bool contains(const Rect& outer,const Rect& inner) {
         && outer.bottom>=inner.bottom && outer.right>=inner.right;
 }
 
-// Kalms needs a width divisible by 32, but its output may start on any word.
-// Anchoring the block at a 16-pixel boundary avoids expanding a narrow actor
-// across two fixed 32-pixel columns. Keep the final block inside the viewport.
-inline void alignSpan(Rect& r) {
-    r.left=int16_t(r.left&~15);
-    r.right=int16_t(r.left+((r.right-r.left+31)&~31));
-    if(r.right>width) {r.left-=r.right-width;r.right=width;}
-}
-
-// Union only when it covers no additional pixels: containment, or an exact
-// shared edge/overlap in one axis. Partial overlaps stay separate.
-inline bool mergeLosslessly(const Rect& a,const Rect& b) {
-    if(contains(a,b) || contains(b,a))return true;
-    const int16_t left=a.left<b.left ? a.left : b.left;
-    const int16_t right=a.right>b.right ? a.right : b.right;
-    return (a.left==b.left && a.right==b.right && a.top<=b.bottom && a.bottom>=b.top)
-        || (a.top==b.top && a.bottom==b.bottom && a.left<=b.right && a.right>=b.left
-            && !((right-left)&31));
-}
-
-// Add an already normalized, non-empty rectangle. Merge only if the resulting
-// width still satisfies Kalms; differently anchored overlaps may stay separate.
-inline void append(Rect* rects,uint16_t& count,uint16_t capacity,Rect r) {
-    bool merged;
-    do {
-        merged=false;
-        for(uint16_t i=0;i<count;++i) {
-            if(!mergeLosslessly(r,rects[i]))continue;
-            if(rects[i].top<r.top)r.top=rects[i].top;
-            if(rects[i].left<r.left)r.left=rects[i].left;
-            if(rects[i].bottom>r.bottom)r.bottom=rects[i].bottom;
-            if(rects[i].right>r.right)r.right=rects[i].right;
-            rects[i]=rects[--count];merged=true;break;
-        }
-    } while(merged);
-    if(count<capacity) {rects[count++]=r;return;}
-    // Correctness fallback: one bounding rectangle retains every pixel.
-    for(uint16_t i=0;i<count;++i) {
-        if(rects[i].top<r.top)r.top=rects[i].top;
-        if(rects[i].left<r.left)r.left=rects[i].left;
-        if(rects[i].bottom>r.bottom)r.bottom=rects[i].bottom;
-        if(rects[i].right>r.right)r.right=rects[i].right;
-    }
-    alignSpan(r);rects[0]=r;count=1;
-}
+inline void alignSpan(Rect& r) { DirtyBands::alignSpan<width>(r); }
 
 // The inactive buffer holds the frame from two publications ago. A rectangle
 // converted for the previous frame must be copied forward unless one rectangle

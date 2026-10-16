@@ -30,7 +30,7 @@ STALL_FIELDS = 25  # 0.5 s of PAL fields, as in Alone in the Dark
 # Exclusive self-time buckets for native code, by function-name fragment (first match).
 BUCKETS = [
     ('Presentation: C2P', ('c2p1x1_8_c5_gen', 'KalmsC2P', 'c2pRect')),
-    ('Presentation: other', ('NativeDisplay::', 'PrinceScreen::', 'Planar8', 'AmigaHardware::blitter', 'AmigaHardware::waitBlit',
+    ('Presentation: other', ('NativeDisplay::', 'PrinceScreen::', 'Planar8', 'DirtyBands::', 'AmigaHardware::blitter', 'AmigaHardware::waitBlit',
                              'paceFrame', 'publish')),
     ('QuickDraw: pure rectangles', ('pop2SectRect', 'pop2UnionRect', 'pop2EmptyRect', 'RectBounds')),
     ('QuickDraw: CopyBits', ('CopyBits8', 'RegionRows', 'RegionCopy', 'copyBits', 'CopyBits', 'memmove', 'memcpy', 'MaskCopy')),

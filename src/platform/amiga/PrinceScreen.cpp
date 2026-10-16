@@ -2,6 +2,7 @@
 #include <exec/memory.h>
 #include <hardware/dmabits.h>
 #include "PrinceScreen.h"
+#include "mac/DirtyBands.h"
 #include "framework/AmigaHardware.h"
 extern "C" {
 #ifdef POP2_TIMING_PROBE
@@ -73,11 +74,10 @@ bool PrinceScreen::publish(const uint8_t* chunky,const Planar8::Rect& viewport,
     while(pending_) {__asm__ volatile("nop" ::: "memory");}
     Planar8::Rect work[64];uint16_t n=0;
     bool moved=!valid_ || viewport.top!=viewport_.top || viewport.left!=viewport_.left;
-    if(moved)work[n++]={0,0,Planar8::height,Planar8::width};
-    for(unsigned i=0;i<count;++i) {
-        Planar8::Rect r;if(!Planar8::normalize(viewport,dirty[i],r))return false;
-        if(!moved && r.top<r.bottom && r.left<r.right)Planar8::append(work,n,64,r);
-    }
+    // Union clipped coordinates before alignment, as in Alone in the Dark.
+    // Disjoint horizontal bands avoid converting actor overlaps repeatedly.
+    if(!DirtyBands::plan<Planar8::width,Planar8::height,64>(viewport,dirty,count,work,64,n))return false;
+    if(moved) {work[0]={0,0,Planar8::height,Planar8::width};n=1;}
     uint16_t back=front_^1;
     for(unsigned i=0;i<syncCount_;++i)if(Planar8::syncNeeded(sync_[i],work,n)) {
         synchronize(sync_[i],back);

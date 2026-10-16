@@ -44,3 +44,5 @@ AmigaXDev	b2a5dc0278ca144ab50a0d4dcca1cb13bc1d630b	Amiga pointer-integer compati
 AmigaXDev	acfce4b1646711ef6daaa61f11d4eaf61a3105c6	shared bounded native installer, WHDLoad binding/Line-A policy and stored LHA members; codex/release-installer-helpers
 Alone in the Dark	85611935ab158dfcca3ae07450bbd9b0c2b89cf9	installer, Installer 43 and WHDLoad/MMU release reference for version 0.90; owned-window disposal, audio close, trap restoration and resource-safe ExitToShell policies
 AmigaXDev	ba5cc6cd61b583e4956c56ad0cdf592ee1b09fbb	zero-filled converter padding with unchanged HUNK layouts, section data and relocations; pinned upstream 86fdfadb3ddab50b9457f5018c36c796c716cc13
+AmigaXDev	16586b1e6a877357f09d5d157d09326004299428	shared disjoint C2P band planner extracted from Alone in the Dark; both viewport sizes, minimum-row and preservation controls
+Alone in the Dark	85611935ab158dfcca3ae07450bbd9b0c2b89cf9	disjoint-band conversion planner and minimum-row/native-plane validation inspected for item 19.5
