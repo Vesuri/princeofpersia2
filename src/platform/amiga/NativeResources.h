@@ -5,6 +5,8 @@ struct Item { uint32_t identity,type,size;int16_t id,file;uint8_t attributes; };
 bool prepare(const uint8_t* application,uint32_t size);
 void release();
 int16_t current();
+int16_t newest();
+int16_t application();
 bool dirty(int16_t ref);
 int32_t use(int16_t ref);
 int32_t open(int16_t volume,uint32_t directory,const char* path,uint8_t permission,int16_t& ref);

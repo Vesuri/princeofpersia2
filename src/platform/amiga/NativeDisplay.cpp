@@ -17,7 +17,7 @@ extern "C" {uint32_t g_integrationScreen=0,g_integrationColors=0;}
 namespace NativeDisplay {
 namespace {
 using H=MacHeap::Handle;
-MacHeap* heap;Valid valid;Resource resource;uint8_t* low;uint8_t* pixels;uint8_t* thePort;
+MacHeap* heap;Valid valid;Resource resource;uint8_t* low;uint8_t* pixels;uint8_t* thePort;uint8_t* windowManagerPort;
 H device,map,colors;uint32_t currentDevice;
 const char* reason="DISPLAY / NOT INITIALIZED";
 struct World {uint8_t* port;H pm,pixels,vis,clip,vars,patterns[3];bool locked,isScreen;H palette;bool active;};
@@ -100,7 +100,7 @@ bool activate(World& v) {
 }
 const char* error() {return reason;}
 const uint8_t* screen() {return pixels;}
-void reset() {heap=nullptr;valid=nullptr;low=pixels=thePort=nullptr;device=map=colors=nullptr;for(auto& v:worlds)v={};for(auto& p:palettes)p={};resource=nullptr;output=nullptr;transfer=nullptr;dirtyCount=0;paletteDirty=false;}
+void reset() {heap=nullptr;valid=nullptr;low=pixels=thePort=windowManagerPort=nullptr;device=map=colors=nullptr;for(auto& v:worlds)v={};for(auto& p:palettes)p={};resource=nullptr;output=nullptr;transfer=nullptr;dirtyCount=0;paletteDirty=false;}
 bool prepare(MacHeap& owner,uint8_t* shadow,Valid validator,Resource reader) {
     reset();heap=&owner;low=shadow;valid=validator;resource=reader;
     pixels=heap->newPtr(640*480,true);device=heap->newHandle(62,true);
@@ -121,7 +121,7 @@ bool initWindowManager() {
     GWorld8::rect(v->port+16,{0,0,480,640});
     H desktop=heap->newHandle(10,true);if(!desktop)return fail("UI / DESKTOP REGION MEMORY");
     sw(*desktop,10);GWorld8::rect(*desktop+2,{20,0,480,640});sl(low+0xbaa,(uint32_t)desktop);
-    sl(thePort,(uint32_t)v->port);return true;
+    windowManagerPort=v->port;sl(thePort,(uint32_t)v->port);return true;
 }
 bool showOverlay(const uint8_t* image) {
     if(!output || !image)return fail("UI / PRESENTATION UNAVAILABLE");
@@ -159,7 +159,7 @@ bool publish(bool prepareScene) {
 }
 bool handles(uint16_t trap) {
     if(trap==0xa8a6 || trap==0xa8d7 || trap==0xa8e0 || trap==0xa8d3)return true;
-    return trap==0xa88b || trap==0xa88d || trap==0xa88c || trap==0xa893 || trap==0xa884 || trap==0xa8a8 || trap==0xa8a9 || trap==0xa8ab || trap==0xa8ae || trap==0xa8aa || trap==0xa861 || trap==0xa8d8 || trap==0xa8d9 || trap==0xa8df || trap==0xa8e5 || trap==0xa879 || trap==0xa87a || trap==0xa90d || trap==0xa90a || trap==0xa887 || trap==0xa888 || trap==0xa88a || trap==0xa8a2 || trap==0xa87b || trap==0xa8a7 || trap==0xa91c || trap==0xa889 || trap==0xa89e || trap==0xa863 || trap==0xa8a3 || trap==0xaaa0 || trap==0xa91f || trap==0xa924 || trap==0xaa46 || trap==0xaa91 || trap==0xaa9c || trap==0xaa9e || trap==0xaa95 || trap==0xaa94 || trap==0xaa9a || trap==0xaa14 || trap==0xaa15 || trap==0xa915 || trap==0xa916 || trap==0xa91b || trap==0xa877 || trap==0xa878 || trap==0xa8ec || trap==0xa86e || trap==0xaa2a || trap==0xab1d || trap==0xa873 || trap==0xa874;
+    return trap==0xa914 || trap==0xa88b || trap==0xa88d || trap==0xa88c || trap==0xa893 || trap==0xa884 || trap==0xa8a8 || trap==0xa8a9 || trap==0xa8ab || trap==0xa8ae || trap==0xa8aa || trap==0xa861 || trap==0xa8d8 || trap==0xa8d9 || trap==0xa8df || trap==0xa8e5 || trap==0xa879 || trap==0xa87a || trap==0xa90d || trap==0xa90a || trap==0xa887 || trap==0xa888 || trap==0xa88a || trap==0xa8a2 || trap==0xa87b || trap==0xa8a7 || trap==0xa91c || trap==0xa889 || trap==0xa89e || trap==0xa863 || trap==0xa8a3 || trap==0xaaa0 || trap==0xa91f || trap==0xa924 || trap==0xaa46 || trap==0xaa91 || trap==0xaa9c || trap==0xaa9e || trap==0xaa95 || trap==0xaa94 || trap==0xaa9a || trap==0xaa14 || trap==0xaa15 || trap==0xa915 || trap==0xa916 || trap==0xa91b || trap==0xa877 || trap==0xa878 || trap==0xa8ec || trap==0xa86e || trap==0xaa2a || trap==0xab1d || trap==0xa873 || trap==0xa874;
 }
 bool dispatch(uint16_t trap,uint32_t* regs,uint8_t* args,uint32_t& consumed) {
     if(!heap || !valid || !pointer((uint32_t)args,trap==0xab1d && uint16_t(regs[0])==0 ? 24 : (trap==0xab1d ? 8 : 4)))return fail("DISPLAY / ARGUMENT EXTENT");
@@ -434,6 +434,15 @@ bool dispatch(uint16_t trap,uint32_t* regs,uint8_t* args,uint32_t& consumed) {
         if(!v || !v->palette || !heap->isHandle(source) || !*source)return fail("DISPLAY / ANIMATE OWNERSHIP");
         if(!AnimatePalette8::animate(*v->palette,heap->handleSize(v->palette),*colors,2056,*source,heap->handleSize(source),w(args+4),w(args+2),w(args),v->active))return fail("DISPLAY / ANIMATE FORM");
         if(v->active)paletteDirty=true;consumed=14;return true;
+    }
+    if(trap==0xa914) {
+        if(!pointer((uint32_t)args,4))return fail("DISPLAY / DISPOSEWINDOW ARGUMENTS");
+        World* v=byPort(l(args));
+        if(!v || !v->isScreen || v->port==windowManagerPort)return fail("DISPLAY / DISPOSEWINDOW OWNER");
+        // Same current-port fallback as the donor Window Manager. Our window
+        // allocation owns its port and private GWorld handles, not screen pixels.
+        if(thePort && l(thePort)==(uint32_t)v->port)sl(thePort,(uint32_t)windowManagerPort);
+        dispose(*v);consumed=4;return true;
     }
     if(trap==0xa915 || trap==0xa916 || trap==0xaa94 || trap==0xa91b) {
         if(trap==0xa91b && !pointer((uint32_t)args,10))return fail("DISPLAY / MOVE WINDOW ARGUMENTS");

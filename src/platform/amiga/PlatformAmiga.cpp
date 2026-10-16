@@ -324,13 +324,14 @@ bool PlatformAmiga::run() {
     PutStr((CONST_STRPTR)(ok ? "SCAFFOLD RESTORED\n" : "SCAFFOLD / RESTORE FAILED\n"));
 #ifdef POP2_CORE
     PutStr((CONST_STRPTR)CoreRuntime::error());PutStr((CONST_STRPTR)"\n");
+    ok=ok && CoreRuntime::exitedNormally();
     g_scaffoldStage=3;pop2CoreStopped();CoreRuntime::release();
 #endif
     CloseLibrary((Library*)DOSBase);DOSBase=0;
     CloseLibrary((Library*)GfxBase);GfxBase=0;
     g_scaffoldStage=3;
     pop2ScaffoldRestored();
-#if defined(POP2_FAIL_EXIT) || defined(POP2_CORE)
+#if defined(POP2_FAIL_EXIT)
     return false; // Negative control: the Shell must receive FAIL, not zero.
 #else
     return ok;

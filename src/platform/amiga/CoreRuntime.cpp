@@ -293,7 +293,7 @@ uint8_t* audioReplay=nullptr;uint32_t audioReplaySize=0;uint8_t* audioPacket=nul
 uint8_t* uiPlan=nullptr;uint32_t uiPlanSize=0;
 uint8_t* displayFrames=nullptr;uint32_t displayFramesSize=0;
 uint8_t* videoTransfer=nullptr;uint32_t videoTransferSize=0;
-bool didStop=false;
+bool didStop=false,normalExit=false;
 uint8_t auditBuffer[65536];
 uint8_t* patchedLoad=0;uint8_t* patchedExit=0;
 struct Resource { uint32_t type;int16_t id;OriginalApplication::Resource source;MacHeap::Handle handle;bool detached;uint32_t identity;int16_t fileRef;uint8_t changes; };
@@ -422,7 +422,7 @@ bool pascalPath(uint32_t address,char path[256]) {
     if(!validMemory(address+1,p[0]))return false;
     for(unsigned i=0;i<p[0];++i)path[i]=p[i+1];path[p[0]]=0;return true;
 }
-bool fail(const char* why) { g_coreReason=why;return false; }
+bool fail(const char* why) { normalExit=false;g_coreReason=why;return false; }
 bool readFile(const char* name,uint8_t*& data,uint32_t& size,uint32_t limit,const uint8_t digest[32]) {
     BPTR f=Open((CONST_STRPTR)name,MODE_OLDFILE);if(!f)return fail("CORE INPUT / OPEN");
     LONG seek=Seek(f,0,OFFSET_END);LONG n=seek<0 ? -1 : Seek(f,0,OFFSET_BEGINNING);
@@ -580,13 +580,20 @@ bool location(uint32_t pc,uint32_t& seg,uint32_t& offset) {
     return codeRanges.find(g_coreSegments,24,pc,seg,offset);
 }
 uint32_t stop(uint8_t* frame,uint8_t* usp,const char* why,uint16_t trap,uint32_t seg,uint32_t off) {
-    didStop=true;g_coreReason=why;g_coreStopTrap=trap;g_coreStopSegment=seg;g_coreStopOffset=off;
+    normalExit=false;didStop=true;g_coreReason=why;g_coreStopTrap=trap;g_coreStopSegment=seg;g_coreStopOffset=off;
     sl(frame+2,(uint32_t)pop2_mac_exit);return (uint32_t)usp;
 }
 }
 static void prepareQuickTraps();
 namespace CoreRuntime {
 const char* error() { return g_coreReason; }
+bool exitedNormally() {
+    return normalExit && g_coreVectorRestored==1
+#ifdef POP2_VERIFY
+        && g_coreHeapOK==1
+#endif
+        ;
+}
 const uint8_t* displayTransfer() {return videoTransfer;}
 bool prepare() {
     if(!readFile("Prince of Persia 2.rsrc",file,fileSize,1024*1024,applicationSHA256))return false;
@@ -1745,6 +1752,7 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
         entries[0xa146&0xfff]=&&trap_0xa146;
         entries[0xa047&0xfff]=&&trap_0xa047;
         entries[0xa9f0&0xfff]=&&trap_0xa9f0;
+        entries[0xa9f4&0xfff]=&&trap_0xa9f4;
         entries[0xa1ad&0xfff]=&&trap_0xa1ad;
         entries[0xa090&0xfff]=&&trap_0xa090;
         entries[0xa8fe&0xfff]=&&trap_0xa8fe;
@@ -2314,11 +2322,31 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
         if(!patch) { fail("TRAP TABLE / UNKNOWN ENTRY");goto failed; }
         if(trap==0xa047) {
             bool exitEntry=seg==19 && off==0x033c && target==0xa9f4 && regs[8]==(uint32_t)a5+0x13fa;
-            if(!heap.owns((void*)regs[8]) && !exitEntry) { fail("TRAP TABLE / UNKNOWN PATCH TARGET");goto failed; }
-            *patch=(uint8_t*)regs[8];
+            uint8_t* original=target==0xa9f0?(uint8_t*)pop2_old_loadseg:(uint8_t*)pop2_old_exit;
+            // The runtime restores precisely the builtin address returned by
+            // GetTrapAddress before freeing its two trampoline records.
+            if(regs[8]==(uint32_t)original)*patch=nullptr;
+            else {
+                if(!heap.owns((void*)regs[8]) && !exitEntry) { fail("TRAP TABLE / UNKNOWN PATCH TARGET");goto failed; }
+                *patch=(uint8_t*)regs[8];
+            }
         }
         else regs[8]=(uint32_t)(*patch?*patch:target==0xa9f0?(uint8_t*)pop2_old_loadseg:(uint8_t*)pop2_old_exit);
         regs[0]=0;break;
+    }
+    case 0xa9f4: trap_0xa9f4: {
+        // Alone in the Dark's ExitToShell policy: publish remaining resource
+        // files before returning the host stack; immutable application stays open.
+        for(;;) {
+            int16_t ref=NativeResources::newest();
+            if(ref<0){fail("RESOURCE / EXIT DIRECTORY");goto failed;}
+            if(publishResources(ref)){fail("RESOURCE / EXIT PUBLICATION");goto failed;}
+            if(ref==NativeResources::application())break;
+            if(NativeResources::close(ref)){fail("RESOURCE / EXIT CLOSE");goto failed;}
+        }
+        uint32_t result=stop(frame,usp,"CORE / EXIT TO SHELL",trap,seg,off);
+        timerCount=vblCount=0;normalExit=true;
+        return result;
     }
     case 0xa9f0: trap_0xa9f0: {
         if(!builtin) { fail("LOADSEG / ORIGINAL HOOK MISSING");goto failed; }

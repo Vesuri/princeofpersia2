@@ -64,11 +64,8 @@ policies reuse Alone in the Dark through pinned AmigaXDev helpers.
 MEASURED: the 040/MMU observation `tmp/whdload-release-vt22nnlp` reaches
 `CORE / RUNNING` with no scaffold error, TC=$8000 and CACR=$80008000. The run
 ends at WHDLoad's diagnostic timeout. This establishes neither gameplay nor
-normal quit. PRELOAD on/off gameplay, save persistence, clean quit and hardware
-validation remain required by item 14. A LoadSeg-triggered debugger attempt did
-not connect under KickEmu; it is not a pass. A boot-level connection works,
-but the installed MMU emulator rejects `monitor fields` (Rcmd protocol error).
-The automated WHDLoad input/quit attempt was stopped; no completion is claimed.
+normal quit. The 030/NOMMU gameplay and normal-quit checks below pass;
+040/MMU gameplay, save persistence and hardware validation remain open.
 
 ### Indirect low-memory store
 
@@ -120,6 +117,43 @@ positive evidence; an unreached breakpoint is a failure.
 The candidate includes complete LGPL installer sources and build instructions,
 and excludes original game files, ROMs, Workbench and WHDLoad binaries.
 
+### Normal quit
+
+MEASURED: release build `d294cddfd4fdc8a70bfc87e90e09a193da51b0a112af6d4655dfa594e4870ca5`
+passes gameplay and Amiga-Q under 030/NOMMU WHDLoad with PRELOAD on
+(`tmp/whdload-release-jendvesz`) and off (`tmp/whdload-release-n0wnh06z`).
+Both reach level 1, room 4, advance from update 1 to 9, complete original
+cleanup and return to the shell with WHDLoad's `Return OK.`. COREDUMP writes
+a register report even on successful exit; the checker inspects its result.
+F10 also returns successfully after gameplay with ordinary WHDLoad settings
+(`tmp/whdload-release-upuee4hq`), with no TIMEOUT option. Reproduce using
+`--gameplay --quit-key --seconds 1200`. The Expert/CoreDump F10 variant reports
+`DEBUG caused` and is not the accepted ordinary-exit test.
+
+`ref/mame/runs/release-quit-4` supplies the paired Macintosh Command-Q route
+and positive return to Finder. `manifest/quit-reference.sha256` pins its trace
+and window captures. The port now implements disposal of its owned window,
+including the Window Manager current-port fallback; audio selector 8 closes
+playback using Alone in the Dark's policy and the existing voice/cache helpers;
+restoring saved built-in trap addresses removes the runtime patches. ExitToShell
+publishes and closes remaining resource files using the shared resource directory,
+then returns through platform restoration. Shell success requires this explicit
+normal exit and successful restoration. Other service stops and diagnostic
+completion stops still return failure.
+
+`tools/check_release_quit.py` checks both Pascal stack cleanup and the original
+port rectangles, audio-close result 0, restored trap patches, original ExitToShell,
+restoration flags and shell status. Missing completion, WHDLoad error, failed
+shell status and altered-port controls are rejected. These are release binaries;
+observation uses debugger breakpoints and guest keyboard input.
+
+Reproduce the original with `POP2_DISPLAY_ROUTE=1 POP2_QUIT_REFERENCE=1
+python3 tools/run_reference.py --name RELEASE_QUIT --deadline 600`. Reproduce
+the native route with `python3 tools/test_whdload.py --gameplay --seconds 1200
+--ticks 24000`, optionally adding `--no-preload`, using the pinned debugger
+emulator described above. Pair its output with `python3 tools/check_release_quit.py
+ref/mame/runs/release-quit-4 NATIVE_RUN --controls`.
+
 ## Hardware candidate checks
 
 On the owner's A1200 68040/40, 32 MB, MMU:
@@ -136,5 +170,5 @@ five-tick cadence match. The unresolved original-paired 040 cadence gate stays o
 
 ## Candidate identity
 
-`dist/PrinceOfPersia2-0.90.lha`: 181,825 bytes, SHA-256
-`de3513bfc15344ea124e8ad026f20931d6adf2cda7a66df95acf49f955cee9b5`. This installer archive contains no original game data.
+`dist/PrinceOfPersia2-0.90.lha`: 182,823 bytes, SHA-256
+`a9c3854a4b7f9ce6eff96fab26449e0d71f57f6532d0776580252739ad88be70`. This installer archive contains no original game data.

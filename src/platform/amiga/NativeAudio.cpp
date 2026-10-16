@@ -115,6 +115,16 @@ bool dispatch(uint32_t selector,uint32_t argument,uint32_t& result,bool& retry){
     if(extent && (!valid || !valid(argument,extent)))return fail("AUDIO / PACKET EXTENT");
     const uint8_t* p=(const uint8_t*)argument;const char* why=nullptr;
     switch(selector){
+    case 8:
+        // Alone in the Dark's close-driver policy, paired here with MIDI Synth
+        // 3.45 +4358: stop music/effects, retire callbacks and release cached
+        // sample ownership. Platform restoration retains the Paula registers.
+        for(auto& v:engine.voices.music)stopVoice(v);
+        engine.voices.silenceMusic();if(!effectStop(false))return false;
+        for(unsigned c=0;c<4;++c)stopChannel(c);
+        sampleCache.clearUnused();callbackRead=callbackWrite=0;
+        musicCallback=musicContext=effectCallback=effectContext=0;
+        engine.voices.initialized=false;suspended=false;break;
     case 6:for(auto& v:engine.voices.music)stopVoice(v);engine.voices.silenceMusic();break;
     case 9:
         if(suspended)return fail("AUDIO / NOTE DURING SUSPEND");

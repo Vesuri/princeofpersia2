@@ -1,4 +1,4 @@
-"""Isolated release WHDLoad observation; a timeout dump is not a gameplay pass.
+"""Isolated release WHDLoad checks; a timeout dump is not a gameplay pass.
 
 Staging/CLI protocol adapted from Vette! and Alone in the Dark. The shared
 launcher owns only this fixture's recorded emulator PID.
@@ -17,9 +17,14 @@ def main():
     p.add_argument('--slave',type=Path,default=ROOT/'build/whdload/PrinceOfPersia2.slave')
     p.add_argument('--ticks',type=int,default=1500)
     p.add_argument('--store-reference',type=Path,help='verify the CODE 20 store against a completed original demo trace')
+    p.add_argument('--gameplay',action='store_true',help='exercise release gameplay and normal quit with guest keyboard input')
+    p.add_argument('--quit-key',action='store_true',help='use WHDLoad F10 after the gameplay checkpoint')
     a=p.parse_args()
-    if a.store_reference:
-        assert a.setup=='a1200-030' and not a.mmu, 'STORE / VALIDATED DEBUGGER SETUP'
+    assert not a.quit_key or a.gameplay, 'WHDLOAD / QUIT KEY REQUIRES GAMEPLAY'
+    assert not (a.gameplay and a.store_reference), 'WHDLOAD / ONE OBSERVER'
+    debug=a.gameplay or bool(a.store_reference)
+    if debug:
+        assert a.setup=='a1200-030' and not a.mmu, 'WHDLOAD / VALIDATED DEBUGGER SETUP'
         from whdload_store import emulator
         emulator()
     receipt=verify()
@@ -34,9 +39,12 @@ def main():
     shutil.copyfile(os.environ['WHDLOAD_BINARY'],game/'WHDLoad')
     rom=Path(os.environ['KICKSTART_A1200']);rtb=Path(str(rom)+'.RTB')
     for src in [rom,rtb]:shutil.copyfile(src,boot/'devs/Kickstarts'/src.name)
-    options=('' if a.no_preload else 'PRELOAD ')+('MMU ' if a.mmu else 'NOMMU ' if a.store_reference else '')
-    (boot/'s/WHDLoad.prefs').write_text('Expert\nReadDelay=0\n')
-    (boot/'s/startup-sequence').write_text('DF0:C/Assign C: DF0:C\nDF0:C/Assign LIBS: DF0:Libs\nDF0:C/Assign DEVS: DH0:devs\nStack 16384\nFailAt 999\nCD DH1:\n'+f'WHDLoad PrinceOfPersia2.slave {options}SPLASHDELAY=0 NOREQ COREDUMP TIMEOUT={a.ticks} >DH0:result\n'+'Echo returned >DH0:returned\n')
+    options=('' if a.no_preload else 'PRELOAD ')+('MMU ' if a.mmu else 'NOMMU ' if debug else '')
+    (base/'gameplay-options.json').write_text(json.dumps({'quit_key':a.quit_key})+'\n')
+    timeout='' if a.quit_key else f'TIMEOUT={a.ticks} '
+    (boot/'s/WHDLoad.prefs').write_text(('' if a.quit_key else 'Expert\n')+'ReadDelay=0\n')
+    diagnostics='' if a.quit_key else 'COREDUMP '
+    (boot/'s/startup-sequence').write_text('DF0:C/Assign C: DF0:C\nDF0:C/Assign LIBS: DF0:Libs\nDF0:C/Assign DEVS: DH0:devs\nStack 16384\nFailAt 999\nCD DH1:\n'+f'WHDLoad PrinceOfPersia2.slave {options}SPLASHDELAY=0 NOREQ {diagnostics}{timeout}>DH0:result\n'+'If WARN\nEcho failed >DH0:failed\nElse\nEcho passed >DH0:passed\nEndIf\nEcho returned >DH0:returned\n')
     (base/'receipt.json').write_text(json.dumps(receipt,indent=2)+'\n')
     script=base/'launch.sh'
     script.write_text('''#!/bin/bash
@@ -55,7 +63,11 @@ wait "$FSUAE_PID"
 ''')
     try:
         with (base/'emulator.log').open('w') as log:
-            emu=subprocess.Popen(['/bin/bash',str(script),str(base),str(ROOT),a.setup,'1' if a.store_reference else '0'],stdout=log,stderr=log)
+            emu=subprocess.Popen(['/bin/bash',str(script),str(base),str(ROOT),a.setup,'1' if debug else '0'],stdout=log,stderr=log)
+            if a.gameplay:
+                from whdload_gameplay import run
+                run(base,a.seconds)
+                return
             if a.store_reference:
                 from whdload_store import run
                 run(base,a.store_reference,a.seconds)

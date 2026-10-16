@@ -34,6 +34,8 @@ void release() {
     selected=-1;
 }
 bool dirty(int16_t ref) {int16_t key=keyFor(ref);return key>=0 && directory && directory->dirty(key);}
+int16_t application() {return forks[0].ref;}
+int16_t newest() {int16_t key=-1;return directory && directory->newest(key) && key>=0 && key<16 ? forks[key].ref : -1;}
 int16_t current() {return selected<0 ? -1 : forks[selected].ref;}
 int32_t use(int16_t ref) {
     int16_t key=keyFor(ref);if(key<0)return -193;selected=key;return 0;

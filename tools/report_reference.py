@@ -86,12 +86,12 @@ def png(rgb):
 
 
 def report(directory,profile="opening"):
-    require(profile in ("opening","file-restart","display","ui","integration","demo","load-import"),"RESULT PROFILE")
+    require(profile in ("opening","file-restart","display","ui","integration","demo","load-import","quit"),"RESULT PROFILE")
     trace,facts=analyze((directory/'session.log').read_text(),demo=profile=='demo')
     frame=(directory/'opening.ppm').read_bytes()
     require(frame.startswith(b'P6\n640 480\n255\n') and len(frame)==921615,'CAPTURE FORMAT')
     outputs={'opening.ppm':frame,'traps.txt':trace}
-    expected=pins(ROOT/('manifest/reference-import-startup.sha256' if profile=='load-import' else 'manifest/reference-results.sha256' if profile in ('opening','display','ui','integration','demo') else 'manifest/reference-file-restart.sha256'))
+    expected=pins(ROOT/('manifest/reference-import-startup.sha256' if profile=='load-import' else 'manifest/reference-results.sha256' if profile in ('opening','display','ui','integration','demo','quit') else 'manifest/reference-file-restart.sha256'))
     # Preserve useful diagnostic output even when the pinned comparison fails.
     (directory/'traps.txt').write_bytes(trace)
     (directory/'opening.png').write_bytes(png(frame[15:]))
@@ -122,7 +122,7 @@ def report(directory,profile="opening"):
             for phase in ('before','after'):
                 require((directory/f'integration-{call}-{phase}-stack.bin').stat().st_size==64,'INTEGRATION STACK EXTENT')
     for name,data in outputs.items():
-        if profile in ('display','ui','integration') and name=='traps.txt':continue # observed waits depend on observer pauses
+        if profile in ('display','ui','integration','quit') and name=='traps.txt':continue # observed waits depend on observer pauses
         require(name in expected and hashlib.sha256(data).hexdigest()==expected[name],'RESULT HASH '+name)
     print('REFERENCE PASS:',directory.relative_to(ROOT),facts['milestone'])
     return facts

@@ -74,6 +74,10 @@ def run(name=None, control=None, deadline=None):
             raise ValueError('REFERENCE / BYTE-GUARD CONTROL DID NOT REJECT')
         print('REFERENCE BYTE-GUARD CONTROL PASS:',destination.relative_to(ROOT))
         return destination
+    if env.get('POP2_QUIT_REFERENCE'):
+        log=(destination/'session.log').read_text()
+        if log.count('QUIT_REFERENCE_COMPLETE Finder\n')!=1 or 'FAIL REFERENCE' in log:
+            raise ValueError('REFERENCE / QUIT INCOMPLETE')
     if env.get("POP2_FILE_ROUTINES"):
         log=(destination/"session.log").read_text()
         markers=("FILE_ROUTINE_COMPLETE HallOfFame restart-read", "FILE_ROUTINE_COMPLETE ResumeGame restart-read") if env.get("POP2_RESTART_FROM") else (
@@ -166,7 +170,7 @@ def run(name=None, control=None, deadline=None):
         from video_transfer import measure
         measure(destination)
     from report_reference import report
-    report(destination,"load-import" if env.get("POP2_GAMEPLAY")=="load-import" else "demo" if env.get("POP2_DEMO_ROUTE") else "integration" if any(env.get(k) for k in ("POP2_INTEGRATION", "POP2_NEWGWORLD", "POP2_TITLE_COPY")) else "opening" if env.get("POP2_AUDIO") else "file-restart" if env.get("POP2_RESTART_FROM") else "ui" if env.get("POP2_UI") else "display" if env.get("POP2_DISPLAY") else "opening")
+    report(destination,"quit" if env.get("POP2_QUIT_REFERENCE") else "load-import" if env.get("POP2_GAMEPLAY")=="load-import" else "demo" if env.get("POP2_DEMO_ROUTE") else "integration" if any(env.get(k) for k in ("POP2_INTEGRATION", "POP2_NEWGWORLD", "POP2_TITLE_COPY")) else "opening" if env.get("POP2_AUDIO") else "file-restart" if env.get("POP2_RESTART_FROM") else "ui" if env.get("POP2_UI") else "display" if env.get("POP2_DISPLAY") else "opening")
     return destination
 
 if __name__=='__main__':

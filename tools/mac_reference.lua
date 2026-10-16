@@ -19,6 +19,8 @@ local audio=os.getenv('POP2_AUDIO') and dofile('tools/mac_audio.lua') or nil
 local integration=(os.getenv('POP2_INTEGRATION') or os.getenv('POP2_NEWGWORLD') or os.getenv('POP2_TITLE_COPY')) and dofile('tools/mac_integration.lua') or nil
 local timing=os.getenv('POP2_TIMING_TM') and dofile('tools/mac_time_manager.lua') or os.getenv('POP2_TIMING_VBL') and dofile('tools/mac_timing.lua') or nil
 local gameplay=os.getenv('POP2_GAMEPLAY') and dofile('tools/mac_gameplay.lua') or nil
+local quitReference=os.getenv('POP2_QUIT_REFERENCE')=='1'
+local quitting=quitReference and dofile('tools/mac_quit.lua') or nil
 local inputStage=false
 local ui=os.getenv('POP2_UI') and dofile('tools/mac_ui.lua') or nil
 local display=os.getenv('POP2_DISPLAY') and dofile('tools/mac_display.lua') or nil
@@ -69,6 +71,7 @@ local function observe()
   if display then display.arm(meta,cond)end
   if integration then integration.arm(meta,cond)end
   if ui then ui.arm(meta,cond)end
+  if quitting then quitting.arm(meta,cond)end
   -- Dynamic return probes capture even the first call immediately after LoadSeg.
   -- SP matches each return to its entry, including Gestalt nested by SysEnvirons.
   cpu.debug:bpset(meta.dispatcher.address,cond..' && (w@(d@(sp+2))==0xa1ad || w@(d@(sp+2))==0xa090 || w@(d@(sp+2))==0xa05c)',
@@ -93,6 +96,7 @@ local function observe()
     end
     if mapper then mapper.map(seg,base)end
     if gameplay then gameplay.map(seg,base,guard,cond)end
+    if quitting then quitting.map(seg,base,guard)end
     if audio then audio.map(seg,base,guard,meta)end
     print(string.format('MAP seg=%d base=%08X size=%d',seg,base,#info.hex/2))
     -- Timing observations use guest ticks and original routine boundaries.
@@ -174,6 +178,11 @@ emu.register_frame_done(function()
 end)
 emu.register_periodic(function()
  if finished then return end
+ if quitting then
+  local ok,handled=pcall(quitting.poll)
+  if not ok then fail(handled);return end
+  if handled then return end
+ end
  if gameplay then
   local ok,handled=pcall(gameplay.poll)
   if not ok then fail(handled);return end
@@ -271,7 +280,7 @@ emu.register_periodic(function()
    end
    print('DISPLAY_ROUTE_CAPTURED '..label)
    cpu.debug:bpclear(routeProbes[pc]);routePoints[pc]=nil;routeStage=label
-   if label=='first-room' and not audio and not gameplay then
+   if label=='first-room' and not audio and not gameplay and not quitReference then
     if integration then integration.finish()end
     if display then display.finish()end
     finished=true;manager.machine:exit()
@@ -297,7 +306,7 @@ emu.register_periodic(function()
    frame.rgb(run..'/opening.ppm')
    manager.machine.video:snapshot()
    print('REFERENCE_CAPTURED opening-text-1')
-   if gameplay and trapTraceProbe then cpu.debug:bpclear(trapTraceProbe);trapTraceProbe=nil end
+   if (gameplay or quitting) and trapTraceProbe then cpu.debug:bpclear(trapTraceProbe);trapTraceProbe=nil end
    if integration and os.getenv('POP2_FIXED_PROBE') then
     cpu.debug:bpclear(checkpointProbe);checkpoint=nil;integration.startFixed();return
    end
@@ -406,6 +415,12 @@ mac.run(function()
    assert(mac.wait_for('title',function()return routeStage=='title'end,18000),'DISPLAY TITLE')
    if audio then print('AUDIO_PHASE title');mac.wait(120)end
    if not os.getenv('POP2_DEMO_ROUTE') and not os.getenv('POP2_NATURAL_TITLE') then mac.press('Space')end
+   if quitReference then
+    assert(mac.wait_for('quit-first-room',function()return routeStage=='first-room'end,18000),'QUIT FIRST ROOM')
+    mac.wait(60);quitting.audio();mac.press('q',{mac.CMD})
+    assert(mac.wait_for('quit-finder',function()return mac.frontmost()=='Finder'end,3600),'QUIT FINDER NOT REACHED')
+    mac.wait(60);quitting.finish();finished=true;manager.machine:exit();return
+   end
    if gameplay then
     assert(mac.wait_for('gameplay-first-frame',function()return gameplay.rooms()>=1 end,18000),'GAMEPLAY FIRST FRAME')
     if os.getenv('POP2_GAMEPLAY')=='route' then

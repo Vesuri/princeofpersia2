@@ -42,5 +42,5 @@ AmigaXDev	a92067e5204a61094fe980998b398622772ff7ba	one MiB code-owner index span
 AmigaXDev	cb13b749476d8d9e321ed97ef0ae42dfd3caa733	32 validated pinned-slot flag-address candidates; collision, mutable flags and reset sanitizer controls
 AmigaXDev	b2a5dc0278ca144ab50a0d4dcca1cb13bc1d630b	Amiga pointer-integer compatibility for pinned-slot address cache
 AmigaXDev	acfce4b1646711ef6daaa61f11d4eaf61a3105c6	shared bounded native installer, WHDLoad binding/Line-A policy and stored LHA members; codex/release-installer-helpers
-Alone in the Dark	85611935ab158dfcca3ae07450bbd9b0c2b89cf9	installer, Installer 43 and WHDLoad/MMU release reference for version 0.90
+Alone in the Dark	85611935ab158dfcca3ae07450bbd9b0c2b89cf9	installer, Installer 43 and WHDLoad/MMU release reference for version 0.90; owned-window disposal, audio close, trap restoration and resource-safe ExitToShell policies
 AmigaXDev	ba5cc6cd61b583e4956c56ad0cdf592ee1b09fbb	zero-filled converter padding with unchanged HUNK layouts, section data and relocations; pinned upstream 86fdfadb3ddab50b9457f5018c36c796c716cc13
