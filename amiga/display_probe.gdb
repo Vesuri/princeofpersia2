@@ -31,5 +31,6 @@ end
 printf "DISPLAY_FRAME id=4 planes=%08lx copper=%08lx parity=%u line=%u fields=%lu frames=%lu late=%u\n",g_displayPlanes,g_displayCopper,g_displayParity,g_displayLine,g_displayFields,g_displayFrames,g_displayLate
 dump binary memory @RUN@/display-4-planes.bin g_displayPlanes g_displayPlanes+196608
 dump binary memory @RUN@/display-4-copper.bin g_displayCopper g_displayCopper+2236
+printf "DISPLAY_COPY interrupts=%lu\n",g_displayCopyInterrupts
 delete breakpoints
 source scaffold.gdb

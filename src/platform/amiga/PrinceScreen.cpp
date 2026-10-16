@@ -3,6 +3,7 @@
 #include <hardware/dmabits.h>
 #include "PrinceScreen.h"
 #include "mac/DirtyBands.h"
+#include "mac/BlitterCompletion.h"
 #include "framework/AmigaHardware.h"
 extern "C" {
 #ifdef POP2_TIMING_PROBE
@@ -66,7 +67,16 @@ void PrinceScreen::field() {
     if(g_displayLine>=16)++g_displayLate;
     g_displayPlanes=(uint32_t)pixels_[front_];g_displayCopper=(uint32_t)list;
     g_displayParity=parity;++g_displayFields;
-    if(changed) {++g_displayFrames;pending_=0;pop2DisplayPublished();}
+    if(changed) {
+        // The old front is now inactive. Copy this completed picture's bands
+        // while the game works in Fast RAM. Level-3 completion cannot interrupt
+        // this level-3 producer; pending_ stays set until the batch is armed.
+        // At most 64 * ceil(384/127) * 25 queue words, below the shared capacity.
+        static_assert(64*4*25 < BLITTER_QUEUE_SIZE,"display blit batch capacity");
+        for(unsigned i=0;i<syncCount_;++i)synchronize(sync_[i],front_^1);
+        if(syncCount_)BlitterCompletion::advance<AmigaHardware>();
+        ++g_displayFrames;pending_=0;pop2DisplayPublished();
+    }
 }
 bool PrinceScreen::publish(const uint8_t* chunky,const Planar8::Rect& viewport,
                            const Planar8::Rect* dirty,uint16_t count,const uint32_t* rgb,bool prepareScene) {
@@ -79,9 +89,9 @@ bool PrinceScreen::publish(const uint8_t* chunky,const Planar8::Rect& viewport,
     if(!DirtyBands::plan<Planar8::width,Planar8::height,64>(viewport,dirty,count,work,64,n))return false;
     if(moved) {work[0]={0,0,Planar8::height,Planar8::width};n=1;}
     uint16_t back=front_^1;
-    for(unsigned i=0;i<syncCount_;++i)if(Planar8::syncNeeded(sync_[i],work,n)) {
-        synchronize(sync_[i],back);
-    }
+    // Completion normally ran during game work. Never race a late copy with
+    // the next C2P write (including viewport or palette-only publication).
+    BlitterCompletion::drain<AmigaHardware>();
 #ifdef POP2_TIMING_PROBE
     if(n){++g_c2pPasses;g_c2pRects+=n;if(g_timingPhase!=0x1002)++g_c2pUnbatched;}
 #endif
@@ -102,9 +112,7 @@ bool PrinceScreen::publish(const uint8_t* chunky,const Planar8::Rect& viewport,
         // Finish a large scene replacement in both buffers before returning to
         // the game. Deferring this copy would charge the following small update
         // for the scene load. Copy only after VBI makes the old front inactive.
-        wait();
-        for(unsigned i=0;i<syncCount_;++i)synchronize(sync_[i],front_^1);
-        syncCount_=0;
+        quiesce();
     }
     return true;
 }
@@ -119,9 +127,12 @@ void PrinceScreen::synchronize(const Planar8::Rect& r,uint16_t back) {
             (uint16_t*)(pixels_[back]+offset),widthBytes/2,lines*8,
             Planar8::planeRow-widthBytes,Planar8::planeRow-widthBytes,
             0,0xffff,0xffff,0xffff);
-        AmigaHardware::blitterDrain();
         y+=lines;
     }
+}
+void PrinceScreen::quiesce() {
+    wait();
+    BlitterCompletion::drain<AmigaHardware>();
 }
 // Same completed-frame rule as Alone in the Dark: publication must finish,
 // and an unchanged scene must still cross a vertical blank before reuse.

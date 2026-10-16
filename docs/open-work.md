@@ -1,7 +1,7 @@
 # Open work
 
 Version 0.90 release work (14) takes priority. Under D14, 68020 support (15)
-and performance work 19.4 and 19.7–19.9 remain deferred beyond 0.90, retaining
+and performance work 19.7–19.9 remain deferred beyond 0.90, retaining
 their acceptance gates. This does not waive item 14’s
 68040 cadence, real-hardware or installer validation. Gameplay coverage (12)
 remains accepted under D10–D12 on `a1200-030`.
@@ -32,7 +32,8 @@ Items remain open until their acceptance gates pass.
     not establish 040 acceptance. Version 0.90 (16.10.2026) is in progress;
     current installer and 040 evidence is in `docs/release.md`. The owner will
     test an A1200 68040/40 with 32 MB and MMU. Regenerate and audit the LHA
-    candidate with the completed conversion-bounds change before hardware testing.
+    candidate with the conversion-bounds and buffer-synchronization changes before
+    hardware testing.
     The original null-channel write that corrupted the WHDLoad privilege vector
     now has a paired relocation/store check. Release 030/NOMMU gameplay and
     normal quit pass with PRELOAD on/off; ordinary F10 and fresh-boot save/load
@@ -93,8 +94,9 @@ Items remain open until their acceptance gates pass.
     reduction results are recorded in `docs/performance.md`. Work in order, one
     commit each. Dispatch and clock reductions pass their D13 active-work budgets
     and per-trap limits; their matched measurements and common gates are recorded
-    in `docs/performance.md`. The exact no-MMU opening still has one late
-    interval. For every remaining step report the opening profile before and after
+    in `docs/performance.md`. Both current exact no-MMU opening repeats meet all
+    81 original timer intervals exactly. For every remaining step report the opening
+    profile before and after
     (`opening`, `report`, `work` per phase) with two repeats, the per-step
     service gates named below, `make integration-check`, the timing cadence and
     VBL/Time Manager fixtures, and an unchanged ordinary release audit. Check
@@ -102,11 +104,6 @@ Items remain open until their acceptance gates pass.
     HEAP items solved similar costs. Figures are 68030 ms per landing frame
     unless noted.
 
-    - **19.4 Non-blocking buffer synchronization.** `PrinceScreen::synchronize`
-      spins 14.1 ms on the blitter in the landing (3.6 attack, 1.3 fall). Start
-      the copy and wait only before the next write to that buffer.
-      Acceptance: the four-frame display fixture and integration planes pass;
-      CPU blitter waiting ≤ 2 ms per landing frame.
     - **19.7 Heap allocation cost.** `NewHandle` takes 3.5 ms per call (68020:
       15.9 ms) and resize/dispose coalescing adds about 1.8 ms per landing
       frame. AmigaXDev holds Alone in the Dark's shared heap fixes, whose
@@ -118,7 +115,10 @@ Items remain open until their acceptance gates pass.
       exit and the level-eight throne dissolve (clean and generated cache) as
       recorded above, and add scenes whose frames exceed their requested delays.
     - **19.9 Share the profile report.** Integrate the published
-      `codex/dirty-bands` planner branch (`16586b1`) when AmigaXDev's main tree
+      `codex/blitter-completion` helper (`1dcd44e`) when AmigaXDev's main tree is
+      clean; Prince of Persia 2 pins the canonical completion policy. Other ports
+      retain their synchronous path until their own paired gates pass. Integrate the
+      published `codex/dirty-bands` planner branch (`16586b1`) when AmigaXDev's main tree
       is clean; replace Alone in the Dark's local planner with the shared helper
       after its byte-identity and display gates pass. Move the common profile
       parsing and
@@ -126,8 +126,10 @@ Items remain open until their acceptance gates pass.
       into AmigaXDev once its tree is clean, keeping port-specific names and
       buckets local. Clarify publication-versus-row phase accounting: the first
       opening scope contains seven publications/six rows and the last 28/29;
-      preserve the documented denominators of existing comparisons. The profiler
-      stop command prints elapsed time without flushing
+      preserve the documented denominators of existing comparisons. Arm the
+      correctness-only C2P capture breakpoint at gameplay entry rather than
+      evaluating its condition throughout startup; retain all 81 publications.
+      The profiler stop command prints elapsed time without flushing
       the last sub-clock gap; retain the separately reported capture tail and
       add a stop-boundary control when sharing the parser. Integrate the published shared rectangle-accessor commit
       `b61c323` from `codex/pure-rectangle-accessors` when the AmigaXDev main

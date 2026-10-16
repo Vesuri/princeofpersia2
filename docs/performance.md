@@ -527,6 +527,110 @@ fixtures match their originals and each reject twelve alterations. Cadence
 (`.run-3jnfw4`) matches 59 consecutive original five-tick intervals and rejects
 six alterations. The restored release passes link and diagnostic-exclusion audits.
 
+### Non-blocking buffer synchronization (19.4)
+
+`PrinceScreen::field` starts the completed picture’s synchronization copies only
+once the even-field swap has made the old front inactive. The existing shared
+blitter queue runs those copies while the game works in Fast RAM; an owned BLIT
+completion handler advances queued jobs. The next conversion drains outstanding
+work before touching the destination. File-service windows and shutdown quiesce
+publication and copying before restoring the OS blitter vector. Prepared large
+scenes retain their completed-copy boundary. The bounded batch fits the existing
+queue; no extra bitmap, pixel scan or release diagnostic is introduced.
+Because the next frame’s dirty regions are not yet known, this anticipatory copy
+cannot skip bands that the next conversion will replace completely. The landing
+scope submits twelve rectangles rather than seven; the measurements include
+that extra traffic. Other scenes remain subject to item 19.8’s profiling gates.
+
+Vette’s dirty-buffer ownership and Alone in the Dark’s blocking blitter path were
+inspected first. The queue and copy engine remain AmigaXDev’s existing framework.
+The reusable completion policy is canonical `BlitterCompletion.h`, published as
+`1dcd44e` on `codex/blitter-completion`, installed and vendored byte-identically.
+AmigaXDev’s unrelated dirty main tree is unchanged; integration is retained in
+19.9. No installed source was edited in place.
+
+MEASURED: two exact-cycle/no-MMU `a1200-030` baselines (`sync-before-c/d`, parent
+`f2d667b`) and two candidates (`sync-after-a/b`). Every run has `opening`, `report`
+and `work` output for all five phases. Both within-build repeat checks pass.
+The following numbers retain the existing **reported phase-frame denominator**
+(six landing rows/seven publications); inclusive costs overlap.
+
+| Phase | Entire drain, before (ms/frame) | Entire drain, after | Active work, before | Active work, after |
+|---|---:|---:|---:|---:|
+| 0 landing | 13.997–14.006 | 0.00509–0.00510 | 96.92–97.24 | 81.77–82.55 |
+| 1 stand-off | 3.127–3.298 | 0.00478–0.00480 | 43.83–44.00 | 40.43–40.64 |
+| 2 attack | 5.388–5.747 | 0.00413–0.00446 | 44.69–45.94 | 39.13–39.36 |
+| 3 attack | 2.498–2.902 | 0.00472–0.00488 | 43.37–43.81 | 40.73–40.74 |
+| 4 fall | 1.432–1.552 | 0.00465–0.00484 | 26.06–26.82 | 25.42–25.58 |
+
+The ≤2 ms landing gate passes even when the **entire drain subtree**, including
+queue polling and call overhead, is charged as CPU waiting. The hardware-wait
+leaf itself falls from 13.991–14.000 to 0.00189–0.00206 ms/frame. Inclusive landing
+publication falls from 33.21–33.50 to 19.36–19.38 ms/frame. VBI display work grows
+from 0.112–0.113 to 0.267 ms/frame, including enqueuing; completion-handler
+instructions add about 0.010 ms/frame exclusive of helpers and Exec dispatch.
+The active-work totals include the deferred queue and handler code. Unattributed
+exception/STOP gaps are reported separately: 2.90–2.92 ms/frame before and
+2.96–2.97 after. Whole landing-scope CPU time falls from 99.78–100.53 to
+93.39–94.19 ms/frame, with more time available for the original timer wait.
+The landing saving therefore survives accounting for the added queue/handler
+work. Initial scene preparation and final shutdown quiescence are outside this
+bounded opening window; no startup or quit-speed improvement is claimed.
+
+Both candidates complete all **81 original requested timer intervals exactly**,
+with no early or late interval; both baselines have one one-tick overrun. Total
+opening duration is 375 PAL fields versus 376. All 81 frame counters, phase IDs
+and complete captured Kid records match each paired baseline, as do requested
+delays from `ref/mame/runs/opening-noright-1`.
+
+The strict repeat comparator is unchanged. Applying it across builds rejects
+`sync-after-b` because landing falls from 25 to 23 fields, beyond its symmetric
+one-field repeat tolerance; that failed report is retained. The separate
+`check_blitter_profile.py --compare` gate requires identical work, exact original
+timer intervals and no phase slowdown beyond the existing quantization allowance,
+while allowing a faster phase. Its six controls reject altered state, frame
+count, requests, early/late intervals and a slowdown. The old blocking build
+fails the 2 ms gate; a zero-budget control also rejects the candidate.
+
+Reproduce the budget and workload check after collecting the normal reports:
+
+```sh
+. amiga/env.sh
+python3 tools/check_blitter_profile.py sync-after-a --compare sync-before-c --controls
+python3 tools/check_blitter_profile.py sync-after-b --compare sync-before-d --controls
+```
+
+The shared sanitizer tests cover 8,481 batch/latency combinations through the
+256-job bound, including immediate completion and early drains. Three mutated
+policies (acknowledging after starting, disabling completion interrupts, omitting
+the drain) fail. The four-frame native fixture (`.run-njWKFB`, `a1200-030`) passes
+all decoded pixels, palettes, viewport movement and restoration; it records five
+completion interrupts. Missing/zero completion records, a damaged preserved
+plane and a failed vector restore are rejected. Both VERTB and BLIT vector
+identity now contribute to the existing restoration guard.
+
+The separate full-plane capture (`.run-Br0bsP`, ordinary `a1200-030` with MMU)
+completes all 81 publications. Every full viewport is byte-identical to the
+pinned pre-change capture `.run-ypgCZO`; independent chunky/plane decoding and
+minimum conversion bounds pass on every frame. These debugger-stopped captures
+are correctness evidence only, never timing measurements.
+
+The common integration gate (`tmp/integration-gate-ujb8ai2a`) passes the title
+state, natural-route repeat and no-input control (`.run-HP8dlA`, `.run-4I0iGf`,
+`.run-KSXVJP`, `.run-OeUAJ9`), including reference pixels/state and restoration.
+Its 20 title-native, six title-reference and 19 evidence controls pass. The paired
+original service contracts and ten alteration controls pass. VBL (`.run-3BsbMw`)
+and Time Manager (`.run-K6mfjD`) pass their original contracts and twelve
+alteration controls each. Host tests and the shared sanitizer suite pass.
+Cadence (`.run-5YMqJG`) passes all 59 consecutive original five-tick intervals,
+six cadence controls and 16 performance controls. All 59 route updates have one
+conversion pass at frame end. Window-end and route-end screen/context hashes
+match `manifest/performance-parent.sha256`. The ordinary release is restored and
+passes its unchanged link/release audit, including absence of the new diagnostic
+interrupt counter. `manifest/blitter-sync.sha256` pins the measurements, native
+captures, gate results and frozen release build. These are emulator results;
+item 14 retains hardware validation and archive refresh.
+
 ### Conversion bounds (19.5)
 
 `PrinceScreen` uses the coordinate-only disjoint-band planner extracted from
@@ -561,8 +665,8 @@ reduction is about 6%, not the 30% branch of the acceptance gate.
 
 The exact no-MMU opening has one late requested interval in both candidate
 runs, against two in both baselines, with 376–377 versus 377 total PAL fields.
-That remaining interval stays in item 19; these are emulator observations,
-not hardware performance claims.
+The later 19.4 measurements above resolve that remaining interval. These are
+emulator observations, not hardware performance claims.
 
 The separate ordinary-emulator bounds runs are `.run-kjl4g5` (before) and
 `.run-ypgCZO` (after). Each completes the no-input route and restoration and

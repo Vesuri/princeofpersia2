@@ -52,8 +52,8 @@ The owner subsequently authorized doing audio-cost item 19.6 next, keeping
 ## Version 0.90 release scope
 
 D14 (owner-authorized): defer item 15 (68020 support) and performance work
-19.4 and 19.7–19.9 beyond version 0.90 (16.10.2026). Keep those deferred items
-open with their acceptance gates intact. Item 19.5 is authorized ahead of release.
+19.7–19.9 beyond version 0.90 (16.10.2026). Keep those deferred items
+open with their acceptance gates intact. Items 19.4 and 19.5 are authorized ahead of release.
 This deferral does not waive item 14’s 68040 cadence, real-hardware or installer
 validation gates. Work necessary to meet those release gates remains required.
 

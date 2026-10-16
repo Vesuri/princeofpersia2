@@ -46,3 +46,6 @@ Alone in the Dark	85611935ab158dfcca3ae07450bbd9b0c2b89cf9	installer, Installer 
 AmigaXDev	ba5cc6cd61b583e4956c56ad0cdf592ee1b09fbb	zero-filled converter padding with unchanged HUNK layouts, section data and relocations; pinned upstream 86fdfadb3ddab50b9457f5018c36c796c716cc13
 AmigaXDev	16586b1e6a877357f09d5d157d09326004299428	shared disjoint C2P band planner extracted from Alone in the Dark; both viewport sizes, minimum-row and preservation controls
 Alone in the Dark	85611935ab158dfcca3ae07450bbd9b0c2b89cf9	disjoint-band conversion planner and minimum-row/native-plane validation inspected for item 19.5
+AmigaXDev	1dcd44e399643b7e35341334cb4d549a8528ff09	shared blitter completion policy; asynchronous queue progress, immediate completion and early-drain tests; codex/blitter-completion
+Alone in the Dark	85611935ab158dfcca3ae07450bbd9b0c2b89cf9	blocking blitter synchronization and FRAME profiling inspected for item 19.4
+Vette	b3074ba6784a834864c222db9b4f0ccabd38de03	dirty-buffer synchronization and frame ownership inspected for item 19.4

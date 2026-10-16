@@ -1,14 +1,15 @@
 # Version 0.90 (16.10.2026)
 
 Item 14 is in progress. No release archive has been qualified or published.
-The retained LHA candidate contains the executable from before the 19.5
-conversion-bounds change; its measurements below describe that candidate.
+The retained LHA candidate predates the conversion-bounds and buffer-synchronization
+changes; its measurements below describe that candidate.
 The owner will test an Amiga 1200 with 68040/40, 32 MB and MMU. Hardware
 confirmation remains required; emulator observations do not replace it.
 
 Under owner decision D14, item 15 (68020 support) and remaining performance
-items 19.4 and 19.7–19.9 are deferred beyond 0.90. Conversion-bounds work
-19.5 is complete. The deferred items’ future acceptance gates remain intact.
+items 19.7–19.9 are deferred beyond 0.90. The owner separately authorized
+19.4 and 19.5 ahead of release. The deferred items’ future acceptance gates
+remain intact.
 Item 14’s 040 cadence, hardware and installer gates remain
 required before this candidate can be qualified.
 

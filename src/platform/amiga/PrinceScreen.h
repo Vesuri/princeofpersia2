@@ -11,6 +11,7 @@ public:
     void field();
     void paceFrame();
     void wait() {while(pending_) {__asm__ volatile("nop" ::: "memory");}}
+    void quiesce();
     void release();
     bool publish(const uint8_t* chunky,const Planar8::Rect& viewport,
                  const Planar8::Rect* dirty,uint16_t count,const uint32_t* rgb,bool prepareScene=false);

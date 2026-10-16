@@ -3,9 +3,22 @@ import argparse,re,struct
 from pathlib import Path
 from scaffold_result import check as check_restored
 
-def check(run,setup="a1200-fast"):
+def copy_completion(log):
+    copies=re.findall(r'^DISPLAY_COPY interrupts=(\d+)$',log,re.M)
+    assert len(copies)==1 and int(copies[0])>0,'DISPLAY / ASYNCHRONOUS COPY COMPLETION'
+
+def check(run,setup="a1200-fast",controls=False):
     check_restored(run,setup)
     log=(run/'gdb-out.log').read_text()
+    copy_completion(log)
+    if controls:
+        for replacement in ('','DISPLAY_COPY interrupts=0\n'):
+            bad=re.sub(r'^DISPLAY_COPY interrupts=\d+\n',replacement,log,flags=re.M)
+            assert bad!=log,'DISPLAY / INACTIVE COMPLETION CONTROL'
+            try:copy_completion(bad)
+            except AssertionError:pass
+            else:raise AssertionError('DISPLAY / ACCEPTED MISSING COMPLETION')
+        print('DISPLAY COPY CONTROLS PASS: missing and zero completion rejected')
     rows=re.findall(r'DISPLAY_FRAME id=(\d+) planes=([0-9a-f]+) copper=([0-9a-f]+) parity=(\d+) line=(\d+) fields=(\d+) frames=(\d+) late=(\d+)',log)
     assert len(rows)==4,'DISPLAY / FOUR COMPLETED FRAMES REQUIRED'
     chunky=bytearray(((x*3+y*7)^(x>>3))&255 for y in range(480) for x in range(640))
@@ -47,4 +60,5 @@ def check(run,setup="a1200-fast"):
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('run',type=Path)
     p.add_argument('--setup',default='a1200-fast',choices=['a1200-fast','a1200-030','a1200-040'])
-    a=p.parse_args();check(a.run,a.setup)
+    p.add_argument('--controls',action='store_true')
+    a=p.parse_args();check(a.run,a.setup,a.controls)

@@ -10,6 +10,7 @@
 #include <hardware/intbits.h>
 #include "PlatformAmiga.h"
 #include "PrinceScreen.h"
+#include "mac/BlitterCompletion.h"
 #ifdef POP2_AUDIO
 #include "NativeAudio.h"
 #endif
@@ -132,6 +133,20 @@ static void timingSample() {if(g_integrationStage==3 && g_timingPhase<0x1005)++g
 static void timingSample() {}
 #endif
 static Interrupt server;
+#if defined(POP2_DISPLAY_PROBE) || defined(POP2_DISPLAY)
+static Interrupt blitServer;
+static IntVector savedBlit;
+#ifdef POP2_DISPLAY_PROBE
+extern "C" {volatile uint32_t g_displayCopyInterrupts=0;}
+#endif
+static uint32_t blitComplete() {
+#ifdef POP2_DISPLAY_PROBE
+    ++g_displayCopyInterrupts;
+#endif
+    BlitterCompletion::advance<AmigaHardware>();
+    return 0;
+}
+#endif
 #ifdef POP2_CORE
 static Interrupt windowServer;
 static IntVector savedVertb;
@@ -153,10 +168,17 @@ static uint32_t windowVbi() {
 int32_t pop2SystemWindow(int32_t (*operation)(void*),void* context) {
     if(!operation || !vertbTaken || !g_coreServiceActive || g_systemWindowActive ||
        SysBase->TDNestCnt!=0 || SysBase->IDNestCnt!=-1)return -50;
+    #ifdef POP2_DISPLAY
+    display.quiesce();
+    #endif
     Disable();
     if(!CoreRuntime::suspendVectors()) { Enable();return -50; }
     uint16_t mask=AmigaHardware::enabledInterrupts();
     IntVector portVertb=SysBase->IntVects[INTB_VERTB];
+    #ifdef POP2_DISPLAY
+    IntVector portBlit=SysBase->IntVects[INTB_BLIT];
+    SysBase->IntVects[INTB_BLIT]=savedBlit;
+    #endif
     SysBase->IntVects[INTB_VERTB]=savedVertb;
     windowServer.is_Node.ln_Type=NT_INTERRUPT;windowServer.is_Node.ln_Pri=127;
     windowServer.is_Node.ln_Name=(char*)"Prince file VBI";
@@ -169,6 +191,10 @@ int32_t pop2SystemWindow(int32_t (*operation)(void*),void* context) {
     int32_t result=operation(context);
     Forbid();Disable();
     RemIntServer(INTB_VERTB,&windowServer);SysBase->IntVects[INTB_VERTB]=portVertb;
+    #ifdef POP2_DISPLAY
+    SysBase->IntVects[INTB_BLIT]=portBlit;
+    AmigaHardware::clearInterruptRequests(INTF_BLIT);
+    #endif
     CoreRuntime::resumeVectors();
     AmigaHardware::setInterrupts(0x7fff,false);
     AmigaHardware::setInterrupts(mask,true);
@@ -241,6 +267,17 @@ bool PlatformAmiga::run() {
     server.is_Node.ln_Type=NT_INTERRUPT;server.is_Node.ln_Name=(char*)"Prince scaffold VBI";
     server.is_Code=(void(*)())vbi;
     Disable();IntVector saved=SysBase->IntVects[INTB_VERTB];
+#if defined(POP2_DISPLAY_PROBE) || defined(POP2_DISPLAY)
+    savedBlit=SysBase->IntVects[INTB_BLIT];
+    AmigaHardware::setInterrupts(INTF_BLIT,false);
+    AmigaHardware::clearInterruptRequests(INTF_BLIT);
+    blitServer.is_Node.ln_Type=NT_INTERRUPT;
+    blitServer.is_Node.ln_Name=(char*)"Prince blitter";
+    blitServer.is_Code=(void(*)())blitComplete;
+    SysBase->IntVects[INTB_BLIT].iv_Data=0;
+    SysBase->IntVects[INTB_BLIT].iv_Code=(void(*)())blitComplete;
+    SysBase->IntVects[INTB_BLIT].iv_Node=&blitServer.is_Node;
+#endif
 #ifdef POP2_CORE
     savedVertb=saved;vertbTaken=true;
 #endif
@@ -294,11 +331,17 @@ bool PlatformAmiga::run() {
 #ifdef POP2_INPUT
     NativeInput::shutdown();
 #endif
+#if defined(POP2_DISPLAY_PROBE) || defined(POP2_DISPLAY)
+    display.quiesce();
+#endif
     AmigaHardware::setInterrupts(INTF_VERTB,false);
     AmigaHardware::clearInterruptRequests(INTF_VERTB);
     AmigaHardware::setCopperList(osCopper,true);
     *bplcon3Pointer=0x0c00;
     Disable();SysBase->IntVects[INTB_VERTB]=saved;
+#if defined(POP2_DISPLAY_PROBE) || defined(POP2_DISPLAY)
+    SysBase->IntVects[INTB_BLIT]=savedBlit;
+#endif
 #ifdef POP2_CORE
     vertbTaken=false;
 #endif
@@ -316,6 +359,11 @@ bool PlatformAmiga::run() {
     g_viewRestored=GfxBase->ActiView==view;
     IntVector& restored=SysBase->IntVects[INTB_VERTB];
     g_vectorRestored=restored.iv_Code==saved.iv_Code && restored.iv_Data==saved.iv_Data && restored.iv_Node==saved.iv_Node;
+#if defined(POP2_DISPLAY_PROBE) || defined(POP2_DISPLAY)
+    const IntVector& restoredBlit=SysBase->IntVects[INTB_BLIT];
+    g_vectorRestored=g_vectorRestored && restoredBlit.iv_Code==savedBlit.iv_Code &&
+        restoredBlit.iv_Data==savedBlit.iv_Data && restoredBlit.iv_Node==savedBlit.iv_Node;
+#endif
     bool ok=g_actualDMA==g_savedDMA && g_actualIRQ==g_savedIRQ && g_viewRestored && g_vectorRestored;
 #ifdef POP2_INPUT
     ok=ok && g_inputVectorRestored==1;

@@ -94,7 +94,14 @@ updates. Emulator evidence is not a real-hardware release result.
 CopyBits marks client rectangles dirty. The shared disjoint-band planner unions
 clipped coordinates before expanding spans to Kalms’s 32-pixel width/16-pixel
 start constraints. It converts each covered pixel once, with a bounded
-bounding-box fallback if the rectangle capacity is exhausted. Unchanged regions are carried forward between the two buffers.
+bounding-box fallback if the rectangle capacity is exhausted. After the even-field
+swap, the blitter copies those bands from the new front into the now-inactive
+bitmap while the original game continues in Fast RAM. The shared blitter queue
+advances through an owned completion interrupt. Conversion drains any unfinished
+copy before writing that bitmap. Large prepared scenes retain their completed-copy
+boundary. File-service windows and shutdown wait for publication and drain before
+returning the blitter vector to the OS; both VERTB and BLIT vectors are checked on
+final restoration. The batch is bounded below the framework queue capacity.
 Moving the viewport forces a full conversion. Palette-only publication preserves
 all indices while replacing both field palettes. Fades use the measured transfer
 and AGA high/low colour-bank writes at publication.
@@ -103,7 +110,8 @@ The independent host decoder checks all 196,608 pixels of each title/room client
 all eight planes, all 256 copper colours, field pointers, row modulos, mode words
 and DMA bounds. A separate four-frame authored pattern checks initial conversion,
 a partial update, palette-only change and viewport movement, comparing complete
-frames after each step. Native input-hash and unknown-selector controls must stop;
+frames after each step and requiring actual blitter-completion interrupts.
+Native input-hash and unknown-selector controls must stop;
 missing scene/field completion, wrong parity, bad restore/Shell status, changed
 pixels, palettes, pointers and mode words must fail the same successful checker.
 Every positive native run also restores the OS View, vectors, DMA/interrupt masks,
