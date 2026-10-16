@@ -30,6 +30,9 @@ Items remain open until their acceptance gates pass.
     not establish 040 acceptance. Version 0.90 (16.10.2026) is in progress;
     current installer and 040 evidence is in `docs/release.md`. The owner will
     test an A1200 68040/40 with 32 MB and MMU.
+    The original null-channel write that corrupted the WHDLoad privilege vector
+    now has a paired relocation/store check; full WHDLoad gameplay and both quit
+    paths still require acceptance (see `docs/release.md`).
     Installer-only archive rejection passes on the host; the real Installer 43
     rejection requester still needs an interactive dismissal check.
 

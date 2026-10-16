@@ -30,7 +30,10 @@ static int support_original(unsigned which) {
             if(which==2) memcpy(output+20,seam_recipe[i].replacement,n);
             else {
                 op=be16(output+20);
-                if(relocation_recipe[i].mode==1) {
+                if(relocation_recipe[i].mode==3) {
+                    REQUIRE(op==0x2140 && n==4 && be16(output+22)==0x20,"Invalid indirect store relocation.");
+                    put16(output+20,0xaff9);put16(output+22,0x4e71);
+                } else if(relocation_recipe[i].mode==1) {
                     REQUIRE((op&0xf1ff)==0x207c && n==6,"Invalid pointer relocation.");
                     at=be32(output+22); REQUIRE(at<0x2000,"Invalid low memory pointer.");
                     put16(output+20,0x41f5|(op&0xe00));put16(output+22,0x0160);put16(output+24,0x2000+at);

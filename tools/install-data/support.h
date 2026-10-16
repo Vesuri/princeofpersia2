@@ -88,6 +88,7 @@ static const Relocation relocation_recipe[]={
 {21,6,26690UL,371914UL,1},
 {21,6,5024UL,350248UL,2},
 {21,6,4188UL,349412UL,2},
+{20,4,18100UL,317068UL,3},
 };
 typedef struct { unsigned segment,length; uint32_t code_offset,file_offset; unsigned char replacement[12]; } Seam;
 static const Seam seam_recipe[]={
@@ -106,7 +107,7 @@ static const Seam seam_recipe[]={
 #define DRIVER_SIZE 13380UL
 typedef struct {const char *name; uint32_t size; const char *hash;} Support;
 static const Support support_files[]={
-{"relocations.bin",2788UL,"60dd0ad9ea1719c3869f0a25633c02bedb8474624f9701db18ad0b5723f17643"},
+{"relocations.bin",2820UL,"eb6569849012dd7125fc8499728e339f6d4150c7643e901d3b0d0bb9371e2507"},
 {"file-catalog.bin",3916UL,"e5747f330801a35a4076e3a1dc9155e0a6ac32ca202ff8ad6630bfd89143b8fb"},
 {"ui-seams.bin",324UL,"027421da117bf160299b139e649560c9d5866797e4ee434ae33f360c41b2540f"},
 {"audio-pitch.bin",512UL,"dc12caeb808de2e5b5a0e074bd8ddd83e8318c2a9975f57c30b0dcb96d414562"},

@@ -16,7 +16,12 @@ def main():
     p.add_argument('--seconds',type=int,default=180)
     p.add_argument('--slave',type=Path,default=ROOT/'build/whdload/PrinceOfPersia2.slave')
     p.add_argument('--ticks',type=int,default=1500)
+    p.add_argument('--store-reference',type=Path,help='verify the CODE 20 store against a completed original demo trace')
     a=p.parse_args()
+    if a.store_reference:
+        assert a.setup=='a1200-030' and not a.mmu, 'STORE / VALIDATED DEBUGGER SETUP'
+        from whdload_store import emulator
+        emulator()
     receipt=verify()
     assert set(receipt['flags'].split())=={'-DPOP2_CORE','-DPOP2_DISPLAY','-DPOP2_INPUT','-DPOP2_UI','-DPOP2_AUDIO'}
     base=Path(tempfile.mkdtemp(prefix='whdload-release-',dir=ROOT/'tmp'))
@@ -29,7 +34,7 @@ def main():
     shutil.copyfile(os.environ['WHDLOAD_BINARY'],game/'WHDLoad')
     rom=Path(os.environ['KICKSTART_A1200']);rtb=Path(str(rom)+'.RTB')
     for src in [rom,rtb]:shutil.copyfile(src,boot/'devs/Kickstarts'/src.name)
-    options=('' if a.no_preload else 'PRELOAD ')+('MMU ' if a.mmu else '')
+    options=('' if a.no_preload else 'PRELOAD ')+('MMU ' if a.mmu else 'NOMMU ' if a.store_reference else '')
     (boot/'s/WHDLoad.prefs').write_text('Expert\nReadDelay=0\n')
     (boot/'s/startup-sequence').write_text('DF0:C/Assign C: DF0:C\nDF0:C/Assign LIBS: DF0:Libs\nDF0:C/Assign DEVS: DH0:devs\nStack 16384\nFailAt 999\nCD DH1:\n'+f'WHDLoad PrinceOfPersia2.slave {options}SPLASHDELAY=0 NOREQ COREDUMP TIMEOUT={a.ticks} >DH0:result\n'+'Echo returned >DH0:returned\n')
     (base/'receipt.json').write_text(json.dumps(receipt,indent=2)+'\n')
@@ -41,15 +46,20 @@ cd "$1"
 FSUAE_RUN=.
 . "$FSUAE_COMMON"
 trap 'fsuae_stop' EXIT
-FSUAE="$FSUAE_MMU"
-AMIGA_SETUP="$3" DEBUG=0 SOUND=0 WINDOW=none WARP=1 NTSC=0
+FSUAE="${FSUAE_WHDLOAD:-$FSUAE_MMU}"
+AMIGA_SETUP="$3" DEBUG="$4" SOUND=0 WINDOW=none WARP=1 NTSC=0
 fsuae_options
+echo "$DEBUG_PORT" > debug-port
 fsuae_launch --hard_drive_0="$PWD/boot" --hard_drive_0_priority=10 --hard_drive_1="$PWD/game" --floppy_drive_0="$WORKBENCH_ADF" --floppy_drive_volume=0 --floppy_drive_volume_empty=0 --state_dir="$PWD/state" --logs_dir="$PWD/logs" --joystick_port_0=nothing --joystick_port_1=nothing
 wait "$FSUAE_PID"
 ''')
     try:
         with (base/'emulator.log').open('w') as log:
-            emu=subprocess.Popen(['/bin/bash',str(script),str(base),str(ROOT),a.setup],stdout=log,stderr=log)
+            emu=subprocess.Popen(['/bin/bash',str(script),str(base),str(ROOT),a.setup,'1' if a.store_reference else '0'],stdout=log,stderr=log)
+            if a.store_reference:
+                from whdload_store import run
+                run(base,a.store_reference,a.seconds)
+                return
             deadline=time.monotonic()+a.seconds
             while time.monotonic()<deadline and not (boot/'returned').exists():
                 if emu.poll() is not None:raise RuntimeError('Emulator exited before shell completion')

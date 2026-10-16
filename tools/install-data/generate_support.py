@@ -6,7 +6,7 @@ from extract_original_data import ROOT, DESTINATION, verify_output, pins
 import _amigaxdev
 from amigaxdev.mac.resource_fork import parse_resource_fork
 from ui_inputs import SEAMS
-from core_inputs import POINTER_SITES
+from core_inputs import POINTER_SITES, INDIRECT_STORE_SITES
 
 def generate():
     verify_output(DESTINATION)
@@ -23,7 +23,7 @@ def generate():
     assert hashlib.sha256(plan).hexdigest()==pins(ROOT/'manifest/core-inputs.sha256')['relocations.bin']
     for i in range(struct.unpack_from('>I',plan)[0]):
         seg,n,off=struct.unpack_from('>HHI',plan,4+32*i)
-        mode=1 if off in POINTER_SITES.get(seg,()) else 2 if seg==21 and off in (0x13a0,0x105c) else 0
+        mode=3 if (seg,off) in INDIRECT_STORE_SITES else 1 if off in POINTER_SITES.get(seg,()) else 2 if seg==21 and off in (0x13a0,0x105c) else 0
         lines.append('{%d,%d,%dUL,%dUL,%d},'%(seg,n,off,position(b'CODE',seg)+off,mode))
     lines+=['};','typedef struct { unsigned segment,length; uint32_t code_offset,file_offset; unsigned char replacement[12]; } Seam;', 'static const Seam seam_recipe[]={']
     for seg,off,replacement,name in SEAMS:

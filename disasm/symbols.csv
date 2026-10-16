@@ -1135,3 +1135,4 @@ segment,offset,name,evidence,notes
 6,0x3304,TransferOppInfo,DERIVED,Entry copies a 38-byte source record via GetOppInfoIdx then updates fields and calls AddOppToRoom; name follows return at 0x33A8
 6,0x358E,AddOppToRoom,MEASURED,Level-six context trace observes room and index FFFF at original structure copy; name follows return at 0x3632
 6,0x3642,GetOppInfoIdx,DERIVED,Computes context plus room stride 0xC0 and record stride 38; signed indices reach below ordinary opponent records
+20,0x46B4,WaveResetLoopStore,MEASURED,WHDLoad write watchpoint identifies null channel store to address 0x20; original resetLoop__7waveObj name at 0x46C4

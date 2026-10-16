@@ -70,6 +70,53 @@ not connect under KickEmu; it is not a pass. A boot-level connection works,
 but the installed MMU emulator rejects `monitor fields` (Rcmd protocol error).
 The automated WHDLoad input/quit attempt was stopped; no completion is claimed.
 
+### Indirect low-memory store
+
+MEASURED: an unattended 030/NOMMU WHDLoad run stopped in Exec's cache flush
+with a privilege violation (`tmp/whd-smoke-21zy7l81`). The write watchpoint in
+`tmp/whd-smoke-jevm_h7_` identifies CODE 20+46B4, `waveObj::resetLoop`: it
+stores through a null channel pointer to address $20. This overwrites the
+Amiga privilege vector. The original Macintosh demo in
+`ref/mame/runs/release-wave-demo` completes and records the same operation:
+38 null-channel stores and two stores to allocated channels. The earlier
+cutscene-only reference `release-wave-null` never reaches this store and is
+not coverage for it.
+
+The byte-guarded relocation redirects this instruction through a private service.
+A null channel writes to the existing virtual Macintosh low-memory area;
+non-null destinations retain their address and require a valid extent. The
+service preserves registers and MOVE.L condition-code behavior. Unknown callers
+and invalid extents remain loud stops. The installation recipe regenerates the
+new relocation input; its SHA-256 remains pinned. Vette! and Alone in the Dark
+have no matching indirect-store implementation to reuse.
+
+The ordinary release store check `tmp/whdload-release-26s3nkpm` reaches the original
+continuation after writing $FFFFFFFF to virtual address $20. The Amiga vector
+is unchanged, and N/Z/V/C are 1/0/0/0. `tools/check_indirect_store.py` pairs that
+capture with the completed Macintosh demo; deliberately damaged vector and status captures are
+rejected. This is a store-correctness gate, not WHDLoad gameplay or quit acceptance.
+
+The changed runtime also passes the title-rendering/gameplay/restoration
+comparison in `amiga/.run-TuYPvR` (original pixels/state and positive route
+completion). The additional repeat run was stopped to prioritize the release
+checks; `tmp/integration-gate-mvnul9r4` is not a completed full repeat gate.
+Host tests and installation recipe tests pass with the updated input.
+The rebuilt archive also passes a fresh native Installer 43 run
+(`tmp/installer43-yw0udxgb`): all 100 installed inputs match their pins and
+the installed icon passes native checks. A clean rebuild reproduces the archive
+byte-for-byte.
+
+Reproduce with a release build and `tools/test_whdload.py --setup a1200-030
+--store-reference ref/mame/runs/release-wave-demo --seconds 1200 --ticks 24000`. Set
+`FSUAE_WHDLOAD` to the separately installed `fs-uae-pop2-release/fs-uae` under
+`AMIGA_SHARE`; `manifest/release-debug.sha256` pins it. It was built with the
+canonical AmigaXDev build script and current core, frequency and debugger patches;
+other installed emulators are unchanged. The reference trace is opt-in with
+`POP2_WAVE_NULL_TRACE=1`, `POP2_AUDIO=route`, `POP2_DISPLAY_ROUTE=1`,
+`POP2_NATURAL_OPENING=1`, and `POP2_DEMO_ROUTE=1` through `tools/run_reference.py`.
+The debugger fixture observes the real instruction's continuation and requires
+positive evidence; an unreached breakpoint is a failure.
+
 The candidate includes complete LGPL installer sources and build instructions,
 and excludes original game files, ROMs, Workbench and WHDLoad binaries.
 
@@ -89,5 +136,5 @@ five-tick cadence match. The unresolved original-paired 040 cadence gate stays o
 
 ## Candidate identity
 
-`dist/PrinceOfPersia2-0.90.lha`: 181,660 bytes, SHA-256
-`7eb6280f734180904efdecc4178e0b4b0cf0b81fd407a33635023207a588ca59`. This installer archive contains no original game data.
+`dist/PrinceOfPersia2-0.90.lha`: 181,825 bytes, SHA-256
+`de3513bfc15344ea124e8ad026f20931d6adf2cda7a66df95acf49f955cee9b5`. This installer archive contains no original game data.

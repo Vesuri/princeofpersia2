@@ -14,6 +14,18 @@ POINTER_SITES={
  21:(0x1488,0x3974,0x3b54,0x3b72,0x3ba2,0x3bc0,0x40ee,0x416c,
      0x42ca,0x44d8,0x4688,0x4aae,0x516c,0x545c,0x5a68,0x6058,0x64d6,0x6842),
 }
+# MEASURED on the original title/demo route: resetLoop writes through a null
+# channel pointer. Preserve that write in virtual Macintosh low memory.
+INDIRECT_STORE_SITES={(20,0x46b4)}
+def indirect_store_rows():
+    rows=[]
+    for segment,offset in sorted(INDIRECT_STORE_SITES):
+        original=census.CODE[segment][offset:offset+4]
+        assert struct.unpack('>HH',original)==(0x2140,0x20)
+        replacement=struct.pack('>HH',0xaff9,0x4e71)
+        rows.append(struct.pack('>HHI',segment,4,offset)+original.ljust(12,b'\0')+replacement.ljust(12,b'\0'))
+    return rows
+
 def pointer_rows():
     rows=[]
     for segment,offsets in POINTER_SITES.items():
@@ -59,6 +71,7 @@ def generate():
         assert len(decoded)==1 and decoded[0].size==len(original) and 'a5' in decoded[0].op_str
         rows.append(struct.pack('>HHI',segment,len(original),offset)+original.ljust(12,b'\0')+patched.ljust(12,b'\0'))
     rows.extend(pointer_rows())
+    rows.extend(indirect_store_rows())
     out=ROOT/'build/core';out.mkdir(parents=True,exist_ok=True)
     plan=struct.pack('>I',len(rows))+b''.join(rows)
     assert hashlib.sha256(plan).hexdigest()==pins(ROOT/'manifest/core-inputs.sha256')['relocations.bin'], 'RELOCATION PLAN PIN'

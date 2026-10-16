@@ -87,6 +87,10 @@ local function observe()
    if not mapped[key]then
     assert(u(base)==tonumber(info.hex:sub(1,8),16),'SEGMENT HEADER')
     mapped[key]=true
+    if os.getenv('POP2_WAVE_NULL_TRACE') and seg==20 then
+     at(seg,base,0x46b4,'logerror "WAVE_LOOP_STORE pointer=%08X value=%08X object=%08X ticks=%08X\\n",a0,d0,a2,d@0x16a')
+     at(seg,base,0x46b8,'logerror "WAVE_LOOP_STORED pointer=%08X value=%08X ticks=%08X\\n",a0,d@(a0+0x20),d@0x16a')
+    end
     if mapper then mapper.map(seg,base)end
     if gameplay then gameplay.map(seg,base,guard,cond)end
     if audio then audio.map(seg,base,guard,meta)end

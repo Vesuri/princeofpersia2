@@ -1490,6 +1490,23 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
     if(!codeCaller && !tableCaller && !fixtureCaller && !cachedCaller && !audioCaller && pc!=(uint32_t)pop2_old_loadseg && pc!=(uint32_t)pop2_old_exit)
         return stop(frame,usp,"TRAP / UNKNOWN CALLER",0,seg,off);
     uint16_t trap=w((uint8_t*)pc);
+    if(trap==0xaff9) {
+        // Original resetLoop writes channel->userInfo even when channel is
+        // null. Address $20 belongs to Macintosh low memory, not Exec.
+        if(!codeCaller || seg!=20 || off!=0x46b4 || w((uint8_t*)pc+2)!=0x4e71)
+            return stop(frame,usp,"LOW MEMORY / INDIRECT STORE OWNER",trap,seg,off);
+        uint8_t* destination=low+0x20;
+        if(regs[8]) {
+            if(regs[8]>0xffffffdfUL || !validMemory(regs[8]+0x20,4))
+                return stop(frame,usp,"LOW MEMORY / INDIRECT STORE EXTENT",trap,seg,off);
+            destination=(uint8_t*)(regs[8]+0x20);
+        }
+        sl(destination,regs[0]);
+        // MOVE.L preserves X, sets N/Z and clears V/C; no registers change.
+        sw(frame,(w(frame)&~15)|(regs[0]==0?4:(regs[0]&0x80000000UL?8:0)));
+        sl(frame+2,pc+4);return (uint32_t)usp;
+    }
+
 #ifdef POP2_GAMEPLAY_ROUTE_PROBE
     if(g_routeError)return stop(frame,usp,g_routeError,trap,seg,off);
 #ifdef POP2_GAMEPLAY_HALL_PROBE
