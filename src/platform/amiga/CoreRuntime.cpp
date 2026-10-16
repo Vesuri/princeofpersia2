@@ -1,3 +1,5 @@
+#include "../../mac/LineAVector.h"
+extern "C" volatile unsigned long pop2WHDLoadBinding[4];
 #ifdef POP2_CORE
 #include <proto/exec.h>
 #include <proto/dos.h>
@@ -274,7 +276,7 @@ void copy(uint8_t* d,const uint8_t* s,uint32_t n) {
 OriginalApplication app;MacHeap heap;
 volatile uint32_t* vectorTable=0;uint32_t savedVectors[11],portVectors[11];
 const uint16_t vectorIndices[]={2,3,4,5,6,7,8,9,10,11,14};
-bool vectorsInstalled=false;
+bool vectorsInstalled=false;unsigned vectorFirst=0,vectorEnd=11;
 void flushCode() {
     // Exec's cache service uses its privilege-vector machinery in user mode.
     // Give that verified OS call its own exception vectors, then restore ours.
@@ -741,18 +743,23 @@ bool prepare() {
 }
 bool suspendVectors() {
     if(!vectorsInstalled)return false;
-    Disable();for(unsigned i=0;i<11;++i)vectorTable[vectorIndices[i]]=savedVectors[i];
+    Disable();for(unsigned i=vectorFirst;i<vectorEnd;++i)vectorTable[vectorIndices[i]]=savedVectors[i];
     vectorsInstalled=false;Enable();return true;
 }
 void resumeVectors() {
-    Disable();for(unsigned i=0;i<11;++i)vectorTable[vectorIndices[i]]=portVectors[i];
+    Disable();for(unsigned i=vectorFirst;i<vectorEnd;++i)vectorTable[vectorIndices[i]]=portVectors[i];
     vectorsInstalled=true;Enable();
 }
 void execute() {
-    vectorTable=(volatile uint32_t*)AmigaHardware::getVBR();
+    const bool whdload=pop2WHDLoadBinding[3]!=0;
+    const unsigned long nativeVBR=whdload?0:(unsigned long)AmigaHardware::getVBR();
+    vectorTable=(volatile uint32_t*)(MacRuntime::lineAVectorAddress(whdload,nativeVBR)-0x28);
+    // Under WHDLoad only Line-A is forwarded. Other faults remain WHDLoad's
+    // named exceptions; never write its protected real exception table.
+    vectorFirst=whdload?8:0;vectorEnd=whdload?9:11;
     void (*handlers[])()={pop2_exception_2,pop2_exception_3,pop2_exception_4,pop2_exception_5,
         pop2_exception_6,pop2_exception_7,pop2_exception_8,pop2_exception_9,pop2_line_a,pop2_exception_11,pop2_exception_14};
-    for(unsigned i=0;i<11;++i) { savedVectors[i]=vectorTable[vectorIndices[i]];portVectors[i]=(uint32_t)handlers[i]; }
+    for(unsigned i=vectorFirst;i<vectorEnd;++i) { savedVectors[i]=vectorTable[vectorIndices[i]];portVectors[i]=(uint32_t)handlers[i]; }
     resumeVectors();
 #ifdef POP2_UNKNOWN_TRAP
     pop2_call_mac((void*)pop2_unknown_fixture,a5,stack+65536);
@@ -887,7 +894,7 @@ void execute() {
     g_coreCodeAudit=auditCode();
 #endif
     suspendVectors();g_coreVectorRestored=1;
-    for(unsigned i=0;i<11;++i)if(vectorTable[vectorIndices[i]]!=savedVectors[i])g_coreVectorRestored=0;
+    for(unsigned i=vectorFirst;i<vectorEnd;++i)if(vectorTable[vectorIndices[i]]!=savedVectors[i])g_coreVectorRestored=0;
 #ifdef POP2_VERIFY
     g_coreHeapOK=heap.check();
     if((g_coreStopTrap==0xa86e && g_coreStopSegment==2 && g_coreStopOffset==0x3e90)

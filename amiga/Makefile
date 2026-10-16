@@ -29,6 +29,7 @@ SUPPORT ?= $(HOME)/.local/support
 VASM ?= $(HOME)/.local/vasmm68k_mot
 FW = ../src/platform/amiga/framework
 OUT = out/PrinceOfPersia2
+ELF2HUNK ?= elf2hunk
 COMMON = -g -m68020 -mtune=68020 -msoft-float -O2 -nostdlib -ffunction-sections -fdata-sections -fno-tree-loop-distribution -MMD -MP
 CXXFLAGS = $(COMMON) -std=gnu++17 -fno-rtti -fno-exceptions -fno-use-cxa-atexit -fcheck-new -fpermissive -Wno-write-strings -DPOP2_PLATFORM_AMIGA -DAMIGAXDEV_RESOURCE_DIRECTORY_INDEXED -DAMIGAXDEV_RESOURCE_DIRECTORY_MAP_LIMIT $(EXTRA_DEFINES) $(VERIFY_DEFINES) -include $(FW)/SASCCompat.h -I$(FW) -I$(FW)/compat-include -I../src
 FW_NAMES = AmigaHardware Bitmap CopperList Palette Palette24Bit Sprite Util
@@ -142,8 +143,8 @@ $(addprefix obj/,$(addsuffix .o,$(ASM_NAMES))): obj/%.o: $(FW)/%.s
 	$(VASM) -m68020 -Felf -quiet -x -no-opt -nowarn=62 "$<" -o $@
 $(OUT).elf: $(OBJS) | out
 	$(CC) $(COMMON) -Wl,--emit-relocs,--gc-sections,-Ttext=0,-Map=$(OUT).map $(addprefix -Wl$(COMMA)--undefined=,$(PROBES)) $(OBJS) -o $@
-$(OUT).exe: $(OUT).elf
-	elf2hunk $< $@ -s
+$(OUT).exe: $(OUT).elf $(ELF2HUNK)
+	"$(ELF2HUNK)" $< $@ -s
 # Partial-link every compiled source without GC, so dormant missing bridges fail audit.
 audit: $(OUT).exe
 	$(LD) -r $(OBJS) -o obj/all.o

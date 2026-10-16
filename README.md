@@ -93,3 +93,16 @@ The current performance target is `a1200-030` with 8 MB Fast RAM. See
 [performance measurements](docs/performance.md) for the explicit profiling build,
 matched-workload checks and Kalms dirty-rectangle conversion at frame end.
 Profiling is separate from ordinary release and the correctness fixtures.
+
+Version 0.90 (16.10.2026) is a release candidate. `make dist` builds the ordinary
+game, WHDLoad slave and native installer, then independently audits the LHA.
+The package requires the user's original SIT archive; it includes the installer
+helper's complete source. `make installer-check` exercises extraction and
+preservation on the host. See [release validation](docs/release.md) for measured
+results, outstanding WHDLoad/68040 gates and the hardware test checklist.
+
+Release conversion uses AmigaXDev's separately installed `elf2hunk-fixed`,
+selected by `ELF2HUNK` in `amiga/env.sh`. Its pinned source and build procedure
+are in AmigaXDev's `docs/reference/port-toolchain.md` on
+`codex/release-installer-helpers` (`ba5cc6c`). The bundled converter can emit
+uninitialized padding and is not used for release artifacts.

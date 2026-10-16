@@ -27,7 +27,11 @@ Items remain open until their acceptance gates pass.
     Acceptance: the original/native timing gates pass on every additional claimed
     CPU configuration, and the playbook §14 release checklist passes, including
     real hardware. The 68040 cadence overrun remains unresolved; 030 results do
-    not establish 040 acceptance.
+    not establish 040 acceptance. Version 0.90 (16.10.2026) is in progress;
+    current installer and 040 evidence is in `docs/release.md`. The owner will
+    test an A1200 68040/40 with 32 MB and MMU.
+    Installer-only archive rejection passes on the host; the real Installer 43
+    rejection requester still needs an interactive dismissal check.
 
 16. **Deferred gameplay timing and state differences (D11/D12).** Investigate
     the recorded one- or two-frame early exits in levels 3, 6–8 and 10–13;
@@ -117,6 +121,12 @@ Items remain open until their acceptance gates pass.
       add a stop-boundary control when sharing the parser. Integrate the published shared rectangle-accessor commit
       `b61c323` from `codex/pure-rectangle-accessors` when the AmigaXDev main
       working tree is clean; Prince of Persia 2 already pins that canonical source.
+      The installer sources, WHDLoad binding/vector helpers and incompressible
+      LHA-member support are published as `acfce4b` on
+      `codex/release-installer-helpers`; integrate that branch when clean too.
+      Its `ba5cc6c` also fixes uninitialized converter padding and includes
+      a section/relocation identity checker; wire the separately installed
+      fixed converter into shared setup without overwriting the bundled tool.
       The published `codex/dispatch-clock-helpers` branch also contains the
       clock-threshold helper (`95808a6`) and single-validation HLock (`5669890`),
       prepared and tested in the isolated shared checkout. Integrate these when

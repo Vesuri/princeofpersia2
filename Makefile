@@ -69,7 +69,7 @@ scaffold-check: host-tests scaffold
 slave:
 	@. amiga/env.sh && $(MAKE) -C whdload
 dist-scaffold: scaffold slave
-	@. amiga/env.sh && python3 tools/package_release.py
+	@. amiga/env.sh && python3 tools/package_release.py --scaffold
 
 .PHONY: core-inputs core
 core-inputs:
@@ -141,3 +141,14 @@ gameplay-save-check: host-tests audio-inputs
 .PHONY: gameplay-import-check
 gameplay-import-check: host-tests audio-inputs
 	@. amiga/env.sh && python3 tools/check_gameplay.py --route load-import
+
+.PHONY: dist installer installer-check
+installer:
+	@. amiga/env.sh && $(MAKE) -C tools/install-data amiga
+installer-check:
+	@. amiga/env.sh && python3 tools/install-data/generate_manifest.py --check
+	@. amiga/env.sh && python3 tools/install-data/generate_support.py --check
+	@$(MAKE) -C tools/install-data test
+dist: release slave installer
+	@. amiga/env.sh && python3 tools/package_release.py
+	@. amiga/env.sh && python3 tools/check_release.py

@@ -5,12 +5,13 @@
         INCLUDE whdmacros.i
 
 CHIPMEMSIZE = $200000
-FASTMEMSIZE = $200000 ; scaffold only; final requirement remains unmeasured
+FASTMEMSIZE = $600000 ; validation pending; host OS/PRELOAD need additional RAM
 NUMDRIVES = 0
 WPDRIVES = 0
 BLACKSCREEN
 BOOTDOS
-CACHECHIP
+INITAGA                         ; publish AGA through graphics.library
+CACHE
 HDINIT
 SEGTRACKER
 NO68020                         ; portable kickemu patches; game still needs 020
@@ -31,13 +32,13 @@ slv_keyexit = $59                 ; F10
         INCLUDE whdload/kick31.s
 
 slv_CurrentDir dc.b 0
-slv_name dc.b "Prince of Persia 2 scaffold",0
-slv_copy dc.b "Port scaffold",0
+slv_name dc.b "Prince of Persia 2",0
+slv_copy dc.b "1993, 1994 Jordan Mechner / Broderbund",0
 slv_info dc.b "Amiga port by Vesuri",10
-        dc.b "Version 0.1 (12.10.2026)",10
+        dc.b "Version 0.90 (16.10.2026)",10
         dc.b "F10 quits",0
 slv_config dc.b 0
-        dc.b "$VER: PrinceOfPersia2.slave 0.1 (12.10.2026)",0
+        dc.b "$VER: PrinceOfPersia2.slave 0.90 (16.10.2026)",0
 _program dc.b "PrinceOfPersia2",0
 _args dc.b 10
         EVEN
@@ -58,6 +59,14 @@ _bootdos
         move.l d0,a6
         tst.l d0
         beq .oserror
+        IFD TEST
+        lea (_diagnostic,pc),a0
+        move.l a0,d1
+        move.l #1006,d2
+        jsr (_LVOOpen,a6)
+        move.l d0,d1
+        jsr (_LVOSelectOutput,a6)
+        ENDC
         lea (_program,pc),a0
         move.l a0,d1
         jsr (_LVOLoadSeg,a6)
@@ -67,6 +76,7 @@ _bootdos
         lea (_loadmark,pc),a0
         bsr _mark
         ENDC
+        bsr _patch_binding
         jsr (resload_FlushCache,a2)
         ; Establish PROGDIR as a Shell would. Calling a LoadSeg entry alone
         ; does not set pr_HomeDir, which the game's resource loader uses.
@@ -118,6 +128,10 @@ _bootdos
         jsr (_LVOSetProgramDir,a6)
         move.l d0,d1
         jsr (_LVOUnLock,a6)
+        IFD TEST
+        tst.l d6
+        bne .gameerror
+        ENDC
         move.l d7,d1
         jsr (_LVOUnLoadSeg,a6)
         move.l a6,a1
@@ -148,7 +162,7 @@ _bootdos
 .abort
         move.l (_resload,pc),a2
         jmp (resload_Abort,a2)
-_failed dc.b "Prince of Persia 2 scaffold could not start. See the scaffold diagnostics.",0
+_failed dc.b "Prince of Persia 2 could not start. See the game diagnostics.",0
 _current dc.b 0
         EVEN
 _stackmem dc.l 0
@@ -166,6 +180,7 @@ _mark
         jsr (resload_SaveFile,a2)
         movem.l (sp)+,d0-d1/a0-a1
         rts
+_diagnostic dc.b "startup.log",0
 _marker dc.b "PASS"
 _earlymark dc.b "test-early",0
 _bootmark dc.b "test-bootdos",0
@@ -173,3 +188,12 @@ _loadmark dc.b "test-loaded",0
 _exitmark dc.b "test-returned",0
         EVEN
         ENDC
+
+BINDING_MAGIC = $504f5032       ; POP2
+        INCLUDE PatchBinding.s
+_binding_missing
+        pea (_binding_error,pc)
+        pea TDREASON_FAILMSG
+        jmp (resload_Abort,a2)
+_binding_error dc.b "Prince of Persia 2 WHDLoad binding missing or invalid.",0
+        EVEN

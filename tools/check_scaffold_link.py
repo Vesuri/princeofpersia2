@@ -13,7 +13,7 @@ assert not unknown-allowed,'dormant unresolved references: '+str(unknown-allowed
 exe=Path(elf).with_suffix('.exe').read_bytes()
 assert exe[:4]==b'\0\0\x03\xf3','not HUNK_HEADER'
 version=Path('../VERSION').read_text().strip().encode()
-assert b'$VER: Prince of Persia 2 scaffold '+version+b' ' in exe,'version mismatch'
+assert b'$VER: Prince of Persia 2 '+version+b' ' in exe,'version mismatch'
 assert 'unused_shared_start' not in s,'wrong CRT entry retained'
 print('LINK AUDIT PASS: HUNK, version, no float, retained data probes, complete partial link')
 

@@ -1,0 +1,23 @@
+Pop2InstallData source, version 0.90 (16.10.2026)
+
+These sources are LGPL-2.1-or-later; see ../LICENSE.LGPL.txt.
+MacPaw/XADMaster's decoder copyright notices remain in the source headers.
+The port adapter and support generation are by Vesa Halttunen, 2026.
+Generated headers contain names, hashes, coordinates and authored instructions;
+no original game bytes are included.
+
+Build with AmigaXDev's m68k-amiga-elf GCC and its zero-padding-fixed elf2hunk.
+Set ELF2HUNK to that converter's path (normally
+~/.local/share/amiga/elf2hunk-fixed). From this directory, on the host:
+
+m68k-amiga-elf-gcc -std=c99 -O2 -m68020 -msoft-float -nostdlib -fno-builtin -fno-tree-loop-distribute-patterns -DINSTALL_AMIGA -c install.c sha256.c io_amiga.c
+m68k-amiga-elf-gcc -m68020 -c start.s
+m68k-amiga-elf-gcc -nostdlib -m68020 -Wl,--emit-relocs,-Ttext=0,-e,_start start.o install.o sha256.o io_amiga.o -o Pop2InstallData.elf
+"$ELF2HUNK" Pop2InstallData.elf Pop2InstallData -s
+
+For a host command-line build:
+cc -std=c99 -O2 install.c sha256.c io_unix.c -o Pop2InstallData
+
+Usage: Pop2InstallData original.sit destination
+Verify installed data: Pop2InstallData --verify destination
+Verify mutable preferences: Pop2InstallData --verify-options destination
