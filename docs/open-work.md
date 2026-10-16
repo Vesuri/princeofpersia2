@@ -1,8 +1,10 @@
 # Open work
 
-The owner brought 68020 support (15) ahead of release including 68040 validation
-(14); item 19's reductions serve both. Gameplay coverage (12) remains accepted
-under D10–D12 on `a1200-030`; 68040 validation remains part of release work.
+Version 0.90 release work (14) takes priority. Under D14, the owner deferred
+68020 support (15) and remaining performance work (19.4, 19.5, 19.7–19.9)
+beyond 0.90, retaining their acceptance gates. This does not waive item 14’s
+68040 cadence, real-hardware or installer validation. Gameplay coverage (12)
+remains accepted under D10–D12 on `a1200-030`.
 Items remain open until their acceptance gates pass.
 
 15. **68020 support.** Measure and optimize

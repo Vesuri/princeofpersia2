@@ -4,6 +4,11 @@ Item 14 is in progress. No release archive has been qualified or published.
 The owner will test an Amiga 1200 with 68040/40, 32 MB and MMU. Hardware
 confirmation remains required; emulator observations do not replace it.
 
+Under owner decision D14, item 15 (68020 support) and remaining performance
+items 19.4, 19.5 and 19.7–19.9 are deferred beyond 0.90. Their future acceptance
+gates remain intact. Item 14’s 040 cadence, hardware and installer gates remain
+required before this candidate can be qualified.
+
 ## Installer
 
 `tools/install-data` adapts Alone in the Dark's plain C installer, using its
