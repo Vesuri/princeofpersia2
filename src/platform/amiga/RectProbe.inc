@@ -34,5 +34,26 @@ pop2RectProbe:
 	move.l sp,g_rectAfterSP
 	movem.l (sp)+,d0-d7/a0-a6
 	rts
+	| A JSR shim puts the caller return below the trap's Pascal arguments.
+	| Move it out, execute the real Line-A instruction, then restore it.
+	.macro rect_trap name, word
+	.globl \name
+\name:
+	move.l (sp)+,g_rectTrapReturn
+	move.w g_rectInitialCCR,ccr
+	.word \word
+	move.w ccr,g_rectTrapCCR
+	move.l g_rectTrapReturn,-(sp)
+	move.w g_rectTrapCCR,ccr
+	rts
+	.endm
+	rect_trap pop2RectTrapSect,0xa8aa
+	rect_trap pop2RectTrapUnion,0xa8ab
+	rect_trap pop2RectTrapEmpty,0xa8ae
 pop2RectProbeEnd:
+	.bss
+	.balign 4
+g_rectTrapReturn: .space 4
+g_rectTrapCCR: .space 2
+	.text
 	.endif

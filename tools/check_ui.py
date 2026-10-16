@@ -59,7 +59,7 @@ def main():
         subprocess.run([os.environ.get('CXX','c++'),'-std=c++17','-fsanitize=address,undefined','-g','-Isrc','tools/'+source,'-o',str(exe)],check=True)
         subprocess.run([str(exe),*args],check=True)
     generate();native={};flags='-DPOP2_CORE -DPOP2_DISPLAY -DPOP2_INPUT -DPOP2_UI'
-    env=dict(os.environ,CORE='1',UI_REFERENCE=str(ui),INPUT_REFERENCE=str(keys),DEADLINE='300')
+    env=dict(os.environ,CORE='1',UI_REFERENCE=str(ui),INPUT_REFERENCE=str(keys),DEADLINE=os.environ.get('DEADLINE','300'))
     def build(options):
         with (logs/('build-'+options.replace(' ','_')+'.log')).open('w') as out:
             subprocess.run(['make','-C','amiga','VERIFY=1','EXTRA_DEFINES='+options],stdout=out,stderr=subprocess.STDOUT,check=True)

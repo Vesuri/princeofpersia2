@@ -36,6 +36,11 @@ def check(original,native):
     restored(native,(native/'gdb-out.log').read_text(),'a1200-030')
     import hashlib
     from extract_original_data import ROOT, pins
+    import json
+    flags=json.loads((native/'build-receipt.json').read_text())['flags'].split()
+    ordinary='-DPOP2_RECTANGLE_TRAP_PROBE' in flags
+    log=(native/'gdb-out.log').read_text()
+    assert log.count(f'RECTANGLE ORDINARY calls={1220 if ordinary else 0}\n')==1, 'RECTANGLE / ENTRY COVERAGE'
     expected=rows(original/'session.log')
     data=(native/'rectangles.bin').read_bytes();assert len(data)==1220*92, 'RECTANGLE / NATIVE EXTENT'
     actual=[]

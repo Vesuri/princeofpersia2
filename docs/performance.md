@@ -351,6 +351,139 @@ rect-final-a --original ref/mame/runs/opening-noright-1` for the final repeat an
 costs. Before-change call labels are `CACHED SectRect`, `CACHED UnionRect` and
 `CACHED EmptyRect`. Restore ordinary play with `make release` after probes.
 
+## Ordinary dispatch and clock validation (items 19.2–19.3)
+
+Items 19.2 and 19.3 pass their service, integration, timing and measurement
+gates on `a1200-030`. Ordinary release is restored and passes the diagnostic-
+exclusion audit. Overall release and deferred CPU validation remain open.
+
+The ordinary entry uses indexed dispatch and native entries for SystemTask,
+TickCount, HLock, HGetState, StripAddress and SwapMMUMode. Code-owner candidates
+retain current range checks; segment installation invalidates the last validated
+range. Per-service row candidates reread live base and size. Stack, unfinished
+frame, parent and return-address checks remain. Failed guards and pending
+services retain the full dispatcher and its named stops. Direct cached rectangle
+entries remain separate from this ordinary trap path.
+
+The scheduler uses the interrupt epoch or latest precise observation for
+ordinary checks. TickCount and due VBL work retain precise beam sampling;
+Time Manager samples when a deadline can fall in the current field. A reusable
+no-due certificate expires at a changed tick or field and checks any current-field
+microsecond deadline on every reuse. The full path invalidates it before queue
+mutations. Full snapshots, ambiguous-position retries and backward-clock stops
+remain. Shared PAL thresholds match the former arithmetic at every valid beam
+position, all five phases and tick wraparound in host sanitizer tests.
+
+The shared bounded 32-slot flag-address cache (`cb13b74`, Amiga type fix
+`b2a5dc0`) retains only validated addresses, rereads mutable flags and clears on
+arena reset. Slot collision/reset and full heap sanitizer tests pass. Allocation
+and coalescing changes remain deferred to item 19.7.
+
+MEASURED on the exact no-MMU `a1200-030` profile model, inclusive of scheduled
+callback work:
+
+| Trap | `dispatch-slot-map-b` µs/call | `dispatch-slot-map-c` µs/call |
+|---|---:|---:|
+| SystemTask | 13.597 | 13.464 |
+| HGetState | 21.893 | 20.673 |
+| HLock | 21.587 | 22.901 |
+| StripAddress | 21.721 | 21.685 |
+| SwapMMUMode | 22.510 | 22.524 |
+
+Both captures contain 81 identical Kid records and match the original timer
+requests in `opening-noright-1`. Phase state and repeat cadence pass. Player
+records and per-phase frame work also match `dispatch-before-b`; before/after
+cadence is assessed separately because fewer missed intervals change field
+counts. Both after runs retain two late intervals on the exact no-MMU model.
+The baseline pair `dispatch-before-b` / `-c` measured 35.46–35.70 ms/frame in
+dispatch and 9.79–9.90 ms/frame in `pop2WallTicks`, with SystemTask at
+80.6–82.9 µs/call. Those full-scene buckets are not D13 active-work measurements.
+Per-phase `opening`, `report` and `work` output is retained under ignored
+`tmp/dispatch-phase-reports/`.
+
+The final native quick-entry fixture `.run-LYcGQf` completes the integration
+route with 78 fixture calls, 72 rejected preconditions, six due-deadline
+rejections and 134,209 live guard checks with zero guard or clock faults.
+All nine altered reports are rejected and restoration passes. The following
+release audit and final host suite pass. The complete core gate passes in
+`tmp/core-gate-zeznhtmz`, paired with original
+`20261015-193126-30ff96b7`: three native runs, seven runtime rejection controls
+and five altered-evidence controls. The complete file gate passes in
+`tmp/files-gate-9tgmugy2`, covering original-paired opening/save/restart,
+resource payloads and metadata, native settings persistence and the installed-
+asset write stop. Its five original file, three original persistence, seven
+native persistence and eight resource rejection controls pass. The complete
+display gate passes in `tmp/display-gate-jvler7_x`: paired service records,
+four-frame presentation probe, two identical captured-scene replays with exact
+client indices/AGA planes/RGB24 copper, ten evidence controls, three runtime
+rejections and the 31-call startup regression through InitGraf. The complete
+UI gate passes in `tmp/ui-gate-ydnbutv5`: nine original input keys/events,
+two byte-identical seven-prompt captures, 144 paired startup calls, menu actions,
+twelve evidence controls, four runtime rejections and the explicit startup
+checkpoint. The complete audio gate passes in `tmp/audio-gate-ewj6hzgw`: 7,549
+cutscene calls, two identical 9,329-call route replays, 1,135 Paula starts,
+62 release tails and 16 callbacks per route replay, ten evidence controls,
+six runtime rejections, the original observer byte-guard control and the
+144-call startup regression. The following release audit passes.
+The integration gate passes in `tmp/integration-gate-ekox1gnr` on `a1200-030`:
+paired title rendering, two byte-identical gameplay capture sets, the no-Right
+outcome control and 45 altered-evidence controls. The four original integration
+service contracts also pass with ten rejected alterations. VBL (`.run-i6QPuB`)
+and Time Manager (`.run-JK0z1Q`) match their pinned original fixtures and each
+reject twelve alterations, including restoration checks. Cadence (`.run-weyO0i`)
+matches 59 consecutive original five-tick intervals and rejects six alterations;
+all 59 conversions occur at frame end. The following release audit passes.
+The ordinary-trap rectangle fixture (`.run-fA3L9u`) passes 1,220 original/native
+calls covering signed boundaries, empty/touching/overlap cases, input aliases,
+CCR, data registers and Pascal stack/padding, with restored route completion.
+EqualRect passes its 36 original cases and alias controls. Interrupted runs
+supply no acceptance evidence.
+
+The final scoped pair `dispatch-slot-map-active-a` / `-b` measures active
+dispatch at **8.741 / 8.665 ms/frame** (limit 12) and inclusive clock sampling
+at **0.688 / 0.631 ms/frame** (limit 2). Both captures match all 81 Kid records
+and original timer requests, retain the same five phase workloads, and pass
+repeat cadence against each other and the full profile. Both record 377 PAL
+fields and two late intervals; the remaining exact-model opening cadence work
+belongs to item 19’s overall gate. The executable and symbol hashes match the
+full-profile pair. Both scoped captures reject seven altered/incomplete reports
+and two accounting faults. Per-phase reports and the exact unrounded budget
+audit are retained in `tmp/dispatch-phase-reports/` and
+`tmp/dispatch-final-profile-audit.json`. The final `make release` passes link
+and diagnostic-exclusion audits.
+
+### Active-work capture scope (D13)
+
+Set `APROF_ACTIVE=1` when running `amiga/aprof.sh`. The debugger verifies the
+original LINK and UNLK/RTS instructions at `CODE 17+$31B8/$31DC`, records active
+parts separately from each timer wait, and checks the matching stack and return
+address at every exit. Exclusion runs from entry through UNLK, including
+callbacks serviced inside that wait; its final RTS remains in active work.
+Each phase boundary must be outside a wait. This measures the existing behavior
+without changing wait or callback scheduling.
+
+`report` sums active parts using the full scene's frame count and prints active
+plus wait accounting. Clock sampling includes `pop2WallTicks`, `pop2ServiceTicks`
+and named Time Manager queries, without nested double counting. That inclusive
+subtotal overlaps the exclusive buckets and must not be added to their total.
+Older captures with inlined Time Manager reads provide only a partial clock
+subtotal and do not establish D13 clock acceptance.
+
+Every profile reconciles flat PC time plus gaps to call-tree self time. The
+profiler stop command leaves its final clock remainder unflushed; reports list
+that tail separately and reject negative, misaligned or greater-than-one-colour-
+clock tails. The checker requires balanced ordered waits, every part and all
+five phases. `test_aprof_scope.py` rejects seven incomplete/altered captures and
+two accounting faults. Apply it to the final scoped captures before acceptance.
+Compare those captures with full profiles of the same executable; full-scene
+profiles still supply per-trap costs and cadence.
+
+`APROF_REPLAY` can name a frozen directory containing `PrinceOfPersia2.exe`,
+`.elf` and `.json`. Both hashes and the exact opening-profile flags must match
+the receipt before replay. Retain its source revision and original capture
+identity. The before baseline is the frozen `dispatch-before-b` executable
+from `4d6702f`; its scoped pair is `dispatch-active-before-a` / `-b`.
+
 ### Audio call cost (19.6)
 
 The candidate reuses immutable instrument conversions through the shared bounded
@@ -360,7 +493,7 @@ two-sample-period DMA-off wait but omit the intermediate DAC-zero handshake;
 completed voices and hardware handoff still fully quiesce the DAC. Vette's
 immediate restart and Alone in the Dark's retained samples/quiet-channel state
 were inspected first. The audio and common gates pass on the combined working
-candidate; ordinary dispatch item 19.2 remains open.
+candidate; the final dispatch acceptance is recorded above.
 
 The complete audio gate passes in `tmp/audio-gate-8k7g_r3q`: original allocation
 contracts, 7,549 cutscene calls, two identical 9,329-call route replays, 62

@@ -79,6 +79,54 @@ static void checkDirectLookup() {
     for(unsigned i=0;i<6;++i) {auto z=small.newHandle(64);CHECK(z && small.handleSize(z)==64);}
     CHECK(small.check());
 }
+static void checkLockHandle() {
+    alignas(8) uint8_t arena[8192],before[8192],expected[8192];
+    for(unsigned state=0;state<256;++state) {
+        MacHeap h;CHECK(h.init(arena,sizeof(arena),4));
+        auto handle=h.newHandle(37,true);CHECK(handle);
+        CHECK(h.setState(handle,state)==0);pattern(*handle,37,0x5a);
+        MacHeap saved=h;std::memcpy(before,arena,sizeof(arena));
+        CHECK(h.setState(handle,h.state(handle)|0x80)==0);
+        std::memcpy(expected,arena,sizeof(arena));
+        h=saved;std::memcpy(arena,before,sizeof(arena));
+        CHECK(h.lockHandle(handle)==0 && h.error()==0);
+        CHECK(!std::memcmp(arena,expected,sizeof(arena)) && h.check());
+        CHECK(h.state(handle)==((state&0xe0)|0x80));
+        CHECK(h.lockHandle(handle)==0 && !std::memcmp(arena,expected,sizeof(arena)));
+        CHECK(h.disposeHandle(handle)==0);
+        std::memcpy(before,arena,sizeof(arena));
+        CHECK(h.lockHandle(handle)==MacHeap::nilHandleErr);
+        CHECK(h.lockHandle(nullptr)==MacHeap::nilHandleErr);
+        CHECK(h.lockHandle((MacHeap::Handle)(arena+1))==MacHeap::nilHandleErr);
+        CHECK(!std::memcmp(arena,before,sizeof(arena)) && h.check());
+    }
+    std::puts("PASS HLock: 256 state inputs, entire arena/publication equality, repeat/disposed/null/interior guards");
+}
+static void checkReadState() {
+    alignas(8) uint8_t arena[32768],before[32768];
+    MacHeap h;CHECK(h.init(arena,sizeof(arena),2));
+    MacHeap::Handle handles[40];
+    for(auto& handle:handles){handle=h.newHandle(11,true);CHECK(handle);}
+    for(unsigned state=0;state<256;++state){
+        auto handle=handles[state%40];CHECK(h.setState(handle,state)==0);
+        std::memcpy(before,arena,sizeof(arena));
+        CHECK(h.state(handle)==(state&0xe0) && h.error()==0);
+        CHECK(!std::memcmp(arena,before,sizeof(arena)));
+        CHECK(h.state((MacHeap::Handle)((uint8_t*)handle+1))==0 && h.error()==MacHeap::nilHandleErr);
+        CHECK(h.state((MacHeap::Handle)*handle)==0 && h.error()==MacHeap::nilHandleErr);
+        CHECK(h.state(nullptr)==0 && h.error()==MacHeap::nilHandleErr);
+        CHECK(!std::memcmp(arena,before,sizeof(arena)));
+    }
+    for(auto handle:handles){
+        CHECK(h.disposeHandle(handle)==0);std::memcpy(before,arena,sizeof(arena));
+        CHECK(h.state(handle)==0 && h.error()==MacHeap::nilHandleErr);
+        CHECK(!std::memcmp(arena,before,sizeof(arena)) && h.check());
+    }
+    CHECK(h.init(arena,sizeof(arena),1));
+    CHECK(!h.isFreeHandleSlot(handles[1]) && !h.isHandle(handles[1]));
+    CHECK(h.state(handles[1])==0 && h.error()==MacHeap::nilHandleErr);
+    std::puts("PASS HGetState: all state bytes, master-cache misses, read-only arena, invalid and disposed handles");
+}
 int main() {
     alignas(8) uint8_t arena[65536];MacHeap h;
     CHECK(h.init(arena,sizeof(arena)));CHECK(h.check());
@@ -220,6 +268,8 @@ int main() {
     for(unsigned i=0;i<120;++i)if(handles[i]){CHECK(h.moveHigh(handles[i])==0);CHECK(h.setHandleSize(handles[i],300)==0);CHECK(patternIs(*handles[i],200,i+1));}
     h.compact();CHECK(h.check());
     for(unsigned i=0;i<120;++i)if(handles[i])CHECK(patternIs(*handles[i],200,i+1));
+    checkLockHandle();
+    checkReadState();
     checkRegionCopy();
     checkDirectLookup();
     std::puts("PASS mac-heap: direct-lookup allocation master-blocks lock purge compact resize move-high fragmentation=2500");

@@ -39,6 +39,16 @@ captures; this acceptance does not claim exact equivalence or waive unknown
 service calls, unreached exits, or new differences on other routes. Positive
 original/native exit and session-action evidence remains required. Release/040 validation remains deferred; the subsequent owner request brings 68020 item 15 forward without changing these gameplay exceptions.
 
+## Performance measurement scope
+
+D13 (owner-authorized): apply item 19.2’s 12 ms/frame dispatch budget and
+item 19.3’s 2 ms/frame clock budget to active game work, excluding the original
+`CODE 17+$31B8 WaitTimerNoPoll` timer-wait loop. Obtain new scoped captures;
+existing aggregate reports cannot be relabelled as active-work measurements.
+Retain the 25 µs per-trap limit, full-scene cadence and all correctness gates.
+The owner subsequently authorized doing audio-cost item 19.6 next, keeping
+19.2 open and returning to its remaining dispatch and handle costs afterward.
+
 ## Faithfulness boundary
 
 The original Macintosh execution under the D2 reference is the correctness reference.

@@ -79,6 +79,10 @@ It also rejects missing or corrupted evidence and exercises the empty scaffold
 again. Logs and reports stay in ignored `tmp/core-gate-*`, `ref/` and
 `amiga/.run-*`. To inspect a core run manually, set `CORE=1` and `CORE_REFERENCE`
 to a completed reference directory when invoking `amiga/run.sh`.
+`tools/check_core.py --reference PATH` reuses a completed Macintosh capture
+while retaining every preflight, hash and native comparison. `DEADLINE` can
+extend the native positive-run deadline; the explicit timeout control keeps
+its own 20-second deadline.
 
 Display, input, audio, continued gameplay, WHDLoad execution and release validation
 remain at their existing gates. The reference is authoritative only for the

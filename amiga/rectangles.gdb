@@ -2,6 +2,7 @@ break pop2RectProbeDone
 commands
  silent
  printf "RECTANGLE_COMPLETE calls=%lu guards=%lu\n",g_rectCount,g_rectGuards
+ printf "RECTANGLE ORDINARY calls=%lu\n",g_rectTrapCalls
  dump binary memory @RUN@/rectangles.bin g_rectRows g_rectRows+1220
  continue
 end

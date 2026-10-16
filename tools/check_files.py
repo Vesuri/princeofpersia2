@@ -49,7 +49,7 @@ def main():
     original_persistence(saved,restarted);original_controls(saved,restarted)
     resource_census();core_inputs()
     core_reference=args.core_reference.resolve() if args.core_reference else opening
-    env=dict(os.environ,CORE='1',CORE_REFERENCE=str(core_reference),DEADLINE='180')
+    env=dict(os.environ,CORE='1',CORE_REFERENCE=str(core_reference),DEADLINE=os.environ.get('DEADLINE','180'))
     os.environ['CORE_REFERENCE']=str(core_reference)
     native={}
 

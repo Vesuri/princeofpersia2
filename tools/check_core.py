@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Fresh original/native pairing and actual native rejection controls."""
-import json,os,shutil,subprocess,tempfile
+import argparse,json,os,shutil,subprocess,tempfile
 from pathlib import Path
 from extract_original_data import ROOT
 from check_core_result import check,restored
@@ -9,11 +9,14 @@ from core_inputs import generate
 from run_reference import run as reference_run
 
 def main():
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--reference",type=Path,help="reuse an original capture; all preflight and pin checks still run")
+    args=parser.parse_args()
     os.chdir(ROOT)
     logs=Path(tempfile.mkdtemp(prefix='core-gate-',dir=ROOT/'tmp'))
     generate()
     os.environ['POP2_MAP']='1'
-    reference=reference_run()
+    reference=args.reference.resolve() if args.reference else reference_run()
     preflight(reference)
     env=dict(os.environ,CORE='1',CORE_REFERENCE=str(reference))
     def build(flags='-DPOP2_CORE'):
@@ -61,7 +64,10 @@ def main():
         else:raise AssertionError('accepted incomplete or corrupted evidence')
         finally:
             if corrupt:(fixture/corrupt).write_bytes(original)
-    observer=logs/'unreached.gdb';observer.write_text('break *pop2CoreStopped\ncontinue\necho CORE TIMEOUT CONTROL REACHED\\n\ncontinue\n')
+    # Deliberately hold the connected debugger, independently of how long the
+    # verification build takes to hash its inputs. The completed runs above
+    # separately establish that the real checkpoint is reachable.
+    observer=logs/'unreached.gdb';observer.write_text('echo CORE TIMEOUT CONTROL REACHED\\n\nshell sleep 30\nquit\n')
     status,_,timeout_log=launch('timeout',GDBSCRIPT=str(observer),DEADLINE='20')
     assert status==124 and 'PROBE TIMEOUT' in (logs/'timeout.log').read_text() and 'CORE TIMEOUT CONTROL REACHED' in timeout_log
     # Conditional core integration must leave the earlier empty boot/quit valid.

@@ -19,6 +19,45 @@ pop2_mac_exit:
 	rts
 	.globl pop2_line_a
 pop2_line_a:
+	| Table-selected nonblocking services, following Alone in the Dark's
+	| complete register-image ABI. Misses restore the original exception.
+	movem.l d0-d7/a0-a6,-(sp)
+	.ifdef POP2_INTEGRATION_PROBE
+	| Startup observers install original-return hooks in the full dispatcher.
+	| Keep those diagnostic safe points regardless of quick-service cadence.
+	cmpi.l #3,g_integrationStage
+	bcs.w .quick_miss
+	.endif
+	lea 60(sp),a1
+	move.l 2(a1),a0
+	moveq #0,d0
+	move.w (a0),d0
+	andi.w #0x0fff,d0
+	lea g_pop2QuickTraps,a0
+	move.l (a0,d0.w*4),d0
+	beq.s .quick_miss
+	bclr #0,d0
+	move.l d0,a3
+	bne.w .native_quick
+.quick_c_bridge:
+	lea 60(sp),a1
+	move.l sp,a0
+	move.l usp,a2
+	move.l a2,-(sp)
+	move.l a1,-(sp)
+	move.l a0,-(sp)
+	jsr (a3)
+	lea 12(sp),sp
+	tst.l d0
+	beq.s .quick_miss
+.quick_done:
+	addq.l #2,62(sp)
+	movem.l (sp)+,d0-d7/a0-a6
+	rte
+.native_quick:
+	jmp (a3)
+.quick_miss:
+	movem.l (sp)+,d0-d7/a0-a6
 	| Park the exception identity, then leave supervisor mode before services.
 	| DOS may wait and schedule; it must never run on the exception stack.
 	move.l a0,-(sp)
@@ -39,6 +78,199 @@ pop2_user_service:
 	movem.l (sp)+,d0-d7/a0-a6
 	move.w (sp)+,ccr
 	rts
+	.ifdef POP2_INPUT
+	.globl pop2QuickSystemTask
+pop2QuickSystemTask:
+	moveq #0,d2
+	bra.s pop2QuickNativeGuard
+	.globl pop2QuickTickCount
+pop2QuickTickCount:
+	moveq #1,d2
+	bra.s pop2QuickNativeGuard
+	.globl pop2QuickStripAddress
+pop2QuickStripAddress:
+	lea pop2QuickStripAddressWarm,a4
+	moveq #2,d2
+	bra.s pop2QuickNativeGuard
+	.globl pop2QuickSwapMMUMode
+pop2QuickSwapMMUMode:
+	lea pop2QuickSwapMMUModeWarm,a4
+	moveq #3,d2
+	bra.s pop2QuickNativeGuard
+	.globl pop2QuickHLock
+pop2QuickHLock:
+	lea pop2QuickHLockWarm,a4
+	moveq #4,d2
+	bra.s pop2QuickNativeGuard
+	.globl pop2QuickHGetState
+pop2QuickHGetState:
+	lea pop2QuickHGetStateWarm,a4
+	moveq #5,d2
+	.globl pop2QuickNativeGuard
+pop2QuickNativeGuard:
+	| Validate ownership before reusing or refreshing a no-due certificate.
+	| Pending services and failed checks retain the C/ordinary path.
+	btst #5,60(sp)
+	bne.w .quick_miss
+	move.l usp,a0
+	cmpa.l g_quickStackLow,a0
+	bcs.w .quick_miss
+	cmpa.l g_quickStackHigh,a0
+	bhi.w .quick_miss
+	move.l 62(sp),d0
+	.ifdef POP2_TIMING_PROBE
+	cmpi.w #1,d2
+	bne.s .quick_probe_done
+	move.l g_coreSegments+136,d1
+	addi.l #0x313e,d1
+	cmp.l d1,d0
+	beq.w .quick_miss
+.quick_probe_done:
+	.endif
+	| Segment installation invalidates this previously validated range.
+	cmp.l g_quickCodeBase,d0
+	bcs.s .quick_owner_row
+	cmp.l g_quickCodeEnd,d0
+	bls.w .quick_owner_valid
+.quick_owner_row:
+	| Keep a candidate per service so unrelated CODE callers do not evict it.
+	| Only validated g_coreSegments rows enter this table; read live bounds.
+	lea g_quickOwnerRows,a3
+	lea (a3,d2.w*4),a3
+	move.l (a3),a0
+	cmpa.l #0,a0
+	beq.s .quick_owner_cache
+	move.l (a0),d1
+	cmp.l d1,d0
+	bcs.s .quick_owner_cache
+	move.l 4(a0),d3
+	cmpi.l #2,d3
+	bcs.s .quick_owner_cache
+	add.l d1,d3
+	subq.l #2,d3
+	cmp.l d3,d0
+	bls.s .quick_owner_record
+.quick_owner_cache:
+	| Shared CodeRangeCache candidates are index+1, not ownership proofs.
+	| Recheck the index and live [base,size] before accepting a native hit.
+	move.l d0,d1
+	lsr.l #8,d1
+	lsr.l #4,d1
+	andi.w #255,d1
+	move.l g_quickCodeIndexes,a0
+	move.l (a0,d1.w*4),d1
+	beq.s .quick_owner
+	cmpi.l #24,d1
+	bhi.s .quick_owner
+	subq.l #1,d1
+	lea g_coreSegments,a0
+	lea (a0,d1.w*8),a0
+	move.l (a0),d1
+	cmp.l d1,d0
+	bcs.s .quick_owner
+	move.l 4(a0),d3
+	cmpi.l #2,d3
+	bcs.s .quick_owner
+	add.l d1,d3
+	subq.l #2,d3
+	cmp.l d3,d0
+	bhi.s .quick_owner
+	move.l a0,(a3)
+.quick_owner_record:
+	move.l d1,g_quickCodeBase
+	move.l d3,g_quickCodeEnd
+	bra.s .quick_owner_valid
+.quick_owner:
+	move.l d0,-(sp)
+	jsr pop2QuickLocate
+	addq.l #4,sp
+	tst.l d0
+	beq.w .quick_miss
+	move.l d0,(a3)
+.quick_owner_valid:
+	| The shared owner lookup may clobber caller-saved a0.
+	move.l usp,a0
+	move.l displayBatchFrame,d0
+	beq.s 1f
+	cmp.l a0,d0
+	bcs.w .quick_miss
+	move.l d0,a0
+	move.l displayBatchParent,d0
+	cmp.l (a0),d0
+	bne.w .quick_miss
+	move.l displayBatchReturn,d0
+	cmp.l 4(a0),d0
+	bne.w .quick_miss
+1:
+	tst.l g_quickServicesValid
+	beq.s .quick_ready
+	cmpi.w #1,d2
+	beq.s 3f
+	jsr pop2ServiceTicks
+	bra.s 4f
+3:
+	jsr pop2WallTicks
+4:
+	tst.l g_clockFault
+	bne.w .quick_miss
+	cmp.l g_quickServicesTick,d0
+	bne.s .quick_ready
+	move.l g_scaffoldFields,d1
+	cmp.l g_quickServicesField,d1
+	bne.s .quick_ready
+	cmpi.l #-1,g_quickServicesMicro
+	beq.s .quick_prepared
+	move.l d0,d3
+	jsr pop2QuickDeadlineReady
+	tst.l d0
+	beq.w .quick_miss
+	move.l d3,d0
+	bra.s .quick_prepared
+.quick_ready:
+	move.l d2,-(sp)
+	jsr pop2QuickReady
+	addq.l #4,sp
+	tst.l d0
+	beq.w .quick_miss
+	move.l g_quickServicesTick,d0
+.quick_prepared:
+	.ifdef POP2_VERIFY
+	move.l d0,d3
+	move.l sp,a0
+	lea 60(sp),a1
+	move.l usp,a2
+	move.l a2,-(sp)
+	move.l a1,-(sp)
+	move.l a0,-(sp)
+	jsr pop2QuickVerify
+	lea 12(sp),sp
+	tst.l d0
+	beq.w .quick_miss
+	move.l d3,d0
+	.endif
+	tst.w d2
+	beq.s 2f
+	cmpi.w #1,d2
+	bne.s 5f
+	move.l usp,a0
+	move.l d0,(a0)
+	clr.l (sp)
+	bra.w .quick_done
+2:
+	move.l g_quickA5,a0
+	move.l (a0),(sp)
+	bra.w .quick_done
+5:
+	move.l sp,a0
+	lea 60(sp),a1
+	move.l a1,-(sp)
+	move.l a0,-(sp)
+	jsr (a4)
+	addq.l #8,sp
+	tst.l d0
+	beq.w .quick_miss
+	bra.w .quick_done
+	.endif
 	.globl pop2_old_loadseg
 pop2_old_loadseg:
 	.word 0xaffe,0xa9f0

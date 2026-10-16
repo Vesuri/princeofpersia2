@@ -20,7 +20,7 @@ def check(saved,reference,core_reference,written=None):
     replay(saved,core_reference)
     scratch=Path(tempfile.mkdtemp(prefix='settings-controls-',dir=ROOT/'tmp'))
     os.environ['CORE_REFERENCE']=str(core_reference)
-    env=dict(os.environ,CORE='1',CORE_REFERENCE=str(core_reference),DEADLINE='180')
+    env=dict(os.environ,CORE='1',CORE_REFERENCE=str(core_reference),DEADLINE=os.environ.get('DEADLINE','180'))
     for key in ('CORE_RESTART_FROM','CORE_CONTROL','CORE_FILE_REPLAY','GDBSCRIPT'):
         env.pop(key,None)
 

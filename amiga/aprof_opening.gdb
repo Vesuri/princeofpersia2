@@ -1,10 +1,65 @@
 set $instructionProfile=@PROFILE@
 set $phase=0
+set $activeScope=@ACTIVE@
+set $part=0
+set $waiting=0
+set $waitCount=0
+# Keep the original RTS in active work. Exclude entry through UNLK, including
+# all callbacks serviced inside the wait. No original instruction is changed.
+define stop-profile-part
+ if $activeScope
+  eval "monitor aprof stop @RUN@/opening-%d-%d.prof", $phase, $part
+  set $part=$part+1
+ else
+  eval "monitor aprof stop @RUN@/opening-%d.prof", $phase
+ end
+end
+define install-wait-scope
+ set $waitEntry=g_coreSegments[17][0]+0x31b8
+ set $waitExit=g_coreSegments[17][0]+0x31dc
+ if *(unsigned long*)$waitEntry!=0x4e560000 || *(unsigned long*)($waitExit-2)!=0x4e5e4e75
+  echo ACTIVE SCOPE / ORIGINAL BOUNDARY MISMATCH\n
+  quit 1
+ end
+ break *$waitEntry
+ commands
+  silent
+  if $waiting
+   echo ACTIVE SCOPE / NESTED WAIT\n
+   quit 1
+  end
+  set $waiting=1
+  set $waitSP=$sp
+  set $waitReturn=*(unsigned long*)$sp
+  set $waitCount=$waitCount+1
+  stop-profile-part
+  monitor aprof start
+  printf "ACTIVE WAIT ENTER %lu phase=%lu sp=%08lx return=%08lx\n",$waitCount,$phase,$waitSP,$waitReturn
+  continue
+ end
+ break *$waitExit
+ commands
+  silent
+  if !$waiting || $sp!=$waitSP || *(unsigned long*)$sp!=$waitReturn
+   echo ACTIVE SCOPE / RETURN MISMATCH\n
+   quit 1
+  end
+  eval "monitor aprof stop @RUN@/wait-%d.prof", $waitCount
+  set $waiting=0
+  printf "ACTIVE WAIT EXIT %lu phase=%lu\n",$waitCount,$phase
+  monitor aprof start
+  continue
+ end
+end
 break pop2OpeningPhase
 commands
  silent
  if $instructionProfile
-  eval "monitor aprof stop @RUN@/opening-%d.prof", $phase
+  if $waiting
+   echo ACTIVE SCOPE / PHASE INSIDE WAIT\n
+   quit 1
+  end
+  stop-profile-part
  end
  printf "OPENING PHASE %lu frames=%lu fields=%lu health=%u\n",$phase,g_openingCount,g_scaffoldFields,*(unsigned short*)(g_coreA5-0x50b4)
  set $phase=$phase+1
@@ -76,12 +131,22 @@ commands
   maint info sections
   printf "PROFILE START fields=%lu ticks=%lu right_reads=%lu\n",g_scaffoldFields,inputTicks,g_integrationRightReads
   if $instructionProfile
+   if $activeScope
+    install-wait-scope
+   end
    monitor aprof start
   end
  end
  if g_integrationStage==4
   if $instructionProfile
-   eval "monitor aprof stop @RUN@/opening-%d.prof", $phase
+   if $waiting
+    echo ACTIVE SCOPE / INCOMPLETE WAIT\n
+    quit 1
+   end
+   stop-profile-part
+   if $activeScope
+    printf "ACTIVE SCOPE COMPLETE waits=%lu parts=%lu\n",$waitCount,$part
+   end
   end
   printf "PROFILE STOP fields=%lu ticks=%lu frames=%lu phases=%lu\n",g_scaffoldFields,inputTicks,g_openingCount,g_openingPhases
   set $i=0

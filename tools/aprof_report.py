@@ -40,7 +40,7 @@ BUCKETS = [
     ('Files and resources', ('MacFiles', 'FileReadCache', 'ResourceDirectory', 'NativeFiles', 'NativeResources', 'MacVolume')),
     ('Audio', ('Halestorm', 'Paula', 'NativeAudio', 'PcmDma', 'audio', 'Audio')),
     ('Input', ('NativeInput', 'InputState', 'getKeys', 'GetKeys')),
-    ('Trap entry and dispatch', ('pop2_line_a', 'pop2_cached_services', 'dispatch', 'Dispatch', 'trap', 'Trap',
+    ('Trap entry and dispatch', ('pop2Quick', 'pop2_line_a', 'pop2_cached_services', 'dispatch', 'Dispatch', 'trap', 'Trap',
                                  'CodeRangeCache', 'pop2_timer_callback', 'service', 'Service')),
     ('Timing, VBL and interrupts', ('VBL', 'vbl', 'Vbl', 'VideoTicks', 'wallTicks', 'callbackTicks', 'Time', 'interrupt', 'Interrupt')),
 ]
@@ -95,7 +95,45 @@ def check_run(run):
     require([int(p) for p in phases] == list(range(int(rec[2]))), 'PHASE BOUNDARIES')
     require((run / 'opening-frames.bin').stat().st_size == int(rec[1]) * ROW_LONGS * 4, 'FRAME RECORD DUMP')
     profiles = sorted(run.glob('opening-*.prof'))
-    require(len(profiles) in (0, int(rec[2]) + 1), 'PHASE PROFILE COUNT')
+    scoped = re.search(r'^ACTIVE SCOPE COMPLETE waits=(\d+) parts=(\d+)$', log, re.M)
+    if scoped:
+        entered = re.findall(r'^ACTIVE WAIT ENTER (\d+) phase=(\d+) sp=[0-9a-f]+ return=[0-9a-f]+$', log, re.M)
+        exited = re.findall(r'^ACTIVE WAIT EXIT (\d+) phase=(\d+)$', log, re.M)
+        waits = sorted(run.glob('wait-*.prof'))
+        require(sorted(int(p.stem.split('-')[1]) for p in waits) == list(range(1, int(scoped[1]) + 1)), 'WAIT ACCOUNTING PARTS')
+        require(entered == exited and len(entered) == int(scoped[1]) > 0, 'BALANCED WAIT SCOPE')
+        require([int(n) for n, _ in entered] == list(range(1, len(entered) + 1)), 'ORDERED WAIT SCOPE')
+        require(len(profiles) == int(scoped[2]) == len(entered) + int(rec[2]) + 1, 'ACTIVE PROFILE COUNT')
+        parts = [re.fullmatch(r'opening-(\d+)-(\d+)\.prof', p.name) for p in profiles]
+        require(all(parts), 'ACTIVE PROFILE NAMES')
+        require(sorted(int(p[2]) for p in parts) == list(range(len(parts))), 'ACTIVE PROFILE PARTS')
+        require(set(int(p[1]) for p in parts) == set(range(int(rec[2]) + 1)), 'ACTIVE PROFILE PHASES')
+        expected = []
+        current_phase = 0
+        pending = None
+        for line in log.splitlines():
+            entry = re.match(r'ACTIVE WAIT ENTER (\d+) phase=(\d+) ', line)
+            leave = re.match(r'ACTIVE WAIT EXIT (\d+) phase=(\d+)$', line)
+            boundary = re.match(r'OPENING PHASE (\d+) ', line)
+            finish = line.startswith('ACTIVE SCOPE COMPLETE ')
+            if entry:
+                require(pending is None and int(entry[2]) == current_phase, 'WAIT ENTRY ORDER')
+                pending = int(entry[1])
+            elif leave:
+                require(pending == int(leave[1]) and int(leave[2]) == current_phase, 'WAIT EXIT ORDER')
+                pending = None
+            elif boundary or finish:
+                require(pending is None, 'BOUNDARY INSIDE WAIT')
+                if boundary:
+                    require(int(boundary[1]) == current_phase, 'SCOPE PHASE ORDER')
+            if entry or boundary or finish:
+                expected.append(f'opening-{current_phase}-{len(expected)}.prof')
+                if boundary:
+                    current_phase += 1
+        require(set(expected) == {p.name for p in profiles}, 'PROFILE PART PHASE OWNERSHIP')
+    else:
+        require('ACTIVE WAIT' not in log, 'MISSING ACTIVE SCOPE COMPLETION')
+        require(len(profiles) in (0, int(rec[2]) + 1), 'PHASE PROFILE COUNT')
     print(f'OPENING RUN PASS: {rec[1]} frames, {int(rec[2]) + 1} phases, {len(profiles)} profiles; {machine(run)}')
 
 
@@ -237,6 +275,14 @@ def parse_profile(text):
         elif len(f) == 2:
             header[f[0]] = int(f[1], 16) if f[0] == 'cacr' else (int(f[1]) if f[1].lstrip('-').isdigit() else f[1])
     require(0 in nodes and 'units' in header, 'incomplete profile')
+    require(header.get('overflow', 0) == 0, 'PROFILE OVERFLOW')
+    accounted = sum(v[3] for v in nodes.values())
+    require(sum(v[0] for v in pcs.values()) + header['gap'] + header.get('high', 0) == accounted, 'PC/TREE ACCOUNTING')
+    # aprof_stop prints the current clock without flushing aprof_last. Keep
+    # that final sub-clock remainder explicit, never charge it to a function.
+    tail = header['units'] - accounted
+    require(0 <= tail <= header['CYCLE_UNIT'] and tail % header['cycleunit'] == 0, 'UNBOUNDED PROFILE TAIL')
+    header['tail'] = tail
     return header, pcs, nodes
 
 
@@ -284,7 +330,12 @@ def bucket(region, function):
 
 
 def short(fn, n=80):
-    fn = re.sub(r'\(.*\)( const)?$', '', fn.replace('(anonymous namespace)::', 'anon::'))
+    fn = fn.replace('(anonymous namespace)::', 'anon::')
+    # Template values can contain casts: strip the argument list only after
+    # the template closes, retaining distinct indexed dispatch entries.
+    start = fn.find('(', fn.rfind('>') + 1)
+    if start >= 0:
+        fn = fn[:start]
     return fn if len(fn) <= n else fn[:n - 3] + '...'
 
 
@@ -454,10 +505,10 @@ class Phase:
 
 def load(name, phase):
     ctx = Context(name)
-    paths = sorted(ctx.dir.glob('opening-*.prof'), key=lambda p: int(p.stem.split('-')[1]))
+    paths = sorted(ctx.dir.glob('opening-*.prof'), key=lambda p: tuple(map(int, p.stem.split('-')[1:])))
     require(paths, 'no phase profiles (run with cycles)')
     if phase is not None:
-        paths = [p for p in paths if p.stem == f'opening-{phase}']
+        paths = [p for p in paths if int(p.stem.split('-')[1]) == phase]
         require(paths, f'no phase {phase}')
     phases = [Phase(ctx, p) for p in paths]
     for p in phases:
@@ -480,6 +531,9 @@ def scope(ctx, phases, phase):
 def report(name, phase, top):
     ctx, phases = load(name, phase)
     frames_n, fields = scope(ctx, phases, phase)
+    if ctx.config.get('active', '0') == '1':
+        require('ACTIVE SCOPE COMPLETE' in ctx.log, 'INCOMPLETE ACTIVE CAPTURE')
+        print('ACTIVE WORK: excludes WaitTimerNoPoll entry through UNLK; includes its RTS; full-scene frame denominator')
     units = sum(p.units for p in phases)
     upm = phases[0].units_per_ms
     gap = sum(p.header['gap'] for p in phases)
@@ -489,6 +543,15 @@ def report(name, phase, top):
     print(f"== {name} phase {'all' if phase is None else phase} ({ctx.config['setup']}, cycles at {ctx.hz} Hz): "
           f'{frames_n} frames, {fields} fields, {total:.1f} ms emulated CPU, {total / frames_n:.2f} ms/frame '
           f'({fields / frames_n:.2f} fields/frame)')
+    if ctx.config.get('active', '0') == '1':
+        wait_ids = [int(n) for n, ph in re.findall(r'^ACTIVE WAIT ENTER (\d+) phase=(\d+) ', ctx.log, re.M)
+                    if phase is None or int(ph) == phase]
+        waits = [Phase(ctx, ctx.dir / f'wait-{n}.prof') for n in wait_ids]
+        require(waits or phase is not None, 'MISSING WAIT ACCOUNTING')
+        wait_ms = sum(p.units for p in waits) / upm
+        print(f'   Accounting: active {total:.3f} ms + wait {wait_ms:.3f} ms = {total + wait_ms:.3f} ms; '
+              f'{(total + wait_ms) / frames_n:.3f} ms/full frame; {len(phases)} active parts, {len(waits)} waits')
+    print(f"   Unassigned boundary: {sum(p.header['tail'] for p in phases) / upm:.6f} ms total (reported separately)")
     h = phases[0].header
     print(f"   CACR=${h.get('cacr', 0):X} cpu_model {h.get('cpu_model')}; unmatched RTS "
           f"{sum(p.header['unmatched_rts'] for p in phases)}, RTE {sum(p.header['unmatched_rte'] for p in phases)}, "
@@ -502,9 +565,26 @@ def report(name, phase, top):
             if cn:
                 chip_u[key] += cu; chip_n[key] += cn
     buckets['Exception entry and STOP gaps'] += gap
+    buckets['Unassigned capture boundary'] += sum(p.header['tail'] for p in phases)
+    buckets['Unmapped PC'] += sum(p.header.get('high', 0) for p in phases)
     print('\n-- Exclusive time by bucket, ms per frame --')
     for b, u in buckets.most_common():
         print(f'{pct(u):6.2f}%  {ms(u):7.2f} ms  {b}')
+    clock_names = {'pop2WallTicks', 'pop2ServiceTicks', 'anon::timerNow', 'anon::timerDueNow'}
+    clock_units = 0
+    for p in phases:
+        for n in p.order:
+            if p.labels[n] not in clock_names:
+                continue
+            ancestor = p.nodes[n][0]
+            while ancestor and p.labels[ancestor] not in clock_names:
+                ancestor = p.nodes[ancestor][0]
+            if not ancestor:
+                clock_units += p.inclusive[n]
+    print(f'\nClock sampling (WallTicks + ServiceTicks + named Time Manager queries, inclusive, no nested double count): {ms(clock_units):.6f} ms/frame')
+    if not any(p.labels[n] in {'anon::timerNow', 'anon::timerDueNow'} for p in phases for n in p.order):
+        print('No separately attributed Time Manager query in this capture; older builds inline those reads.')
+    print('Clock sampling overlaps the existing function buckets; do not add it to their total.')
     if chip_n:
         cu = sum(chip_u.values()); cn = sum(chip_n.values())
         print(f'\n-- CPU Chip-bus accesses: {pct(cu):.1f}% of time, {ms(cu):.2f} ms/frame, {cn / frames_n:.0f} accesses/frame, '

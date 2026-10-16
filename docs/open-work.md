@@ -77,7 +77,10 @@ Items remain open until their acceptance gates pass.
     of 81 intervals in the landing and the 68020 misses all in the initial
     profile. That baseline has port work four to five times the original game's;
     reduction results are recorded in `docs/performance.md`. Work in order, one
-    commit each. For every step report the opening profile before and after
+    commit each. Dispatch and clock reductions pass their D13 active-work budgets
+    and per-trap limits; their matched measurements and common gates are recorded
+    in `docs/performance.md`. The exact no-MMU opening still has two late
+    intervals. For every remaining step report the opening profile before and after
     (`opening`, `report`, `work` per phase) with two repeats, the per-step
     service gates named below, `make integration-check`, the timing cadence and
     VBL/Time Manager fixtures, and an unchanged ordinary release audit. Check
@@ -85,26 +88,6 @@ Items remain open until their acceptance gates pass.
     HEAP items solved similar costs. Figures are 68030 ms per landing frame
     unless noted.
 
-    - **19.2 Cheaper ordinary trap dispatch.** Trivial traps (`SystemTask`,
-      `HLock`, `HGetState`, `StripAddress`, `SwapMMUMode`) cost 77–101 µs
-      (68020: 340–500 µs): about 120 instructions of user entry, a ~220
-      instruction compare chain in `pop2Dispatch`, and VBL selection per trap.
-      Reuse 19.1's original rectangle CCR/register fixture when validating
-      ordinary trap entries: the existing display dispatcher preserves those
-      fields, unlike the measured rectangle services. Keep this separate from
-      the direct cached-entry optimization.
-      Use table dispatch and Alone in the Dark's tick-scoped reuse of validated
-      checks, keeping frame-owner, stack and return checks and named stops.
-      Acceptance: core, file, display, UI and audio service gates pass; these
-      traps cost ≤ 25 µs; the dispatch bucket falls from 35.3 to ≤ 12 ms per
-      frame averaged over the scene.
-    - **19.3 Clock sampling without per-trap beam reads.** `pop2WallTicks` runs
-      about 900 times per frame through `selectVBL`, each with five Chip-bus
-      beam/CIA reads (9.3 ms/frame scene average). Sample the beam only for
-      TickCount results and due VBL/Time Manager work; keep backward-clock and
-      ambiguous-position failures.
-      Acceptance: `VideoTicks` host tests, VBL and Time Manager fixtures and the
-      cadence gate pass; clock sampling ≤ 2 ms per frame.
     - **19.4 Non-blocking buffer synchronization.** `PrinceScreen::synchronize`
       spins 14.1 ms on the blitter in the landing (3.6 attack, 1.3 fall). Start
       the copy and wait only before the next write to that buffer.
@@ -123,15 +106,34 @@ Items remain open until their acceptance gates pass.
       requires the owner's release of that deferral.
       Acceptance: heap host tests, the measured freed-handle and low-memory
       cases and gameplay save/restart regressions pass; `NewHandle` ≤ 0.5 ms.
-    - **19.8 Further scenes.** After 19.2–19.3, profile the level-five carpet
+    - **19.8 Further scenes.** Profile the level-five carpet
       exit and the level-eight throne dissolve (clean and generated cache) as
       recorded above, and add scenes whose frames exceed their requested delays.
     - **19.9 Share the profile report.** Move the common profile parsing and
       call-tree code of `tools/aprof_report.py` and Alone in the Dark's report
       into AmigaXDev once its tree is clean, keeping port-specific names and
-      buckets local. Integrate the published shared rectangle-accessor commit
+      buckets local. The profiler stop command prints elapsed time without flushing
+      the last sub-clock gap; retain the separately reported capture tail and
+      add a stop-boundary control when sharing the parser. Integrate the published shared rectangle-accessor commit
       `b61c323` from `codex/pure-rectangle-accessors` when the AmigaXDev main
       working tree is clean; Prince of Persia 2 already pins that canonical source.
+      The published `codex/dispatch-clock-helpers` branch also contains the
+      clock-threshold helper (`95808a6`) and single-validation HLock (`5669890`),
+      prepared and tested in the isolated shared checkout. Integrate these when
+      the main working tree is clean; this port pins both sources.
+      Single-validation HGetState (`030d3c1`) is also published on that branch
+      and pinned here, with read-only whole-heap and invalid-handle controls.
+      Pinned slot-range reuse and exact PAL deadline thresholds (`7e2c39c`)
+      follow on the same branch, with reset/collision and boundary controls.
+      The read-only code-index interface (`a5a7cd4`) lets native callers reuse
+      those candidates while retaining index bounds and current-range checks.
+      Validated slot flag-address reuse (`7c663eb`) follows on that branch;
+      it rereads mutable flags and clears the mapping at arena reset.
+      A bounded 32-slot flag-address cache (`cb13b74`, Amiga type fix
+      `b2a5dc0`) follows; flags are
+      always reread and reset invalidates every address candidate.
+      The larger code-owner index (`a92067e`) avoids 256 KiB aliasing while
+      retaining current range, size and index checks.
       The published `codex/audio-reuse-helpers` branch contains the bounded
       immutable PCM cache and settled Paula state (`a3dd031`, with Amiga type
       compatibility in `8ecd85f` and stopped-DMA state in `7759f0f`). This port

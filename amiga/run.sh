@@ -56,7 +56,7 @@ if [ "${CORE:-0}" = 1 ]; then
   if [ -z "$SCRIPT" ]; then SCRIPT="$RUN/core.gdb"; fi
 fi
 if [ -n "$SCRIPT" ]; then
-  sed -e "s|@RUN@|$RUN|g" -e "s|@PROFILE@|${CPU_PROFILE:-0}|g" "$SCRIPT" > "$RUN/observer.gdb"
+  sed -e "s|@RUN@|$RUN|g" -e "s|@PROFILE@|${CPU_PROFILE:-0}|g" -e "s|@ACTIVE@|${APROF_ACTIVE:-0}|g" "$SCRIPT" > "$RUN/observer.gdb"
   SCRIPT="$RUN/observer.gdb"
 fi
 cat > "$DH0/s/startup-sequence" <<'STARTUP'
@@ -104,7 +104,9 @@ cat "$RUN/gdb-out.log"
 [ "$status" = 0 ] || exit "$status"
 for ((i=0;i<20;i++)); do [ -f "$DH1/Shell.done" ] && break; sleep 1; done
 if [ "${CORE:-0}" = 1 ]; then
-  if [ "${RELEASE_STARTUP:-0}" = 1 ]; then
+  if [ "${QUICK_TRAPS:-0}" = 1 ]; then
+    python3 ../tools/check_quick_traps.py "$RUN"
+  elif [ "${RELEASE_STARTUP:-0}" = 1 ]; then
     python3 ../tools/check_release_startup.py "$RUN" "$RELEASE_REFERENCE"
   elif [ -n "${GAMEPLAY_ATTRACT_REFERENCE:-}" ]; then
     python3 ../tools/check_gameplay_opening.py "$RUN" "$GAMEPLAY_ATTRACT_REFERENCE" --attract

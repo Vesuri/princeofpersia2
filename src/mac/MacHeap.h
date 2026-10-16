@@ -1,5 +1,6 @@
 #ifndef POP2_MAC_HEAP_H
 #define POP2_MAC_HEAP_H
+#include "PinnedSlotRanges.h"
 // Fixed-width types supplied by the native ABI header or host <cstdint>.
 // Arena and master-pointer blocks belong to the caller's zone. No host allocator.
 class MacHeap {
@@ -26,7 +27,8 @@ public:
     int16_t setHandleSize(Handle handle, uint32_t bytes);
     bool isHandle(Handle handle) const;
     bool isFreeHandleSlot(Handle handle) const;
-    uint8_t state(Handle handle);
+    inline uint8_t state(Handle handle);
+    inline int16_t lockHandle(Handle handle);
     int16_t setState(Handle handle, uint8_t state);
     Handle recoverHandle(uint8_t* ptr);
     int16_t moreMasters(uint16_t count=0);
@@ -55,11 +57,24 @@ private:
     // Master blocks never move or shrink. Cache the last slot range, not its
     // mutable allocation flags or pointees; disposal/reuse stays observable.
     mutable uint32_t cachedMasterStart_ = 0, cachedMasterLength_ = 0;
+    mutable PinnedSlotRanges masterRanges_;
     Block& block(uint32_t off) const { return *(Block*)(arena_+off); }
     static uint32_t physical(uint32_t logical);
     static void moveBytes(uint8_t* dst, const uint8_t* src, uint32_t bytes);
     static void reverseWords(uint8_t* first, uint8_t* last);
-    uint8_t* flags(Handle handle) const;
+    __attribute__((always_inline)) uint8_t* flags(Handle handle) const {
+        if(uint8_t* f=masterRanges_.cachedFlags(handle))return f;
+        unsigned long base=(unsigned long)arena_;
+        unsigned long relative=(unsigned long)handle-(base+cachedMasterStart_);
+        if(relative<cachedMasterLength_ && relative%sizeof(uint8_t*)==0)
+            return masterRanges_.rememberFlags(handle,arena_+cachedMasterStart_+cachedMasterLength_+relative/sizeof(uint8_t*));
+        unsigned long pos=(unsigned long)handle-base;
+        if(pos<bytes_)if(const auto* range=masterRanges_.find<sizeof(uint8_t*)>(pos)) {
+            cachedMasterStart_=range->start;cachedMasterLength_=range->length;
+            return masterRanges_.rememberFlags(handle,arena_+range->start+range->length+(pos-range->start)/sizeof(uint8_t*));
+        }
+        return flagsSlow(handle);
+    }
     uint8_t* flagsSlow(Handle handle) const;
     uint8_t* masterFlags(uint32_t off, uint32_t pos) const;
     uint32_t findHandleBlock(const uint8_t* ptr, Handle validated=0) const;
@@ -79,4 +94,6 @@ private:
     int16_t queryResult(int16_t code) { error_=code; return code; }
     int16_t result(int16_t code) { error_=code; publish(); return code; }
 };
+#include "HeapLockHandle.inc"
+#include "HeapReadHandleState.inc"
 #endif

@@ -39,6 +39,7 @@ void MacHeap::reset()
     arena_=0;bytes_=end_=freeBytes_=0;error_=0;freeMasters_=0;
     masterBlockCount_=0;masterBlocksOverflow_=false;
     cachedMasterStart_=cachedMasterLength_=0;
+    masterRanges_.clear();
 }
 bool MacHeap::init(uint8_t* arena, uint32_t bytes, uint16_t masters)
 {
@@ -61,18 +62,10 @@ uint8_t* MacHeap::masterFlags(uint32_t off, uint32_t pos) const
     uint32_t count=b.owner, start=off+blockBytes, length=count*sizeof(uint8_t*);
     if (pos>=start && pos-start<length && (pos-start)%sizeof(uint8_t*)==0) {
         cachedMasterStart_=start;cachedMasterLength_=length;
-        return arena_+start+length+(pos-start)/sizeof(uint8_t*);
+        masterRanges_.remember(pos,start,length);
+        return masterRanges_.rememberFlags(arena_+pos,arena_+start+length+(pos-start)/sizeof(uint8_t*));
     }
     return 0;
-}
-inline __attribute__((always_inline)) uint8_t* MacHeap::flags(Handle handle) const
-{
-    // An unsigned address-range test also rejects pointers outside the zone;
-    // cached ranges belong to pinned master blocks and reset clears the length.
-    unsigned long relative=(unsigned long)handle-((unsigned long)arena_+cachedMasterStart_);
-    if(relative<cachedMasterLength_ && relative%sizeof(uint8_t*)==0)
-        return arena_+cachedMasterStart_+cachedMasterLength_+relative/sizeof(uint8_t*);
-    return flagsSlow(handle);
 }
 // Keep the master-block walk and its register/stack setup off cache hits.
 uint8_t* MacHeap::flagsSlow(Handle handle) const
@@ -383,11 +376,7 @@ uint32_t MacHeap::handleSize(Handle h)
     uint32_t off=owns(*h) ? findHandleBlock(*h,h) : 0;queryResult(off ? 0 : memWZErr);
     return off ? block(off).logical : 0;
 }
-uint8_t MacHeap::state(Handle h)
-{
-    if(!isHandle(h)) { queryResult(nilHandleErr);return 0; }
-    uint8_t state=*flags(h)&0xe0;queryResult(0);return state;
-}
+
 int16_t MacHeap::setState(Handle h,uint8_t value)
 {
     if(!isHandle(h))return result(nilHandleErr);

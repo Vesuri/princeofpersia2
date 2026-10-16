@@ -3,6 +3,7 @@
 #include <proto/dos.h>
 #include <exec/memory.h>
 #include "CoreRuntime.h"
+#include "mac/VideoTicks.h"
 #include "mac/BigEndianMemory.h"
 #include "mac/CodeRangeCache.h"
 #pragma push_macro("Read")
@@ -51,9 +52,12 @@
 #endif
 extern DosLibrary* DOSBase;
 extern "C" {
+// Shared directly with the native guard; there is only one owner record.
+uint32_t displayBatchFrame=0,displayBatchParent=0,displayBatchReturn=0;
 void pop2_call_mac(void*,void*,void*);
 void pop2_timer_callback();
 uint32_t pop2WallTicks();
+uint32_t pop2ServiceTicks();
 extern volatile uint32_t g_clockFault;
 #if defined(POP2_CUTSCENE_ATTRACT_PROBE) && (!defined(POP2_VERIFY) || !defined(POP2_INTEGRATION_PROBE))
 #error Attract observation requires explicit verification and integration probes
@@ -255,6 +259,7 @@ volatile uint32_t g_coreLoadedSegment=0;
 __attribute__((noinline)) void pop2CoreSegmentLoaded(){__asm__ volatile("nop" ::: "memory");}
 __attribute__((noinline)) void pop2CoreStopped() { __asm__ volatile("nop" ::: "memory"); }
 }
+static void invalidateQuickOwner();
 namespace {
 uint16_t w(const uint8_t* p) { return BigEndianMemory::read16(p); }
 uint32_t l(const uint8_t* p) { return BigEndianMemory::read32(p); }
@@ -307,7 +312,6 @@ uint32_t soundVolume=0x006e006e;
 uint8_t addressMode=0;
 uint8_t* vblTasks[8]={};unsigned vblCount=0;
 VBLPasses vblPass;
-uint32_t displayBatchFrame=0,displayBatchParent=0,displayBatchReturn=0;
 bool displayBatchScene=false;
 uint32_t callbackKind=0; // 1: Time Manager, 2: virtual VBL pass.
 uint32_t wallTicks() {
@@ -329,7 +333,7 @@ void removeVBL(unsigned index) {
     vblTasks[--vblCount]=nullptr;
     if(!vblCount)vblPass.reset(wallTicks());
 }
-TimerStamp timerNow() {
+__attribute__((noinline)) TimerStamp timerNow() {
     uint32_t before,after;uint16_t hi,lo,check;
     do { before=g_scaffoldFields;hi=*vposrPointer;lo=*vhposrPointer;
          check=*vposrPointer;after=g_scaffoldFields;
@@ -341,6 +345,27 @@ TimerStamp timerNow() {
 bool timerDue(TimerStamp now,TimerStamp due) {
     int32_t fields=now.field-due.field;
     return fields>0 || (!fields && now.micro>=due.micro);
+}
+__attribute__((noinline)) bool timerDueNow(TimerStamp due) {
+    int32_t fields=g_scaffoldFields-due.field;
+    if(fields)return fields>0;
+    uint32_t before,after;uint16_t hi,lo,check;
+    do {before=g_scaffoldFields;hi=*vposrPointer;lo=*vhposrPointer;
+        check=*vposrPointer;after=g_scaffoldFields;
+    } while(before!=after || ((hi^check)&1));
+    fields=after-due.field;
+    if(fields)return fields>0;
+    // Keep the old calculation for an ambiguous horizontal sample. Valid
+    // positions use its exact inverse, avoiding division on each readiness poll.
+    if((lo&255)>=227)return timerDue(timerNow(),due);
+    bool ready=((uint32_t(hi&1)<<16)|lo)>=VideoTicks::deadlinePALBeam(due.micro);
+#if defined(POP2_VERIFY) && defined(POP2_INPUT)
+    // Audit the inverse against the previous arithmetic on the same snapshot;
+    // a second beam read could cross the deadline while verifying it.
+    uint32_t us=(((hi&1)<<8)|(lo>>8))*64+((lo&255)*64)/227;
+    if(ready!=timerDue({after,us<20000?us:19999},due))g_clockFault=1;
+#endif
+    return ready;
 }
 bool timerService(uint16_t trap,uint32_t* regs) {
     uint8_t* task=(uint8_t*)regs[8];
@@ -527,6 +552,7 @@ bool segment(int16_t id) {
 #endif
         sw(entry,id);sw(entry+2,0x4ef9);sl(entry+4,target);
     }
+    invalidateQuickOwner();
     g_coreSegments[id][0]=(uint32_t)code;g_coreSegments[id][1]=size;
 #ifdef POP2_INTEGRATION_PROBE
     if(id==17){flushCode();pop2_integration_seed(code+0x6e42,a5);}
@@ -556,6 +582,7 @@ uint32_t stop(uint8_t* frame,uint8_t* usp,const char* why,uint16_t trap,uint32_t
     sl(frame+2,(uint32_t)pop2_mac_exit);return (uint32_t)usp;
 }
 }
+static void prepareQuickTraps();
 namespace CoreRuntime {
 const char* error() { return g_coreReason; }
 const uint8_t* displayTransfer() {return videoTransfer;}
@@ -581,6 +608,7 @@ bool prepare() {
 #endif
     if(!arena || !world || !stack)return fail("CORE / MEMORY");
     if(!heap.init(arena,g_coreZoneBytes))return fail("CORE / APPLICATION ZONE");
+    prepareQuickTraps();
     a5=world+spec.below;low=a5+8192;g_coreA5=(uint32_t)a5;g_coreBelow=spec.below;g_coreInitial=(uint32_t)initial;
     sl(low+0x130,(uint32_t)arena+g_coreZoneBytes);sl(low+0x118,(uint32_t)arena);sl(low+0x2aa,(uint32_t)arena);
     auto launchParameters=heap.newHandle(4,true);
@@ -996,9 +1024,10 @@ extern "C" void pop2GameplayRouteEnding(){
 #ifdef POP2_RECTANGLE_PROBE
 extern "C" {
 void pop2RectProbe();void pop2RectProbeEnd();
+void pop2RectTrapSect();void pop2RectTrapUnion();void pop2RectTrapEmpty();
 uint32_t g_rectEntry,g_rectArgs[3],g_rectRegisters[15],g_rectBeforeSP,g_rectAfterSP;
 uint16_t g_rectTrap,g_rectInitialCCR,g_rectCCR,g_rectResult;
-uint8_t g_rectRows[1220][92];uint32_t g_rectCount=0,g_rectGuards=0;
+uint8_t g_rectRows[1220][92];uint32_t g_rectCount=0,g_rectGuards=0,g_rectTrapCalls=0;
 int32_t pop2PureRect(uint8_t*,uint32_t*,uint32_t);
 __attribute__((noinline)) void pop2RectProbeDone(){__asm__ volatile("nop" ::: "memory");}
 }
@@ -1007,7 +1036,11 @@ static void rectangleFixture(){
         {10,20,0,0},{-32768,-32768,32767,32767},{-32768,-1,0,1},{0,-32768,1,32767},
         {-20,-30,-10,-5},{32767,32767,-32768,-32768}};
     const uint16_t traps[]={0xa8aa,0xa8ab,0xa8ae};
+#ifdef POP2_RECTANGLE_TRAP_PROBE
+    void (*entries[])()={pop2RectTrapSect,pop2RectTrapUnion,pop2RectTrapEmpty};
+#else
     void (*entries[])()={pop2SectRect,pop2UnionRect,pop2EmptyRect};
+#endif
     for(unsigned t=0;t<3;++t)for(unsigned a=0;a<10;++a)for(unsigned b=0;b<(t==2?1:10);++b)
     for(unsigned alias=0;alias<(t==2?1:3);++alias)for(unsigned cc=0;cc<2;++cc){
         uint8_t rects[24];for(unsigned i=0;i<4;++i){sw(rects+i*2,rectangles[a][i]);sw(rects+8+i*2,rectangles[b][i]);}
@@ -1032,6 +1065,9 @@ static void rectangleFixture(){
     }
     pop2RectProbeDone();
 }
+#endif
+#ifdef POP2_QUICK_TRAP_PROBE
+static void quickTrapFixture();
 #endif
 extern "C" void pop2IntegrationRoomHook(){
 #ifdef POP2_RECTANGLE_PROBE
@@ -1076,6 +1112,9 @@ extern "C" void pop2IntegrationRoomHook(){
     recordIntegrationStage();
 #else
     g_integrationRightAt=NativeInput::ticks()+120;g_integrationStage=3;recordIntegrationStage();
+#endif
+#ifdef POP2_QUICK_TRAP_PROBE
+    quickTrapFixture();
 #endif
 }
 #ifdef POP2_GAMEPLAY_SAVE_PROBE
@@ -1150,12 +1189,12 @@ extern "C" void pop2IntegrationTitleHook(uint8_t* originalSP){
 // Pascal entry adapter for the shared pure rectangle algorithms. Failed guards
 // retry the untouched full veneer, retaining its named errors and patch policy.
 // No tick, callback, port or framebuffer state is changed by these services.
-template<uint16_t trap>
+template<uint16_t trap,bool callable=true>
 __attribute__((always_inline)) inline int32_t pureRect(uint8_t* args,uint32_t* saved) {
     uint32_t count=trap==0xa8ae?6:trap==0xa8aa?14:12;
-    uint32_t start=(uint32_t)args-4,seg=0,off=0;
-    if(start<(uint32_t)stack || start-(uint32_t)stack>65536-count-4)return -1;
-    bool owner=location(l(args-4),seg,off);
+    uint32_t start=(uint32_t)args-(callable?4:0),seg=0,off=0;
+    if(start<(uint32_t)stack || start-(uint32_t)stack>65536-count-(callable?4:0))return -1;
+    bool owner=!callable || location(l(args-4),seg,off);
 #ifdef POP2_RECTANGLE_PROBE
     owner=owner || (l(args-4)>=(uint32_t)pop2RectProbe && l(args-4)<(uint32_t)pop2RectProbeEnd);
 #endif
@@ -1189,8 +1228,202 @@ extern "C" int32_t pop2PureRect(uint8_t* args,uint32_t* saved,uint32_t trap){
     return trap==0xa8aa?pop2SectRectBody(args,saved):trap==0xa8ab?pop2UnionRectBody(args,saved):pop2EmptyRectBody(args,saved);
 }
 #endif
+// Pure, nonblocking services shared by the ordinary and indexed entries.
+// Errors leave the existing named-stop path in charge.
+template<uint16_t trap>
+static inline bool trivialService(uint32_t* regs) {
+    if(trap==0xa9b4)regs[0]=(uint32_t)a5;
+    if(trap==0xa055)regs[0]&=0x00ffffff;
+    if(trap==0xa05d) {
+        if((regs[0]&255)>1)return fail("MMU / ADDRESS MODE");
+        uint8_t requested=regs[0];regs[0]=addressMode;
+        addressMode=requested;low[0xcb2]=requested;
+    }
+    if(trap==0xa029 || trap==0xa069) {
+        auto h=(MacHeap::Handle)regs[8];
+        if(trap==0xa029)regs[0]=(int32_t)heap.lockHandle(h);
+        else regs[0]=heap.state(h);
+        if(heap.error())return fail(trap==0xa029 ? "HEAP / UNKNOWN HANDLE" : "HEAP / STATE HANDLE OWNER");
+    }
+    return true;
+}
+extern "C" {
+uint32_t g_quickServicesValid=0,g_quickServicesTick=0,g_quickServicesField=0;
+uint32_t g_quickServicesMicro=0xffffffffUL;
+uint32_t g_quickCodeBase=0,g_quickCodeEnd=0,g_quickStackLow=0,g_quickStackHigh=0;
+const uint32_t* g_quickCodeIndexes=nullptr;
+const uint32_t* g_quickOwnerRows[6]={};
+uint8_t** g_quickA5=&a5;
+}
+static void invalidateQuickOwner() {g_quickCodeBase=0xffffffffUL;g_quickCodeEnd=0;}
+#define quickServicesValid g_quickServicesValid
+#define quickServicesTick g_quickServicesTick
+#define quickServicesField g_quickServicesField
+template<bool exact>
+__attribute__((always_inline)) static inline bool quickServicesReady() {
+#if defined(POP2_INPUT) && defined(POP2_UI) && defined(POP2_AUDIO)
+    uint32_t tick=exact ? wallTicks() : pop2ServiceTicks(),field=g_scaffoldFields;
+    if(g_clockFault)return false;
+    if(quickServicesValid && quickServicesTick==tick && quickServicesField==field)
+        return g_quickServicesMicro==0xffffffffUL || !timerDueNow({field,g_quickServicesMicro});
+    quickServicesValid=false;
+    if(NativeInput::error() || NativeAudio::servicePending() ||
+       (vblCount && vblPass.needed(tick)))return false;
+    // A future field cannot have a due microsecond timer. A timer in the
+    // current field takes the exact existing timerNow path, even if early.
+    uint32_t micro=0xffffffffUL;
+    for(unsigned i=0;i<timerCount;++i)if(timers[i].active && int32_t(timers[i].due.field-field)<=0) {
+        if(timerDueNow(timers[i].due))return false;
+        if(timers[i].due.micro<micro)micro=timers[i].due.micro;
+    }
+    quickServicesTick=tick;quickServicesField=field;
+    // A current-field certificate retains the earliest precise deadline;
+    // every native reuse checks it. Never reuse across an interrupt arriving
+    // during validation. The full path invalidates before mutating queues.
+    g_quickServicesMicro=micro;
+    quickServicesValid=field==g_scaffoldFields;
+    return field==g_scaffoldFields;
+#else
+    return false;
+#endif
+}
+using QuickTrap=uint32_t (*)(uint32_t*,uint8_t*,uint8_t*);
+extern "C" { QuickTrap g_pop2QuickTraps[4096]={}; }
+template<uint16_t trap>
+__attribute__((optimize("O3"))) static uint32_t quickTrap(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
+#if defined(POP2_INPUT) && defined(POP2_DISPLAY) && defined(POP2_UI) && defined(POP2_AUDIO)
+    // Adopt Alone in the Dark's unfinished-frame / no-due-service guard.
+    // TickCount samples precisely; other services use the interrupt epoch or
+    // the latest precise observation, as does the ordinary VBL selector.
+    // Any miss retains the complete ordinary path, before changing game state.
+    if((w(frame)&0x2000) || didStop || g_timerCallbackActive)return 0;
+    if(usp<stack+128 || usp>stack+65536-4)return 0;
+    if(displayBatchFrame && ((uint32_t)usp>displayBatchFrame ||
+       l((uint8_t*)displayBatchFrame)!=displayBatchParent ||
+       l((uint8_t*)displayBatchFrame+4)!=displayBatchReturn))return 0;
+    uint32_t seg,off,pc=l(frame+2);
+    if(!location(pc,seg,off))return 0;
+#if defined(POP2_TIMING_PROBE) && defined(POP2_INTEGRATION_PROBE)
+    // Retain the existing SetTimer request recorder on its original path.
+    if(trap==0xa975 && seg==17 && off==0x313e)return 0;
+#endif
+    if(!quickServicesReady<trap==0xa975>())return 0;
+    if(!trivialService<trap>(regs))return 0;
+    g_quickCodeBase=g_coreSegments[seg][0];g_quickCodeEnd=g_quickCodeBase+g_coreSegments[seg][1]-2;
+    if(trap==0xa975){sl(usp,quickServicesTick);regs[0]=0;}
+    if(!(trap&0x0800)) {
+        sw(low+0x220,heap.error());
+        uint16_t sr=w(frame)&~15,result=regs[0];
+        if(!result)sr|=4;if(result&0x8000)sr|=8;sw(frame,sr);
+    }
+#if defined(POP2_VERIFY) && !defined(POP2_ROUTE_NO_TRAP_TRACE)
+    uint32_t* row=g_coreTrace[(g_coreCount++)%traceCapacity];row[0]=seg;row[1]=off;row[2]=trap;
+#endif
+    return 1;
+#else
+    return 0;
+#endif
+}
+extern "C" {
+void pop2QuickSystemTask();void pop2QuickTickCount();
+void pop2QuickStripAddress();void pop2QuickSwapMMUMode();
+void pop2QuickHLock();void pop2QuickHGetState();
+}
+static void prepareQuickTraps() {
+    static_assert(CodeRangeCache::slots==256,"native code-range index size");
+    invalidateQuickOwner();
+    g_quickCodeIndexes=codeRanges.indexes();
+    for(auto& row:g_quickOwnerRows)row=nullptr;
+    g_quickStackLow=(uint32_t)stack+128;g_quickStackHigh=(uint32_t)stack+65536-4;
+#if defined(POP2_INPUT) && defined(POP2_DISPLAY) && defined(POP2_UI) && defined(POP2_AUDIO)
+    g_pop2QuickTraps[0x975]=(QuickTrap)((uint32_t)pop2QuickTickCount|1);
+    g_pop2QuickTraps[0x9b4]=(QuickTrap)((uint32_t)pop2QuickSystemTask|1);
+    g_pop2QuickTraps[0x055]=(QuickTrap)((uint32_t)pop2QuickStripAddress|1);
+    g_pop2QuickTraps[0x05d]=(QuickTrap)((uint32_t)pop2QuickSwapMMUMode|1);
+    g_pop2QuickTraps[0x029]=(QuickTrap)((uint32_t)pop2QuickHLock|1);
+    g_pop2QuickTraps[0x069]=(QuickTrap)((uint32_t)pop2QuickHGetState|1);
+#endif
+}
+extern "C" uint32_t pop2QuickStripAddressBody(uint32_t* r,uint8_t* f,uint8_t* u){return quickTrap<0xa055>(r,f,u);}
+extern "C" uint32_t pop2QuickSwapMMUModeBody(uint32_t* r,uint8_t* f,uint8_t* u){return quickTrap<0xa05d>(r,f,u);}
+extern "C" uint32_t pop2QuickHLockBody(uint32_t* r,uint8_t* f,uint8_t* u){return quickTrap<0xa029>(r,f,u);}
+extern "C" uint32_t pop2QuickHGetStateBody(uint32_t* r,uint8_t* f,uint8_t* u){return quickTrap<0xa069>(r,f,u);}
+// Reuse the shared current-range validator on a native owner candidate miss;
+// changing CODE owners need not repeat the other guard checks in a C wrapper.
+extern "C" __attribute__((optimize("O3"))) uint32_t pop2QuickLocate(uint32_t pc) {
+    uint32_t seg,off;
+    if(!location(pc,seg,off))return 0;
+    g_quickCodeBase=g_coreSegments[seg][0];
+    g_quickCodeEnd=g_quickCodeBase+g_coreSegments[seg][1]-2;
+    return (uint32_t)g_coreSegments[seg];
+}
+// Called only after the native stack, CODE and frame-owner checks. Refresh the
+// same certificate used by the checked C entries; pending work still falls
+// back before any service result or game state is changed.
+extern "C" __attribute__((optimize("O3"))) uint32_t pop2QuickReady(uint32_t kind) {
+    if(didStop || g_timerCallbackActive)return 0;
+    return kind==1 ? quickServicesReady<true>() : quickServicesReady<false>();
+}
+extern "C" uint32_t pop2QuickDeadlineReady() {
+    return !timerDueNow({g_quickServicesField,g_quickServicesMicro});
+}
+// The native guard has already validated the caller and no-due certificate.
+// Share the service bodies and OS result/CCR policy with the full dispatcher.
+template<uint16_t trap>
+__attribute__((always_inline)) static inline uint32_t quickTrivialBody(uint32_t* regs,uint8_t* frame) {
+    uint32_t saved=regs[0];
+    if(!trivialService<trap>(regs)){regs[0]=saved;return 0;}
+    sw(low+0x220,heap.error());
+    uint16_t sr=w(frame)&~15,result=regs[0];
+    if(!result)sr|=4;if(result&0x8000)sr|=8;sw(frame,sr);
+    return 1;
+}
+extern "C" __attribute__((optimize("O3"))) uint32_t pop2QuickStripAddressWarm(uint32_t* r,uint8_t* f){return quickTrivialBody<0xa055>(r,f);}
+extern "C" __attribute__((optimize("O3"))) uint32_t pop2QuickSwapMMUModeWarm(uint32_t* r,uint8_t* f){return quickTrivialBody<0xa05d>(r,f);}
+extern "C" __attribute__((optimize("O3"))) uint32_t pop2QuickHLockWarm(uint32_t* r,uint8_t* f){return quickTrivialBody<0xa029>(r,f);}
+extern "C" __attribute__((optimize("O3"))) uint32_t pop2QuickHGetStateWarm(uint32_t* r,uint8_t* f){return quickTrivialBody<0xa069>(r,f);}
+extern "C" uint32_t pop2QuickTickCountBody(uint32_t* r,uint8_t* f,uint8_t* u){return quickTrap<0xa975>(r,f,u);}
+extern "C" uint32_t pop2QuickSystemTaskBody(uint32_t* r,uint8_t* f,uint8_t* u){return quickTrap<0xa9b4>(r,f,u);}
+#ifdef POP2_VERIFY
+extern "C" {uint32_t g_quickGuardChecks=0,g_quickGuardFault=0;}
+extern "C" uint32_t pop2QuickVerify(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
+    uint32_t seg=0,off=0,pc=l(frame+2);
+    bool valid=location(pc,seg,off) && usp>=stack+128 && usp<=stack+65536-4;
+    valid=valid && (!displayBatchFrame || ((uint32_t)usp<=displayBatchFrame &&
+        l((uint8_t*)displayBatchFrame)==displayBatchParent &&
+        l((uint8_t*)displayBatchFrame+4)==displayBatchReturn));
+    valid=valid && !(w(frame)&0x2000) && !didStop && !g_timerCallbackActive;
+#ifdef POP2_INPUT
+    valid=valid && !g_clockFault;
+#endif
+#if defined(POP2_INPUT) && defined(POP2_UI) && defined(POP2_AUDIO)
+    uint32_t field=g_scaffoldFields;
+    if(field==quickServicesField) {
+        valid=valid && !NativeInput::error() && !NativeAudio::servicePending() &&
+            (!vblCount || !vblPass.needed(quickServicesTick));
+        // Reusable certificates must cover every active deadline. The native
+        // entry checks the earliest deadline before accepting; timerDueNow
+        // audits that comparison on the same snapshot in VERIFY builds.
+        if(quickServicesValid)for(unsigned i=0;i<timerCount;++i)
+            if(timers[i].active) {
+                int32_t delta=timers[i].due.field-field;
+                if(delta<0 || (!delta && timers[i].due.micro<g_quickServicesMicro))valid=false;
+            }
+        if(field==g_scaffoldFields){++g_quickGuardChecks;if(!valid)g_quickGuardFault=1;}
+    }
+#endif
+#ifndef POP2_ROUTE_NO_TRAP_TRACE
+    uint32_t* row=g_coreTrace[(g_coreCount++)%traceCapacity];row[0]=seg;row[1]=off;row[2]=w((uint8_t*)pc);
+#endif
+    (void)regs;return !g_quickGuardFault;
+}
+#endif
+#include "QuickTrapProbe.inc"
 extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
     uint32_t pc=l(frame+2),seg=0,off=0;
+#ifdef POP2_VERIFY
+    if(g_quickGuardFault)return stop(frame,usp,"DISPATCH / QUICK GUARD MISMATCH",0,seg,off);
+#endif
 #ifdef POP2_INTEGRATION_TITLE_STATE
     if(g_integrationTitleState==2)return stop(frame,usp,"INTEGRATION / TITLE STATE INITIAL CUE",0,seg,off);
 #endif
@@ -1231,6 +1464,9 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
             return stop(frame,usp,regs[0]?"TIMING / FIXTURE ABI FAILURE":"TIMING / VBL FIXTURE COMPLETE",0xaffb,seg,off);
         }
     }
+#endif
+#ifdef POP2_RECTANGLE_TRAP_PROBE
+    if(pc>=(uint32_t)pop2RectProbe && pc<(uint32_t)pop2RectProbeEnd){fixtureCaller=true;++g_rectTrapCalls;}
 #endif
     bool audioCaller=false;
 #ifdef POP2_AUDIO
@@ -1408,6 +1644,98 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
     }
 #endif
     uint32_t consumed=0;int16_t error=0;bool os=(trap&0x0800)==0;
+    // As in Alone in the Dark, select a service by trap index rather than
+    // searching every manager and a sparse compare tree on each call.
+    // The table contains only port-owned labels; caller and patch checks above
+    // remain common to every entry. Selector-dependent file traps retain their
+    // explicit handles check inside that entry.
+    static void* entries[4096];
+    if(!entries[0]) {
+        for(unsigned i=0;i<4096;++i)entries[i]=&&trap_unknown;
+        entries[0xa84d&0xfff]=&&trap_0xa84d;
+        entries[0xa868&0xfff]=&&trap_0xa868;
+        entries[0xa800&0xfff]=&&trap_0xa800;
+        entries[0xa51e&0xfff]=&&trap_0xa51e;
+        entries[0xa033&0xfff]=&&trap_0xa033;
+        entries[0xa034&0xfff]=&&trap_0xa034;
+        entries[0xa9b4&0xfff]=&&trap_0xa9b4;
+        entries[0xa05c&0xfff]=&&trap_0xa05c;
+        entries[0xa05d&0xfff]=&&trap_0xa05d;
+        entries[0xa85d&0xfff]=&&trap_0xa85d;
+        entries[0xa9c6&0xfff]=&&trap_0xa9c6;
+        entries[0xa058&0xfff]=&&trap_0xa058;
+        entries[0xa059&0xfff]=&&trap_0xa059;
+        entries[0xa05a&0xfff]=&&trap_0xa05a;
+        entries[0xaa52&0xfff]=&&trap_0xaa52;
+        entries[0xa997&0xfff]=&&trap_0xa997;
+        entries[0xa994&0xfff]=&&trap_0xa994;
+        entries[0xa9af&0xfff]=&&trap_0xa9af;
+        entries[0xa998&0xfff]=&&trap_0xa998;
+        entries[0xa99a&0xfff]=&&trap_0xa99a;
+        entries[0xa9ab&0xfff]=&&trap_0xa9ab;
+        entries[0xa9b0&0xfff]=&&trap_0xa9b0;
+        entries[0xa9ad&0xfff]=&&trap_0xa9ad;
+        entries[0xa9a4&0xfff]=&&trap_0xa9a4;
+        entries[0xa9a8&0xfff]=&&trap_0xa9a8;
+        entries[0xa9a0&0xfff]=&&trap_0xa9a0;
+        entries[0xa9a5&0xfff]=&&trap_0xa9a5;
+        entries[0xa9a6&0xfff]=&&trap_0xa9a6;
+        entries[0xa9a2&0xfff]=&&trap_0xa9a2;
+        entries[0xa992&0xfff]=&&trap_0xa992;
+        entries[0xa9a3&0xfff]=&&trap_0xa9a3;
+        entries[0xa02e&0xfff]=&&trap_0xa02e;
+        entries[0xa31e&0xfff]=&&trap_0xa31e;
+        entries[0xa021&0xfff]=&&trap_0xa021;
+        entries[0xa01f&0xfff]=&&trap_0xa01f;
+        entries[0xa023&0xfff]=&&trap_0xa023;
+        entries[0xa049&0xfff]=&&trap_0xa049;
+        entries[0xa04a&0xfff]=&&trap_0xa04a;
+        entries[0xa128&0xfff]=&&trap_0xa128;
+        entries[0xa11a&0xfff]=&&trap_0xa11a;
+        entries[0xa01b&0xfff]=&&trap_0xa01b;
+        entries[0xa055&0xfff]=&&trap_0xa055;
+        entries[0xa01c&0xfff]=&&trap_0xa01c;
+        entries[0xa11d&0xfff]=&&trap_0xa11d;
+        entries[0xa162&0xfff]=&&trap_0xa162;
+        entries[0xa036&0xfff]=&&trap_0xa036;
+        entries[0xa069&0xfff]=&&trap_0xa069;
+        entries[0xa06a&0xfff]=&&trap_0xa06a;
+        entries[0xa02a&0xfff]=&&trap_0xa02a;
+        entries[0xa024&0xfff]=&&trap_0xa024;
+#ifdef POP2_INPUT
+        entries[0xa975&0xfff]=&&trap_0xa975;
+#endif
+        entries[0xa040&0xfff]=&&trap_0xa040;
+        entries[0xa9e1&0xfff]=&&trap_0xa9e1;
+        entries[0xa025&0xfff]=&&trap_0xa025;
+        entries[0xa029&0xfff]=&&trap_0xa029;
+        entries[0xa064&0xfff]=&&trap_0xa064;
+        entries[0xa122&0xfff]=&&trap_0xa122;
+        entries[0xa11e&0xfff]=&&trap_0xa11e;
+#ifdef POP2_UI
+        entries[0xa746&0xfff]=&&trap_0xa746;
+#endif
+#ifdef POP2_UI
+        entries[0xa346&0xfff]=&&trap_0xa346;
+#endif
+        entries[0xa146&0xfff]=&&trap_0xa146;
+        entries[0xa047&0xfff]=&&trap_0xa047;
+        entries[0xa9f0&0xfff]=&&trap_0xa9f0;
+        entries[0xa1ad&0xfff]=&&trap_0xa1ad;
+        entries[0xa090&0xfff]=&&trap_0xa090;
+        entries[0xa8fe&0xfff]=&&trap_0xa8fe;
+        entries[0xa86e&0xfff]=&&trap_0xa86e;
+        for(unsigned i=0;i<4096;++i) {
+            uint16_t t=0xa000|i;
+            if(NativeFiles::handles(t,26))entries[i]=&&trap_files;
+#ifdef POP2_DISPLAY
+            if(NativeDisplay::handles(t))entries[i]=&&trap_display;
+#ifdef POP2_UI
+            if(NativeUI::handles(t))entries[i]=&&trap_ui;
+#endif
+#endif
+        }
+    }
 #ifdef POP2_DISPLAY
     // Reuse Alone in the Dark's LINK-frame lifetime test: a returned frame may
     // remain in stack memory or be reused, so compare SP, parent and return PC.
@@ -1474,7 +1802,11 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
     }
 #ifdef POP2_UI
     if(NativeInput::error())return stop(frame,usp,NativeInput::error(),trap,seg,off);
-    if(NativeUI::handles(trap)) {
+#endif
+    if((trap&0xf000)!=0xa000)goto trap_unknown;
+    goto *entries[trap&0xfff];
+#ifdef POP2_UI
+    { trap_ui:
 #ifdef POP2_GAMEPLAY_HALL_VIEW_PROBE
         // Diagnostic input follows original wait callers, without debugger
         // writes to cached runtime state or changes to original control flow.
@@ -1532,12 +1864,12 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
         return (uint32_t)(usp+consumed);
     }
 #endif
+    { trap_display:
 #if defined(POP2_UI_PROBE) || defined(POP2_STARTUP_CHECKPOINT)
     // Preserve the bounded earlier service fixtures after adding Palette2CTab.
     if(trap==0xaaa0 && seg==17 && off==0x820)
         return stop(frame,usp,"UI / STARTUP CHECKPOINT",trap,seg,off);
 #endif
-    if(NativeDisplay::handles(trap)) {
         // FrameAdv can update the health display before calling DrawWorld.
         // Its leaf callees do not add LINK frames: identify FrameAdv by its
         // byte-verified caller return, before DrawWorld's GetGWorld.
@@ -1582,7 +1914,12 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
                 displayBatchScene=true;
             }
         }
-        if(!NativeDisplay::dispatch(trap,regs,usp,consumed))return stop(frame,usp,NativeDisplay::error(),trap,seg,off);
+        if(trap==0xa8aa || trap==0xa8ab || trap==0xa8ae) {
+            int32_t cc=trap==0xa8aa ? pureRect<0xa8aa,false>(usp,regs) :
+                trap==0xa8ab ? pureRect<0xa8ab,false>(usp,regs) : pureRect<0xa8ae,false>(usp,regs);
+            if(cc<0)return stop(frame,usp,"DISPLAY / PURE RECTANGLE EXTENT",trap,seg,off);
+            consumed=trap==0xa8ae?4:12;sw(frame,(w(frame)&~31)|cc);
+        } else if(!NativeDisplay::dispatch(trap,regs,usp,consumed))return stop(frame,usp,NativeDisplay::error(),trap,seg,off);
 #if defined(POP2_GAMEPLAY_ROUTE_PROBE) && defined(POP2_ROUTE_RANDOM_TRACE)
         if(trap==0xa861 && g_integrationStage==3){
             uint16_t step=w(a5-0x349a);
@@ -1597,7 +1934,12 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
         return (uint32_t)(usp+consumed);
     }
 #endif
-    if(NativeFiles::handles(trap,(uint16_t)regs[0])) {
+#ifndef POP2_DISPLAY
+    if((trap&0xf000)!=0xa000)goto trap_unknown;
+    goto *entries[trap&0xfff];
+#endif
+    { trap_files:
+        if(!NativeFiles::handles(trap,(uint16_t)regs[0]))goto trap_unknown;
         auto valid=[](uint32_t at,uint32_t n) {
             return (at>=(uint32_t)stack && at-(uint32_t)stack<=65536 && n<=65536-(at-(uint32_t)stack)) ||
                 (at>=(uint32_t)world && at-(uint32_t)world<=worldSize && n<=worldSize-(at-(uint32_t)world)) ||
@@ -1643,10 +1985,10 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
         return (uint32_t)usp;
     }
     switch(trap) {
-    case 0xa84d:case 0xa868:
+    case 0xa84d: trap_0xa84d:case 0xa868: trap_0xa868:
         if(!fixedService(trap,usp))goto failed;
         consumed=8;break;
-    case 0xa800: {
+    case 0xa800: trap_0xa800: {
         if(regs[0]==0x000c0008){sl(usp,0x03208000);regs[0]=0x0008000c;}
         else if(regs[0]==0x022c0018){
             if(!validMemory(l(usp),4)){fail("SOUND / VOLUME OUTPUT");goto failed;}
@@ -1661,8 +2003,8 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
         } else {fail("SOUND / DISPATCH SELECTOR");goto failed;}
         break;
     }
-    case 0xa51e:regs[8]=(uint32_t)heap.newPtr(regs[0],true);error=heap.error();regs[0]=(int32_t)error;break;
-    case 0xa033:case 0xa034: {
+    case 0xa51e: trap_0xa51e:regs[8]=(uint32_t)heap.newPtr(regs[0],true);error=heap.error();regs[0]=(int32_t)error;break;
+    case 0xa033: trap_0xa033:case 0xa034: trap_0xa034: {
         if(!validMemory(regs[8],14)){fail("VBL / TASK EXTENT");goto failed;}
         uint8_t* task=(uint8_t*)regs[8];int index=vblIndex(task);
         if(trap==0xa033){
@@ -1677,21 +2019,20 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
         }
         regs[0]=0;break;
     }
-    case 0xa9b4: // SystemTask: callbacks are delivered by the common service return.
-        regs[0]=(uint32_t)a5;break;
-    case 0xa05c:
+    case 0xa9b4: trap_0xa9b4: // SystemTask: callbacks are delivered by the common service return.
+        if(!trivialService<0xa9b4>(regs))goto failed;break;
+    case 0xa05c: trap_0xa05c:
         if((regs[0]!=2 && regs[0]!=3) || !validMemory(regs[8],regs[9])){fail("MEMORY DISPATCH / LOCK RANGE");goto failed;}
         regs[0]=0;break; // LockMemory / UnlockMemory: native allocations are resident and physically stable.
-    case 0xa05d:
-        if((regs[0]&255)>1){fail("MMU / ADDRESS MODE");goto failed;}
-        {uint8_t requested=regs[0];regs[0]=addressMode;addressMode=requested;low[0xcb2]=requested;}break; // Native pointers remain full addresses.
-    case 0xa85d: { // BitTst numbers bits from the most significant bit.
+    case 0xa05d: trap_0xa05d:
+        if(!trivialService<0xa05d>(regs))goto failed;break;
+    case 0xa85d: trap_0xa85d: { // BitTst numbers bits from the most significant bit.
         uint32_t bit=l(usp),address=l(usp+4)+(int32_t(bit)>>3);
         if(!validMemory(address,1)){fail("BITTEST / BYTE EXTENT");goto failed;}
         usp[8]=(*(uint8_t*)address&(0x80>>(bit&7)))?1:0;
         consumed=8;regs[0]=uint16_t(~bit);regs[1]=bit>>3;break;
     }
-    case 0xa9c6: { // Secs2Date uses D0 seconds since 1904 and A0 DateTimeRec.
+    case 0xa9c6: trap_0xa9c6: { // Secs2Date uses D0 seconds since 1904 and A0 DateTimeRec.
         if(!validMemory(regs[8],14)){fail("DATE / RECORD EXTENT");goto failed;}
         uint8_t* out=(uint8_t*)regs[8];uint32_t days=regs[0]/86400,seconds=regs[0]%86400;
         uint16_t weekday=(days+5)%7+1,year=1904,month=1;
@@ -1702,24 +2043,24 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
         sw(out,year);sw(out+2,month);sw(out+4,days+1);sw(out+6,seconds/3600);
         sw(out+8,(seconds/60)%60);sw(out+10,seconds%60);sw(out+12,weekday);break;
     }
-    case 0xa058:case 0xa059:case 0xa05a:
+    case 0xa058: trap_0xa058:case 0xa059: trap_0xa059:case 0xa05a: trap_0xa05a:
         if(!timerService(trap,regs))goto failed;break;
-    case 0xaa52: {
+    case 0xaa52: trap_0xaa52: {
         if((uint16_t)regs[0]!=1 || !validMemory((uint32_t)usp,16)) {fail("FILES / FSSPEC SELECTOR OR ARGUMENTS");goto failed;}
         char path[256];if(!pascalPath(l(usp+4),path) || !validMemory(l(usp),70)) {fail("FILES / FSSPEC EXTENT");goto failed;}
         int32_t result=NativeFiles::makeSpec((int16_t)w(usp+12),l(usp+8),path,(uint8_t*)l(usp));
         if(result==MacFiles::unsupported) {fail("FILES / FSSPEC UNSUPPORTED");goto failed;}
         sw(usp+14,result);regs[0]=result;consumed=14;break;
     }
-    case 0xa997: {
+    case 0xa997: trap_0xa997: {
         char path[256];if(!pascalPath(l(usp),path)) {fail("RESOURCE / FILE NAME EXTENT");goto failed;}
         int16_t ref=-1;resourceError=NativeResources::open(0,0,path,0,ref);
         if(resourceError==MacFiles::unsupported) {fail("RESOURCE / OPEN UNSUPPORTED");goto failed;}
         sw(usp+4,ref);sw(low+0xa60,resourceError);sw(low+0xa5a,NativeResources::current());consumed=4;break;
     }
-    case 0xa994:sw(usp,NativeResources::current());break;
-    case 0xa9af:sw(usp,resourceError);break;
-    case 0xa998:case 0xa99a: {
+    case 0xa994: trap_0xa994:sw(usp,NativeResources::current());break;
+    case 0xa9af: trap_0xa9af:sw(usp,resourceError);break;
+    case 0xa998: trap_0xa998:case 0xa99a: trap_0xa99a: {
         int16_t ref=(int16_t)w(usp);
         resourceError=trap==0xa998 ? NativeResources::use(ref) : publishResources(ref);
         if(!resourceError && trap==0xa99a)resourceError=NativeResources::close(ref);
@@ -1731,7 +2072,7 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
         }
         sw(low+0xa60,resourceError);sw(low+0xa5a,NativeResources::current());if(trap==0xa99a)regs[0]=(uint16_t)resourceError;consumed=2;break;
     }
-    case 0xa9ab: {
+    case 0xa9ab: trap_0xa9ab: {
         // Adapt Alone in the Dark's argument/ownership checks; metadata and
         // payload ownership remain in the shared ResourceDirectory.
         if(!validMemory((uint32_t)usp,14)) {fail("RESOURCE / ADD ARGUMENTS");goto failed;}
@@ -1754,14 +2095,14 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
         error=heap.setState(h,(heap.state(h)|0x20)&~0x40);
         sw(low+0xa60,0);regs[0]=0;consumed=14;break;
     }
-    case 0xa9b0: {
+    case 0xa9b0: trap_0xa9b0: {
         auto h=(MacHeap::Handle)l(usp);Resource* r=byHandle(h);
         if(!r || r->detached || !heap.isHandle(h) || !*h) {fail("RESOURCE / WRITE OWNER");goto failed;}
         resourceError=(r->changes&1) ? publishResources(r->fileRef,r) : 0;
         if(resourceError) {fail("RESOURCE / WRITE PUBLICATION");goto failed;}
         error=0;sw(low+0xa60,0);regs[0]=0;consumed=4;break;
     }
-    case 0xa9ad: {
+    case 0xa9ad: trap_0xa9ad: {
         auto h=(MacHeap::Handle)l(usp);Resource* r=byHandle(h);
         if(!r || r->detached || !heap.isHandle(h) || !*h) {fail("RESOURCE / REMOVE OWNER");goto failed;}
         resourceError=NativeResources::remove(r->identity);
@@ -1769,7 +2110,7 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
         r->detached=true;r->changes=0;error=heap.setState(h,heap.state(h)&~0x20);
         sw(low+0xa60,0);regs[0]=0;consumed=4;break;
     }
-    case 0xa9a4:case 0xa9a8: {
+    case 0xa9a4: trap_0xa9a4:case 0xa9a8: trap_0xa9a8: {
         if(trap==0xa9a8 && !validMemory((uint32_t)usp,16)) {fail("RESOURCE / INFO ARGUMENTS");goto failed;}
         auto h=(MacHeap::Handle)l(usp+(trap==0xa9a8 ? 12 : 0));Resource* r=byHandle(h);
         NativeResources::Item item={};const uint8_t* name=0;uint8_t length=0;
@@ -1784,7 +2125,7 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
         } else if(trap==0xa9a4)sw(usp+4,0xffff);
         sw(low+0xa60,resourceError);if(trap==0xa9a8)regs[0]=(uint16_t)resourceError;consumed=trap==0xa9a8 ? 16 : 4;break;
     }
-    case 0xa9a0: {
+    case 0xa9a0: trap_0xa9a0: {
         Resource* r=get(l(usp+2),(int16_t)w(usp));
         if(!r && !resourceError)goto failed;
         sl(usp+6,r ? (uint32_t)r->handle : 0);regs[0]=0;
@@ -1795,7 +2136,7 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
 #endif
         consumed=6;break;
     }
-    case 0xa9a5: case 0xa9a6: case 0xa9a2: case 0xa992: case 0xa9a3: {
+    case 0xa9a5: trap_0xa9a5: case 0xa9a6: trap_0xa9a6: case 0xa9a2: trap_0xa9a2: case 0xa992: trap_0xa992: case 0xa9a3: trap_0xa9a3: {
         auto h=(MacHeap::Handle)l(usp);Resource* r=byHandle(h);
         if(!r || !heap.isHandle(h)) { fail("RESOURCE / UNKNOWN HANDLE");goto failed; }
         if(trap==0xa9a5)sl(usp+4,r->source.size);
@@ -1813,15 +2154,15 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
         }
         consumed=4;break;
     }
-    case 0xa02e: {
+    case 0xa02e: trap_0xa02e: {
         uint32_t n=regs[0],from=regs[8],to=regs[9];
         if(!validMemory(from,n)||!validMemory(to,n)){fail("MEMORY / BLOCKMOVE EXTENT");goto failed;}
         if(to>from && to-from<n)for(uint32_t i=n;i;--i)((uint8_t*)to)[i-1]=((const uint8_t*)from)[i-1];
         else copy((uint8_t*)to,(const uint8_t*)from,n);
         regs[0]=0;break;
     }
-    case 0xa31e:regs[8]=(uint32_t)heap.newPtr(regs[0],true);error=heap.error();regs[0]=(int32_t)error;break;
-    case 0xa021:
+    case 0xa31e: trap_0xa31e:regs[8]=(uint32_t)heap.newPtr(regs[0],true);error=heap.error();regs[0]=(int32_t)error;break;
+    case 0xa021: trap_0xa021:
         if(!validMemory(regs[8],1)){fail("HEAP / POINTER SIZE OWNER");goto failed;}
         regs[0]=heap.ptrSize((uint8_t*)regs[8]);
         if(heap.error()){
@@ -1830,12 +2171,12 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
             regs[0]=heap.handleSize(handle);
         }
         break;
-    case 0xa01f:error=heap.disposePtr((uint8_t*)regs[8]);regs[0]=(int32_t)error;break;
-    case 0xa023: {
+    case 0xa01f: trap_0xa01f:error=heap.disposePtr((uint8_t*)regs[8]);regs[0]=(int32_t)error;break;
+    case 0xa023: trap_0xa023: {
         auto h=(MacHeap::Handle)regs[8];error=heap.disposeHandle(h);regs[0]=(int32_t)error;
         if(!error){Resource* r=byHandle(h);if(r)r->handle=nullptr;}break;
     }
-    case 0xa049:case 0xa04a: {
+    case 0xa049: trap_0xa049:case 0xa04a: trap_0xa04a: {
         auto h=(MacHeap::Handle)regs[8];
         if(trap==0xa049 && heap.isFreeHandleSlot(h)) {
             // MEASURED original demo cleanup: HPurge on a disposed master
@@ -1846,21 +2187,21 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
         if(!heap.isHandle(h)){fail("HEAP / PURGE HANDLE OWNER");goto failed;}
         error=heap.setState(h,trap==0xa049?heap.state(h)|0x40:heap.state(h)&~0x40);regs[0]=(int32_t)error;break;
     }
-    case 0xa128:regs[8]=(uint32_t)heap.recoverHandle((uint8_t*)regs[8]);error=heap.error();regs[0]=(int32_t)error;break;
-    case 0xa11a:regs[8]=(uint32_t)arena;regs[0]=0;break;
-    case 0xa01b:if(regs[8]!=(uint32_t)arena){fail("HEAP / UNKNOWN ZONE");goto failed;}regs[0]=0;break;
-    case 0xa055:regs[0]&=0x00ffffff;break;
-    case 0xa01c:regs[0]=heap.freeBytes();break;
-    case 0xa11d:regs[0]=heap.compact();regs[8]=0;break;
-    case 0xa162:regs[0]=heap.freeBytes();regs[8]=heap.largestBlock();break;
-    case 0xa036:error=heap.moreMasters();regs[0]=(int32_t)error;break;
-    case 0xa069:case 0xa06a: {
+    case 0xa128: trap_0xa128:regs[8]=(uint32_t)heap.recoverHandle((uint8_t*)regs[8]);error=heap.error();regs[0]=(int32_t)error;break;
+    case 0xa11a: trap_0xa11a:regs[8]=(uint32_t)arena;regs[0]=0;break;
+    case 0xa01b: trap_0xa01b:if(regs[8]!=(uint32_t)arena){fail("HEAP / UNKNOWN ZONE");goto failed;}regs[0]=0;break;
+    case 0xa055: trap_0xa055:if(!trivialService<0xa055>(regs))goto failed;break;
+    case 0xa01c: trap_0xa01c:regs[0]=heap.freeBytes();break;
+    case 0xa11d: trap_0xa11d:regs[0]=heap.compact();regs[8]=0;break;
+    case 0xa162: trap_0xa162:regs[0]=heap.freeBytes();regs[8]=heap.largestBlock();break;
+    case 0xa036: trap_0xa036:error=heap.moreMasters();regs[0]=(int32_t)error;break;
+    case 0xa069: trap_0xa069:case 0xa06a: trap_0xa06a: {
         auto h=(MacHeap::Handle)regs[8];if(!heap.isHandle(h)){fail("HEAP / STATE HANDLE OWNER");goto failed;}
-        if(trap==0xa069){regs[0]=heap.state(h);error=heap.error();}
+        if(trap==0xa069){if(!trivialService<0xa069>(regs))goto failed;}
         else {error=heap.setState(h,uint8_t(regs[0]));regs[0]=(int32_t)error;}
         break;
     }
-    case 0xa02a:case 0xa024: {
+    case 0xa02a: trap_0xa02a:case 0xa024: trap_0xa024: {
 #ifdef POP2_ROUTE_RESOURCE_TRACE
         if(seg==15 && off>=0x2700 && off<0x2a00){
             volatile uint32_t* row=g_routeHandles[(g_routeHandleCount++)%256];
@@ -1885,7 +2226,7 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
         regs[0]=(int32_t)error;break;
     }
 #ifdef POP2_INPUT
-    case 0xa975: {
+    case 0xa975: trap_0xa975: {
         uint32_t ticks=callbackTicks();sl(usp,ticks);regs[0]=0;
 #if defined(POP2_TIMING_PROBE) && defined(POP2_INTEGRATION_PROBE)
         if(g_integrationStage==3 && seg==17 && off==0x313e && g_timingSetCount<512){
@@ -1898,7 +2239,7 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
         break;
     }
 #endif
-    case 0xa040: // ResrvMem: reserve contiguous space in the current zone.
+    case 0xa040: trap_0xa040: // ResrvMem: reserve contiguous space in the current zone.
 #ifdef POP2_GAMEPLAY_ROUTE_PROBE
         g_routeReserve[0]=regs[0];g_routeReserve[1]=heap.largestBlock();
 #endif
@@ -1910,7 +2251,7 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
         g_routeReserve[2]=heap.largestBlock();g_routeReserve[3]=uint16_t(error);
 #endif
         break;
-    case 0xa9e1: {
+    case 0xa9e1: trap_0xa9e1: {
         auto source=(MacHeap::Handle)regs[8];
         if(!heap.isHandle(source) || !*source){fail("HEAP / HANDTOHAND SOURCE");goto failed;}
         MacHeap::Handle result=nullptr;error=HandleCopy::copy(heap,source,result);
@@ -1918,18 +2259,19 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
         regs[8]=(uint32_t)result;regs[0]=0;
         sw(low+0x220,0);sw(frame,(w(frame)&~31)|4);break;
     }
-    case 0xa025: {
+    case 0xa025: trap_0xa025: {
         auto h=(MacHeap::Handle)regs[8];if(!heap.isHandle(h)) { fail("HEAP / UNKNOWN HANDLE");goto failed; }
         regs[0]=heap.handleSize(h);error=heap.error();break;
     }
-    case 0xa029: case 0xa064: {
+    case 0xa029: trap_0xa029: case 0xa064: trap_0xa064: {
         auto h=(MacHeap::Handle)regs[8];if(!heap.isHandle(h)) { fail("HEAP / UNKNOWN HANDLE");goto failed; }
-        error=trap==0xa029?heap.setState(h,heap.state(h)|0x80):heap.moveHigh(h);regs[0]=(int32_t)error;break;
+        if(trap==0xa029){if(!trivialService<0xa029>(regs))goto failed;}
+        else {error=heap.moveHigh(h);regs[0]=(int32_t)error;}break;
     }
-    case 0xa122:regs[8]=(uint32_t)heap.newHandle(regs[0],true);error=heap.error();regs[0]=(int32_t)error;break;
-    case 0xa11e: regs[8]=(uint32_t)heap.newPtr(regs[0],false);error=heap.error();regs[0]=(int32_t)error;break;
+    case 0xa122: trap_0xa122:regs[8]=(uint32_t)heap.newHandle(regs[0],true);error=heap.error();regs[0]=(int32_t)error;break;
+    case 0xa11e: trap_0xa11e: regs[8]=(uint32_t)heap.newPtr(regs[0],false);error=heap.error();regs[0]=(int32_t)error;break;
 #ifdef POP2_UI
-    case 0xa746:case 0xa346:{
+    case 0xa746: trap_0xa746:case 0xa346: trap_0xa346:{
         uint16_t target=trap==0xa746 ? 0xa800|(regs[0]&0x3ff) : 0xa000|(regs[0]&255);
         if(target==0xa0ad)target=0xa1ad;
         uint8_t* found=nullptr;
@@ -1943,7 +2285,7 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
         regs[8]=(uint32_t)found;break;
     }
 #endif
-    case 0xa146: case 0xa047: {
+    case 0xa146: trap_0xa146: case 0xa047: trap_0xa047: {
         uint16_t target=regs[0];uint8_t** patch=target==0xa9f0?&patchedLoad:target==0xa9f4?&patchedExit:0;
         if(!patch) { fail("TRAP TABLE / UNKNOWN ENTRY");goto failed; }
         if(trap==0xa047) {
@@ -1954,7 +2296,7 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
         else regs[8]=(uint32_t)(*patch?*patch:target==0xa9f0?(uint8_t*)pop2_old_loadseg:(uint8_t*)pop2_old_exit);
         regs[0]=0;break;
     }
-    case 0xa9f0: {
+    case 0xa9f0: trap_0xa9f0: {
         if(!builtin) { fail("LOADSEG / ORIGINAL HOOK MISSING");goto failed; }
         uint32_t resume=l(usp)-6;int16_t id=w(usp+4);
         uint32_t begin=(uint32_t)a5+app.world().jumpOffset;
@@ -1964,11 +2306,11 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
         if(!segment(id))goto failed;
         usp+=6;sl(frame+2,resume);return (uint32_t)usp;
     }
-    case 0xa1ad: {
+    case 0xa1ad: trap_0xa1ad: {
         uint32_t answer;if(!MacIdentity::gestalt(regs[0],answer,error)) { fail("GESTALT / UNKNOWN SELECTOR");goto failed; }
         regs[0]=(int32_t)error;regs[8]=answer;error=0;break;
     }
-    case 0xa090:
+    case 0xa090: trap_0xa090:
         if(!((regs[8]>=(uint32_t)stack && regs[8]-(uint32_t)stack<=65536-16) ||
              (regs[8]>=(uint32_t)world && regs[8]-(uint32_t)world<=worldSize-16) ||
              (regs[8]>=(uint32_t)arena && regs[8]-(uint32_t)arena<=g_coreZoneBytes-16) ||
@@ -1976,9 +2318,9 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
             fail("SYSENV / UNSUPPORTED RECORD");goto failed;
         }
         regs[0]=0;break;
-    case 0xa8fe:return stop(frame,usp,"UNIMPLEMENTED / InitFonts",trap,seg,off);
-    case 0xa86e:return stop(frame,usp,"UNIMPLEMENTED / InitGraf",trap,seg,off);
-    default:return stop(frame,usp,"UNIMPLEMENTED / TRAP",trap,seg,off);
+    case 0xa8fe: trap_0xa8fe:return stop(frame,usp,"UNIMPLEMENTED / InitFonts",trap,seg,off);
+    case 0xa86e: trap_0xa86e:return stop(frame,usp,"UNIMPLEMENTED / InitGraf",trap,seg,off);
+    default:trap_unknown:return stop(frame,usp,"UNIMPLEMENTED / TRAP",trap,seg,off);
     }
     if(os && trap!=0xa058 && trap!=0xa059 && trap!=0xa05a)sw(low+0x220,heap.error());
     if(error) { fail("CORE / MEMORY SERVICE ERROR");goto failed; }
@@ -2047,7 +2389,9 @@ static int selectVBL() {
     // Installation establishes the epoch, and removing the last task resets it.
     // An empty queue needs no beam reads at every service boundary.
     if(!vblCount)return 0;
-    uint32_t ticks=wallTicks();
+    uint32_t ticks=pop2ServiceTicks();
+    if(!vblPass.needed(ticks))return 0;
+    ticks=wallTicks();
     if(g_clockFault){fail("TIME / NONMONOTONIC FIELD CLOCK");return -1;}
     vblPass.observe(ticks);
     for(;;) {
@@ -2103,6 +2447,7 @@ extern "C" int32_t pop2TimerCallbackComplete() {
     return result;
 }
 extern "C" uint32_t pop2UserDispatch(uint32_t* parked) {
+    quickServicesValid=false;
     if(uint32_t fast=callbackService(parked))return fast;
     uint8_t frame[8]={};sw(frame,g_coreServiceSR);sl(frame+2,g_coreServicePC);
     // As in Alone in the Dark and callbackService, service the parked registers
@@ -2132,9 +2477,13 @@ extern "C" uint32_t pop2UserDispatch(uint32_t* parked) {
     }
 #endif
     if(!didStop && timerCount && !g_timerCallbackActive && l(frame+2)!=(uint32_t)pop2_audio_callback){
-        TimerStamp now=timerNow();
+        uint32_t field=g_scaffoldFields;
+        bool candidate=false;
+        for(unsigned i=0;i<timerCount;++i)
+            if(timers[i].active && int32_t(field-timers[i].due.field)>=0){candidate=true;break;}
+        TimerStamp now=candidate ? timerNow() : TimerStamp{field,0};
         // Installation/removal maintain the occupied extent, including holes.
-        for(unsigned i=0;i<timerCount;++i){
+        for(unsigned i=0;candidate && i<timerCount;++i){
             auto& t=timers[i];
             if(!t.task || !t.active || !timerDue(now,t.due))continue;
             t.active=false;sw(t.task+4,w(t.task+4)&0x7fff);sl(t.task+10,0);
@@ -2168,6 +2517,17 @@ extern "C" uint32_t pop2UserDispatch(uint32_t* parked) {
         }
     }
 #endif
+    // The full path has just serviced the queues. Publish the same no-due
+    // certificate for the following small trap instead of making it repeat
+    // the cold checks. Interrupt epochs and all original owner guards still
+    // expire or reject this certificate at the native entry.
+    if(!didStop && !g_timerCallbackActive && quickServicesReady<false>()) {
+        uint32_t seg,off;
+        if(location(l(frame+2),seg,off)) {
+            g_quickCodeBase=g_coreSegments[seg][0];
+            g_quickCodeEnd=g_quickCodeBase+g_coreSegments[seg][1]-2;
+        } else quickServicesValid=false;
+    }
     uint8_t* image=resumed-66;
     if(image!=(uint8_t*)parked)__builtin_memmove(image,parked,60);
     sw(image+60,w(frame));sl(image+62,l(frame+2));

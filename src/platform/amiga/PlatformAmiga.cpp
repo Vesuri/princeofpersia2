@@ -56,8 +56,24 @@ __attribute__((noinline)) void pop2ScaffoldRestored() { __asm__ volatile("nop" :
 // Called at user-mode service points. Pair the field clock with a stable beam
 // and pending-VBI state: a request not yet serviced belongs to the next field.
 extern "C" { volatile uint32_t g_clockFault=0,g_clockFaultData[5]={}; }
+static uint32_t lastWallTick=0;
+// As in the other ports, ordinary scheduler checks use the interrupt epoch.
+// A precise TickCount sample may already have observed this field's fractional
+// tick; never regress that observation before the next interrupt catches up.
+extern "C" uint32_t pop2ServiceTicks() {
+    uint32_t base=inputTicks;
+    return int32_t(base-lastWallTick)>0 ? base : lastWallTick;
+}
 extern "C" uint32_t pop2WallTicks() {
-    static uint32_t lastTick=0;
+    uint32_t& lastTick=lastWallTick;
+    static uint32_t settledField=0;
+    static bool settled=false;
+    // Once the sole sub-field tick has occurred, this field cannot advance
+    // again. Check the interrupt request, not the beam; a pending VBI or a
+    // changed epoch takes the full ambiguity/monotonicity checks below.
+    uint32_t epoch=g_scaffoldFields;
+    if(settled && epoch==settledField && !(*intreqrPointer&INTF_VERTB) &&
+       epoch==g_scaffoldFields)return lastTick;
     uint32_t before,after,base;uint16_t phase,hi,lo,check,pending,again;
     do {
         before=g_scaffoldFields;base=inputTicks;phase=inputPhase;
@@ -70,8 +86,14 @@ extern "C" uint32_t pop2WallTicks() {
             (lo&255)<2 || (((hi&1)<<8)|(lo>>8))==0);
     if(pending)base+=VideoTicks::fieldDelta(true,phase);
     uint32_t line=((hi&1)<<8)|(lo>>8);
-    uint32_t micro=line*64+((lo&255)*64)/227;
-    uint32_t tick=VideoTicks::withinPALField(base,phase,uint16_t(micro<20000?micro:19999));
+    uint32_t tick;
+    if((lo&255)<227)tick=VideoTicks::withinPALBeam(base,phase,uint16_t(line),uint16_t(lo&255));
+    else {
+        uint32_t micro=line*64+((lo&255)*64)/227;
+        tick=VideoTicks::withinPALField(base,phase,uint16_t(micro<20000?micro:19999));
+    }
+    settled=!pending && tick==base+1;
+    settledField=after;
     if(int32_t(tick-lastTick)<0 && !g_clockFault) {
         g_clockFaultData[0]=lastTick;g_clockFaultData[1]=tick;
         g_clockFaultData[2]=after;g_clockFaultData[3]=(uint32_t(hi)<<16)|lo;
