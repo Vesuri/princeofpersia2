@@ -104,3 +104,16 @@ if hall_reference:
         raise RuntimeError('HALL VIEW / DIAGNOSTIC BUILD REQUIRED')
     from gameplay_hall_file import install_native
     install_native(Path(os.environ['GAMEPLAY_HALL_IMPORT_REFERENCE']),Path(sys.argv[1]))
+
+scene_cache=os.environ.get('SCENE_CACHE')
+if scene_cache:
+    if '-DPOP2_SCENE_PROFILE' not in verify_receipt()['flags'].split() or scene_cache not in ('clean','generated'):
+        raise RuntimeError('SCENE CACHE / MEASUREMENT BUILD REQUIRED')
+    if scene_cache == 'generated':
+        from aprof_scenes import cache
+        cache(Path(sys.argv[1]))
+    else:
+        from amigaxdev.mac.resource_fork import read_resource_fork
+        if {r.rid for r in read_resource_fork(Path(sys.argv[1])/'Data/Prince2.opt.rsrc') if r.kind==b'DSLV'} != {6400}:
+            raise RuntimeError('SCENE CACHE / EXPECTED CLEAN INPUT')
+        print('SCENE CACHE clean: DSLV 6401 absent; original generation required')

@@ -116,7 +116,7 @@ __attribute__((noinline)) void pop2GameplayFileCheckpoint(){__asm__ volatile("no
 #error Trap-trace control requires the explicit gameplay route fixture
 #endif
 #ifdef POP2_GAMEPLAY_ROUTE_PROBE
-#if !defined(POP2_VERIFY) || !defined(POP2_INTEGRATION_PROBE) || defined(POP2_GAMEPLAY_RESTART_PROBE)
+#if (!defined(POP2_VERIFY) && !defined(POP2_SCENE_PROFILE)) || !defined(POP2_INTEGRATION_PROBE) || defined(POP2_GAMEPLAY_RESTART_PROBE)
 #error Route probe requires separate verification and integration input
 #endif
 uint32_t g_routeReturn=0;
@@ -171,6 +171,25 @@ volatile uint32_t g_timingCount=0,g_timingRows[256][8]={};
 volatile uint32_t g_timingSetCount=0,g_timingSetRows[512][5]={};
 __attribute__((noinline)) void pop2TimingWindowComplete(){__asm__ volatile("nop" ::: "memory");}
 volatile uint32_t g_timingPhase=0x1000,g_timingSamples[0x1005]={};
+#endif
+#ifdef POP2_SCENE_PROFILE
+#if defined(POP2_VERIFY) || !defined(POP2_TIMING_PROBE) || !defined(POP2_GAMEPLAY_ROUTE_PROBE)
+#error Scene measurement requires the explicit release timing and assisted-route probes
+#endif
+// Buffered timer requests; no debugger stops or hashing within animation loops.
+// Caller identity and the original timer selector distinguish independent clocks.
+#if POP2_SCENE_SELECTOR != 1 && POP2_SCENE_SELECTOR != 6
+#error Unsupported measured cinematic
+#endif
+uint32_t g_sceneReturn=0;
+volatile uint32_t g_sceneActive=0,g_sceneFinished=0,g_sceneCount=0,g_sceneResult=0;
+void pop2_scene_return();
+__attribute__((noinline)) void pop2SceneBoundary(){__asm__ volatile("nop" ::: "memory");}
+void pop2SceneReturned(uint32_t result){
+    g_sceneResult=result&65535;g_sceneActive=0;g_sceneFinished=1;pop2SceneBoundary();
+}
+volatile uint32_t g_sceneRows[4096][8]={};
+volatile uint32_t g_sceneClockCount=0,g_sceneClocks[2048][8]={};
 #endif
 #ifdef POP2_OPENING_PROFILE
 #if !defined(POP2_TIMING_PROBE) || !defined(POP2_INTEGRATION_NO_RIGHT) || defined(POP2_VERIFY)
@@ -1320,6 +1339,9 @@ __attribute__((optimize("O3"))) static uint32_t quickTrap(uint32_t* regs,uint8_t
 #if defined(POP2_TIMING_PROBE) && defined(POP2_INTEGRATION_PROBE)
     // Retain the existing SetTimer request recorder on its original path.
     if(trap==0xa975 && seg==17 && off==0x313e)return 0;
+#ifdef POP2_SCENE_PROFILE
+    if(trap==0xa975 && seg==15 && (off==0x3152 || off==0x321a || off==0x3984 || off==0x3b72))return 0;
+#endif
 #endif
     if(!quickServicesReady<trap==0xa975>())return 0;
     if(!trivialService<trap>(regs))return 0;
@@ -1514,6 +1536,22 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
         sl(frame+2,pc+4);return (uint32_t)usp;
     }
 
+#ifdef POP2_SCENE_PROFILE
+    if(g_sceneFinished)return stop(frame,usp,g_sceneResult?"SCENE PROFILE / NONZERO RETURN":"SCENE PROFILE / COMPLETE",trap,seg,off);
+    if(!g_sceneReturn && g_integrationStage==3 && g_coreSegments[15][0]){
+        for(uint32_t at=regs[14],depth=0;depth<32 && validMemory(at,10);++depth){
+            uint32_t parent=l((uint8_t*)at),returned=l((uint8_t*)at+4);
+            if(returned==g_coreSegments[2][0]+0x342 && w((uint8_t*)at+8)==POP2_SCENE_SELECTOR){
+                if(w((uint8_t*)g_coreSegments[15][0]+4)!=0x4e56 ||
+                   w((uint8_t*)g_coreSegments[15][0]+0x166)!=0x4e75)
+                    return stop(frame,usp,"SCENE PROFILE / NIS OWNER",trap,seg,off);
+                g_sceneReturn=returned;sl((uint8_t*)at+4,(uint32_t)pop2_scene_return);
+                g_sceneActive=1;pop2SceneBoundary();break;
+            }
+            if(parent<=at)break;at=parent;
+        }
+    }
+#endif
 #ifdef POP2_GAMEPLAY_ROUTE_PROBE
     if(g_routeError)return stop(frame,usp,g_routeError,trap,seg,off);
 #ifdef POP2_GAMEPLAY_HALL_PROBE
@@ -2266,6 +2304,28 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
             volatile uint32_t* row=g_timingSetRows[g_timingSetCount++];
             row[0]=w(a5-0x349a);row[1]=ticks;row[2]=w((uint8_t*)regs[14]+8);
             row[3]=w((uint8_t*)regs[14]+12);row[4]=g_scaffoldFields;
+        }
+#endif
+#ifdef POP2_SCENE_PROFILE
+        if(g_sceneActive && seg==15 && (off==0x3152 || off==0x321a || off==0x3984 || off==0x3b72)){
+            if(g_sceneClockCount==2048 || regs[14]<0xb0 || !validMemory(regs[14]-0xb0,0xc4))
+                return stop(frame,usp,"SCENE PROFILE / DISSOLVE FRAME OR CAPACITY",trap,seg,off);
+            volatile uint32_t* row=g_sceneClocks[g_sceneClockCount++];uint8_t* owner=(uint8_t*)regs[14];
+            row[0]=off;row[1]=ticks;row[2]=g_scaffoldFields;row[3]=l(owner+0x10);
+            row[4]=off==0x321a?l(owner-0x6c):0;
+            row[5]=off==0x321a?l(owner-0x7c)+row[4]:0;
+            row[6]=off==0x321a?l(owner-0xa8):0;row[7]=g_routeFrames;
+        }
+        if(g_sceneActive && seg==17 && off==0x313e){
+            if(g_sceneCount==4096 || !validMemory(regs[14],14))
+                return stop(frame,usp,"SCENE PROFILE / TIMER CAPACITY OR FRAME",trap,seg,off);
+            uint32_t callerSeg,callerOff;
+            if(!location(l((uint8_t*)regs[14]+4),callerSeg,callerOff))
+                return stop(frame,usp,"SCENE PROFILE / TIMER CALLER",trap,seg,off);
+            volatile uint32_t* row=g_sceneRows[g_sceneCount++];
+            row[0]=g_routeFrames;row[1]=ticks;row[2]=w((uint8_t*)regs[14]+8);
+            row[3]=w((uint8_t*)regs[14]+12);row[4]=g_scaffoldFields;
+            row[5]=callerSeg;row[6]=callerOff;row[7]=g_sceneActive;
         }
 #endif
         break;

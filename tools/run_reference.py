@@ -44,6 +44,9 @@ def run(name=None, control=None, deadline=None):
     if os.environ.get('POP2_HALL_IMPORT_FROM'):
         from gameplay_hall_file import install_reference
         install_reference(Path(os.environ['POP2_HALL_IMPORT_FROM']),destination)
+    if os.environ.get('POP2_SCENE_CACHE') == 'generated':
+        from aprof_scenes import reference_cache
+        reference_cache(destination)
     generate(destination/'metadata.lua')
     subprocess.run(['python3','tools/check_mame_literals.py','--syntax-wrapper',str(destination/'syntax.lua')],cwd=ROOT,check=True)
     env=os.environ.copy()
@@ -173,6 +176,12 @@ def run(name=None, control=None, deadline=None):
     if env.get('POP2_VIDEO_TRANSFER'):
         from video_transfer import measure
         measure(destination)
+    if env.get('POP2_SCENE_SELECTOR'):
+        from aprof_scenes import reference_check
+        selector=int(env['POP2_SCENE_SELECTOR'])
+        if selector not in (1,6) or env.get('POP2_SCENE_TIMERS')!='1':raise ValueError('SCENE / ORIGINAL SELECTOR')
+        reference_check(destination,selector)
+        return destination
     from report_reference import report
     report(destination,"quit" if env.get("POP2_QUIT_REFERENCE") else "load-import" if env.get("POP2_GAMEPLAY")=="load-import" else "demo" if env.get("POP2_DEMO_ROUTE") else "integration" if any(env.get(k) for k in ("POP2_INTEGRATION", "POP2_NEWGWORLD", "POP2_TITLE_COPY")) else "opening" if env.get("POP2_AUDIO") else "file-restart" if env.get("POP2_RESTART_FROM") else "ui" if env.get("POP2_UI") else "display" if env.get("POP2_DISPLAY") else "opening")
     return destination

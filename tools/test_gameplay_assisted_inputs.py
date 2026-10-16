@@ -7,6 +7,14 @@ from gameplay_assisted_inputs import ROOT, REFERENCE, generate, metadata
 
 
 class AssistedInputs(unittest.TestCase):
+    def test_carpet_d6_assistance(self):
+        reference=ROOT/'ref/mame/runs/scenes-carpet-full'
+        manifest=ROOT/'manifest/scenes-carpet-reference.sha256'
+        keys,points,writes,labels=metadata(reference,manifest)
+        self.assertEqual([w[1:] for w in writes if w[1]==0x56d8],[(0x56d8,0,1)])
+        self.assertEqual(points[-1][1:3],(6,27))
+        self.assertIn('CUTSCENE_RETURN ordinal=3 selector=1 result=0', (reference/'session.log').read_text())
+
     def test_expired_story_and_rejection_controls(self):
         reference=ROOT/'ref/mame/runs/gameplay-story20-expired-3'
         manifest=ROOT/'manifest/gameplay-story20-reference.sha256'

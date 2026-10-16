@@ -4,6 +4,7 @@ assert(os.getenv('POP2_ROUTE_DISCOVERY')=='1','CUTSCENE OBSERVER / DISCOVERY REQ
 local cpu=manager.machine.devices[':maincpu'];local mem=cpu.spaces.program
 local dbg=manager.machine.debugger;local run=assert(os.getenv('POP2_REFERENCE_RUN'))
 local frame=dofile('tools/mame_mac_frame.lua')
+local timers=os.getenv('POP2_SCENE_TIMERS')=='1'
 local points={};local calls={};local serial=0;local returned=0
 local selected={[1]=true,[2]=true,[4]=true,[8]=true,[32]=true,[128]=true,[512]=true}
 local function capture(call,kind,count)
@@ -16,6 +17,20 @@ local function capture(call,kind,count)
  print(string.format('CUTSCENE_FRAME ordinal=%d selector=%d kind=%s count=%d prefix=%s',call.ordinal,call.selector,kind,count,prefix))
 end
 function M.map(seg,base,guard,condition)
+ if timers and seg==16 then
+  guard(seg,base,0x159a,4);points[base+0x159a]='animation-return'
+  cpu.debug:bpset(base+0x159a,condition,'logerror "SCENE_ANIMATION_STOP\\n"')
+ end
+ if timers and seg==17 then
+  guard(seg,base,0x3136,4);points[base+0x3136]='timer'
+  cpu.debug:bpset(base+0x3136,condition,'logerror "SCENE_TIMER_STOP\\n"')
+ end
+ if timers and seg==15 then
+  for _,offset in ipairs({0x3152,0x321a,0x3984,0x3b72})do
+   guard(seg,base,offset,2);points[base+offset]='clock-'..string.format('%04X',offset)
+   cpu.debug:bpset(base+offset,condition,'logerror "SCENE_CLOCK_STOP\\n"')
+  end
+ end
  if seg~=2 and seg~=15 then return end
  local sites=seg==2 and {{0x031e,'enter'},{0x033e,'enter'},{0x037e,'enter'}} or {{0x0166,'return'},{0x3310,'copy'},{0x0418,'text'},{0x2a28,'fade'},{0x72dc,'tower'}}
  for _,site in ipairs(sites)do
@@ -34,7 +49,25 @@ function M.poll()
  if dbg.execution_state~='stop' then return false end
  local kind=points[cpu.state.PC.value]
  if not kind then return false end
- if kind=='enter' then
+ if kind=='animation-return' then
+  if #calls>0 then
+   local call=calls[#calls]
+   print(string.format('SCENE_ANIMATION ordinal=%d selector=%d frames=%d result=%d',call.ordinal,call.selector,cpu.state.D5.value,cpu.state.D0.value&0xffff))
+  end
+ elseif kind:match('^clock%-') then
+  if #calls>0 then
+   local call=calls[#calls];local a6=cpu.state.A6.value&0xffffff
+   local site=tonumber(kind:sub(7),16);local progress=site==0x321a and mem:readv_u32(a6-0x6c) or 0
+   local target=site==0x321a and (mem:readv_u32(a6-0x7c)+progress)&0xffffffff or 0
+   local delay=site==0x321a and mem:readv_u32(a6-0xa8) or 0
+   print(string.format('SCENE_CLOCK ordinal=%d selector=%d site=%04X ticks=%d duration=%d progress=%d target=%d delay=%d',call.ordinal,call.selector,site,mem:readv_u32(0x16a),mem:readv_u32(a6+0x10),progress,target,delay))
+  end
+ elseif kind=='timer' then
+  if #calls>0 then
+   local call=calls[#calls];local sp=cpu.state.SP.value&0xffffff
+   print(string.format('SCENE_TIMER ordinal=%d selector=%d timer=%d delay=%d ticks=%d',call.ordinal,call.selector,mem:readv_u16(sp+4),mem:readv_u16(sp+8),mem:readv_u32(0x16a)))
+  end
+ elseif kind=='enter' then
   enter(mem:readv_u16(cpu.state.SP.value&0xffffff))
  elseif #calls>0 then
   local call=calls[#calls]

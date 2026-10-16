@@ -125,6 +125,19 @@ pop2QuickNativeGuard:
 	addi.l #0x313e,d1
 	cmp.l d1,d0
 	beq.w .quick_miss
+	.ifdef POP2_SCENE_PROFILE
+	move.l g_coreSegments+120,d1
+	sub.l d1,d0
+	cmpi.l #0x3152,d0
+	beq.w .quick_miss
+	cmpi.l #0x321a,d0
+	beq.w .quick_miss
+	cmpi.l #0x3984,d0
+	beq.w .quick_miss
+	cmpi.l #0x3b72,d0
+	beq.w .quick_miss
+	move.l 62(sp),d0
+	.endif
 .quick_probe_done:
 	.endif
 	| Segment installation invalidates this previously validated range.
@@ -1108,6 +1121,22 @@ pop2_integration_room:
 	movem.l (sp)+,d0-d7/a0-a6
 	move.l g_integrationRoomReturn,-(sp)
 	rts
+	.ifdef POP2_SCENE_PROFILE
+	.globl pop2_scene_return
+pop2_scene_return:
+	| Reserve the return word without changing CCR. Fill it before restoring
+	| CCR; MOVE.L after that restoration would change the original N/Z/V/C.
+	lea -4(sp),sp
+	movem.l d0-d7/a0-a6,-(sp)
+	move.w ccr,-(sp)
+	move.l d0,-(sp)
+	jsr pop2SceneReturned
+	addq.l #4,sp
+	move.l g_sceneReturn,62(sp)
+	move.w (sp)+,ccr
+	movem.l (sp)+,d0-d7/a0-a6
+	rts
+	.endif
 	.ifdef POP2_GAMEPLAY_ROUTE_PROBE
 	.globl pop2_gameplay_route_hall
 pop2_gameplay_route_hall:

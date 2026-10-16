@@ -1139,3 +1139,10 @@ segment,offset,name,evidence,notes
 2,0x3E36,DisposeGameWindow,MEASURED,Normal Command-Q calls DisposeWindow and returns with the Window Manager port current
 2,0x3E28,ReleaseGameWindow,DERIVED,Calls SetWindowPos then disposes the owned window before final audio cleanup
 1,0x0404,RestoreRuntimeTraps,DERIVED,Restores saved LoadSeg and ExitToShell addresses then disposes the runtime trampoline block
+2,0x0180,IsTimeForNIS,DERIVED,LINK entry ending at named RTS 0x0286; protection-not-accepted branch selects 100 before transition cinematic
+15,0x0166,NIS_Return,MEASURED,Original cutscene observer verifies selector and result at RTS; profiling return wrapper preserves registers and CCR
+15,0x3152,DrawDisolveData_ClockStart,DERIVED,TickCount starts the original adaptive dissolve deadline sequence
+15,0x321A,DrawDisolveData_ClockQuantum,DERIVED,TickCount compared with start plus progress; original adjusts per-word delay without a frame timer
+16,0x100C,PlayTheAnimation,DERIVED,Original LINK entry ending at named RTS 0x15A0; animation loops increment D5 after drawing
+16,0x159A,PlayTheAnimation_Return,DERIVED,Original register restore before UNLK and RTS; D5 retains completed animation frame count
+15,0x32F4,CopyNIS,DERIVED,LINK entry ending at observed RTS 0x3310 and original CopyNIS name; profile counts entries independently of return observation

@@ -1,7 +1,7 @@
 # Open work
 
 Version 0.90 release work (14) takes priority. Under D14, 68020 support (15)
-and performance work 19.8–19.9 remain deferred beyond 0.90, retaining
+and performance work 19.9 remain deferred beyond 0.90, retaining
 their acceptance gates. This does not waive item 14’s
 68040 cadence, real-hardware or installer validation. Gameplay coverage (12)
 remains accepted under D10–D12 on `a1200-030`.
@@ -104,9 +104,6 @@ Items remain open until their acceptance gates pass.
     HEAP items solved similar costs. Figures are 68030 ms per landing frame
     unless noted.
 
-    - **19.8 Further scenes.** Profile the level-five carpet
-      exit and the level-eight throne dissolve (clean and generated cache) as
-      recorded above, and add scenes whose frames exceed their requested delays.
     - **19.9 Share the profile report.** Integrate the published
       `codex/heap-search-start` helper (`b09d897`) when AmigaXDev main is clean.
       Other consumers need their own topology-invalidation and matched-workload
@@ -116,7 +113,11 @@ Items remain open until their acceptance gates pass.
       retain their synchronous path until their own paired gates pass. Integrate the
       published `codex/dirty-bands` planner branch (`16586b1`) when AmigaXDev's main tree
       is clean; replace Alone in the Dark's local planner with the shared helper
-      after its byte-identity and display gates pass. Move the common profile
+      after its byte-identity and display gates pass. For long cinematic scopes,
+      establish call-tree return pairing before
+      deriving inclusive or active-work costs; 19.8 retains flat PC counters
+      and reports unmatched returns without an active-work claim. Move the common
+      profile
       parsing and
       call-tree code of `tools/aprof_report.py` and Alone in the Dark's report
       into AmigaXDev once its tree is clean, keeping port-specific names and
@@ -158,6 +159,16 @@ Items remain open until their acceptance gates pass.
       compatibility in `8ecd85f` and stopped-DMA state in `7759f0f`). This port
       pins these helpers; integrate the branch when the main working tree is clean.
 
+    - **19.10 Cinematic deadline follow-up.** The first level-eight throne
+      dissolve misses its original adaptive quantum deadlines by up to 15–16
+      ticks on the exact no-MMU 68030, with clean and generated cache; the paired
+      Macintosh has smaller misses too. Investigate that measured scene before
+      changing its original adaptive algorithm. Carpet uses the Mohawk animation
+      player's clock rather than SetTimer; establish its per-frame requested
+      deadlines before making a cadence claim from whole-scene profiles.
+      Acceptance: original-paired deadline interpretation and matched repeated
+      measurements; retain visible/state equivalence and ordinary release.
+
     Acceptance: each step's gates and measured targets; finally the opening
     profile meets every requested interval on the exact 68030 model, with
     reproducible matched-workload results for the further scenes. Emulator
@@ -177,3 +188,13 @@ Items remain open until their acceptance gates pass.
     Inspect the other ports and AmigaXDev's debugger patches first; publish any
     reusable correction there. Do not flush or disable the guest cache merely
     to make an observation pass.
+
+21. **Diagnostic return-wrapper condition codes.** DERIVED: several existing
+    integration/gameplay assembly wrappers restore CCR and then push their saved
+    return address with MOVE.L, which changes N/Z/V/C. These are opt-in harness
+    paths, not ordinary release. Compare original/native continuation flags and
+    fix the wrappers while preserving registers, stack and original return
+    values. The scene profiler reserves its return slot with LEA and fills it
+    before restoring CCR. Keep this harness investigation separate from 19.8.
+    Acceptance: paired continuation and register/CCR controls, followed by the
+    affected gameplay fixtures; inspect the other ports before sharing a fix.

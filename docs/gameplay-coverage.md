@@ -98,7 +98,7 @@ and bounded captures. Original bytes, saved state and captures remain ignored.
 | Level 2 | Meaningful gameplay route and original level-exit decision | Completed native/original pair; inherited level-one RNG exceptions only |
 | Level 3 | Meaningful gameplay route and original level-exit decision | Accepted under D12: level-four entry captured; one-frame exit, torch/RNG/context and non-player actor differences retained in item 16 |
 | Level 4 | Meaningful gameplay route and original level-exit decision | Accepted under D12: all 93 checkpoints and level-five entry reached; recorded animation/RNG/context and actor-slot differences retained in item 16 |
-| Level 5 | Meaningful gameplay route and original level-exit decision | Clean assisted original repeat and native pair pass all 46 checkpoints; carpet NIS 1 returns and level six begins |
+| Level 5 | Meaningful gameplay route and original level-exit decision | Clean assisted original repeat and native pair pass all 46 checkpoints and level six begins; the separate profiling route exercises carpet NIS 1 |
 | Level 6 | Meaningful gameplay route and original level-exit decision | Accepted under D12: alternate door route and level-seven entry state match; one-frame exit difference retained in item 16 |
 | Level 7 | Meaningful gameplay route and original level-exit decision | Accepted under D12: route and level-eight entry state match; two-frame exit difference retained in item 16 |
 | Level 8 | Meaningful gameplay route and original level-exit decision | Accepted under D12: direct-entry route and level-nine entry state match; two-frame exit difference retained in item 16 |
@@ -1131,7 +1131,12 @@ captured; the existing independent death/restart gates remain required.
 Fresh original `gameplay-assisted-level5-clean-1` follows the successful
 switch/carpet sequence without the discarded deaths: 192 frames, 194 key reads,
 46 checkpoints and 17 assisted word writes. It naturally enters level six
-after NIS selector 1 returns. `manifest/gameplay-assisted-level5-clean.sha256`
+after its exit decision. This short route consumes that transition with copy
+protection selector 100; it does not exercise carpet NIS 1. The separate
+`scenes-carpet-full` route sets the logged D6 protection-accepted word before
+the exit and positively returns from NIS 1 with two CopyNIS calls, then enters
+level six. `manifest/scenes-carpet-reference.sha256` pins that profiling route.
+`manifest/gameplay-assisted-level5-clean.sha256`
 pins this shorter route. Fresh `gameplay-assisted-level5-clean-repeat-1`
 matches every recorded checkpoint. Native replay is in progress.
 

@@ -79,7 +79,7 @@ fsuae_options
 # opt-in override must follow the preset's arguments.
 LATE_ARGS=()
 if [ "${PROFILE_NO_MMU:-0}" = 1 ]; then
-  [ "${OPENING_PROFILE:-0}" = 1 ] && [ "$AMIGA_SETUP" = a1200-030 ] || { echo 'PROFILE_NO_MMU / REQUIRES OPENING_PROFILE ON a1200-030'; exit 2; }
+  { [ "${OPENING_PROFILE:-0}" = 1 ] || [ "${SCENE_PROFILE:-0}" = 1 ]; } && [ "$AMIGA_SETUP" = a1200-030 ] || { echo 'PROFILE_NO_MMU / REQUIRES EXPLICIT PROFILE ON a1200-030'; exit 2; }
   LATE_ARGS=(--uae_mmu_model=0)
 fi
 fsuae_launch ${LATE_ARGS[@]+"${LATE_ARGS[@]}"} --floppy_drive_volume=0 --floppy_drive_volume_empty=0 --logs_dir="$PWD/$RUN/logs" --hard_drive_0="$DH0" --hard_drive_1="$DH1" --remote_debugger_trigger=PrinceOfPersia2 --state_dir="$RUN/state" --joystick_port_0=nothing --joystick_port_1=nothing
@@ -114,6 +114,8 @@ if [ "${CORE:-0}" = 1 ]; then
     python3 ../tools/check_gameplay_opening.py "$RUN" "$GAMEPLAY_OPENING_REFERENCE"
   elif [ -n "${RECTANGLE_REFERENCE:-}" ]; then
     python3 ../tools/check_pure_rectangles.py --original "$RECTANGLE_REFERENCE" --native "$RUN"
+  elif [ "${SCENE_PROFILE:-0}" = 1 ]; then
+    python3 ../tools/aprof_scenes.py check "$RUN"
   elif [ "${OPENING_PROFILE:-0}" = 1 ]; then
     python3 ../tools/aprof_report.py check-run "$RUN"
   elif [ "${PERFORMANCE:-0}" = 1 ]; then

@@ -52,3 +52,5 @@ Vette	b3074ba6784a834864c222db9b4f0ccabd38de03	dirty-buffer synchronization and 
 AmigaXDev	2fcb917fba621120a574cd74d4372741dc274a34	canonical MoveHHi free-tail placement and fragmented fallback; adopted under 19.7 with fresh System 7.5.5 fixture
 AmigaXDev	4ef730560c270876d0f57304ff28440a564dd518	canonical local-tail in-place heap resize; adopted under 19.7
 AmigaXDev	b09d8972e3313e2ffcdb4ca32e2b82404b3b007c	canonical first-fit occupied-prefix search; published on codex/heap-search-start with topology and mutation controls
+Alone in the Dark	deb42b1802f84f28b9524b8a7a1f3682f9aa201c	event-segmented scene profiling, transition accounting and repeatability inspected for 19.8
+Vette	b3074ba6784a834864c222db9b4f0ccabd38de03	profile accounting and original-code attribution inspected for 19.8

@@ -726,21 +726,21 @@ Record suspected heavy scenes encountered during gameplay validation here,
 including the level/room or cinematic, reproducible route or save, observed
 symptom, target/build and whether a matched-workload measurement exists.
 Debugger waits and verification-run wall time alone do not establish a slowdown.
-No additional heavy scene has yet been established by the current route evidence.
+The additional cinematic measurements are described below.
 
-The level-five carpet exit is a useful transition workload, not a measured
-hotspot: the paired route in `docs/gameplay-coverage.md` covers NIS 1 returning
-to level six. `Profile 05` supplies a level-entry starting point, not a save
+The level-five carpet exit is a transition workload. The corrected profiling
+route `scenes-carpet-full` explicitly exercises NIS 1 before entering level six;
+the earlier short assisted route consumes that transition with copy protection. `Profile 05` supplies a level-entry starting point, not a save
 immediately before the carpet. Retain it as a comparison workload when measuring
 any suspected transition slowdown.
 
-The level-eight throne-room dissolve is another candidate workload. The original
+The level-eight throne-room dissolve is measured below. The original
 generates/persists dissolve data when its cache is absent; retain both a clean
 cache and an already generated cache for comparison. The pinned clean route in
 `manifest/gameplay-assisted-level8-clean.sha256` and its visible cutscene captures
-in `manifest/gameplay-throne-reference.sha256` reproduce the scene. Measure
-release execution on `a1200-030` before calling it a bottleneck; current debugger
-and verification wall times are not performance measurements.
+in `manifest/gameplay-throne-reference.sha256` reproduce the scene. The new
+release-derived profile uses `a1200-030`; debugger and verification wall times
+are not performance measurements.
 
 ### Heap allocation and local resize (19.7)
 
@@ -850,3 +850,153 @@ trap trace or hash counters. `manifest/heap-allocation.sha256` pins the original
 fixture, all six profiling runs (including the rejected clearing-only pilot),
 common-gate evidence, controls and frozen release binary. Build receipts match
 within each accepted profiling pair; release output matches its tested receipt.
+
+
+### Further cinematic scenes (19.8)
+
+The opt-in scene measurement uses the exact no-MMU `a1200-030` model,
+50 MHz, 8 MB Fast RAM and PAL, with `PROFILE=1 VERIFY=0`. It starts at the
+marker within the first full service dispatch inside the selected NIS and ends at its natural
+return. The prefix before that service is outside the scope. The
+return wrapper preserves registers, stack and condition codes; timer and
+adaptive-dissolve observations are buffered in Fast RAM. No debugger stop
+occurs within the measured scene. The subsequent named `SCENE PROFILE /
+COMPLETE` stop restores hardware and returns DOS failure deliberately; it is
+not ordinary gameplay completion or a claim that the whole level was tested.
+
+The carpet input repeats the successful level-five route with one logged D6
+copy-protection acceptance write. Without it, protection selector 100 consumes
+the exit cinematic. `Profile 05` alone is only a level-entry save. The throne
+input repeats the accepted level-eight approach. Clean cache has DSLV 6400
+only; generated cache adds the pinned original-generated DSLV 6401 resource
+fork, retaining the baseline data fork and Finder metadata. Neither mode skips
+the original's calibration. Installation keeps displaced inputs in `.replaced/`.
+
+The paired Macintosh gate requires original identity, packing/copy branch,
+seed, opening pixels, completed discovery and the unique selected NIS return.
+It compares the return viewport and palette, actor/RNG state and timer requests.
+It keeps the unnormalised startup trap trace separately: generated-cache loading
+changes polling/callback interleaving, so this scoped gate does not replace or
+weaken the generic startup-trace pin. The nonaccepted `scenes-throne-warm-reference` full-route replay fails
+its post-cinematic checkpoint; that is retained separately and is not relabelled
+as a level-eight route pass.
+
+Throne uses nine SetTimer requests at distinct transition sites, not a repeated
+frame timer. Its six DrawDisolveData calls request 240, 180, 20, 20, 20 and 180
+ticks. Original and native execute 240, 188, 20, 20, 20 and 188 adaptive drawing
+quanta respectively. These quanta are not display frames: the original compares
+TickCount with its start plus progress and adjusts its per-word delay. Reports
+state lateness against that original deadline separately from transition time. The
+Macintosh observer samples the low-memory tick at TickCount entry; the native
+probe buffers its returned tick. A tick boundary during the trap can affect
+one-tick comparisons. This is a profiling observation, not an exact frame
+equivalence or an uninstrumented-release cadence claim.
+
+Flat instruction-PC costs include original polling and idle callbacks. The long
+cinematic call tree has unmatched returns and is not suitable for inclusive or
+active-work attribution; no D13 dispatch-budget claim is made from these totals.
+The report retains those diagnostics for the shared parser work in 19.9. Timer
+boundary intervals, loading, calibration and complete-scene duration are not
+labelled frame cadence. These are emulator measurements, not hardware claims.
+
+Reproduce with `tools/capture_scene_reference.py NAME carpet|throne` (add
+`--cache generated` for the warm throne reference), then
+`tools/aprof_scenes.py run NAME carpet|throne` with the same cache choice.
+Pin fresh reference output names and SHA-256s in
+`manifest/scenes-reference.sha256` before pairing. Use
+`tools/aprof_scene_report.py NAME --compare REPEAT` and
+`tools/aprof_scenes.py pair NAME ref/mame/runs/REFERENCE` for matched workload,
+original return and deadline checks. Runs refuse existing output names.
+
+
+The generated-cache pair skips one of the two MakeDisolveData calls; both modes
+still perform six calibration calls and six draws. DERIVED from InitDissolve:
+selector 2 deliberately bypasses cache load/save, so one generation remains even
+with DSLV 6401 installed. The measured scope takes 3,761/3,768 PAL fields clean
+and 3,787/3,775 with that cache (75.22–75.74 seconds). This does not establish a
+whole-scene cache speedup. These totals include original polling and calibration; a cache-generation saving must not be inferred from its overall length.
+
+The first 240-tick dissolve misses 89/87 of its 240 quantum deadlines in the
+clean pair, by at most 15/16 ticks, and 87/89 with generated cache, by at most
+16/15 ticks. The remaining five draws have no late quanta in these native runs.
+The paired original clean reference has 57 late quanta in the first draw, at
+most one tick; its generated-cache reference has 101, at most two ticks.
+The original's three short 20-tick draws also have some one/two-tick misses.
+Therefore neither total duration nor the presence of any missed quantum alone
+establishes a port regression. Item 19.10 retains the larger first-dissolve lag
+for focused comparison, including the original adaptive behavior.
+
+
+The carpet reference completes three Mohawk animations of 118, 80 and 84
+frames. The native flat-PC counters check three animation returns and 282 frame
+increments, alongside the full return viewport and actor/RNG state. There are
+zero SetTimer calls inside this NIS; the original observer's opening scene and
+the measured throne provide positive controls for that recorder. This is not
+a zero-delay or a passing frame-cadence result. Mohawk's per-frame deadlines
+remain separate follow-up work in 19.10. The corrected native pair measures
+2,929/2,931 PAL fields (58.58/58.62 seconds); its first run’s largest flat category is presentation
+outside C2P (20.864 seconds), followed by dispatch (12.178 seconds). These
+categories include any polling/waiting in those routines; they are not all
+removable work.
+
+
+| Scene/cache | Native repeats | PAL fields | Original-paired workload |
+|---|---|---:|---|
+| Carpet, clean | `carpet-e`, `carpet-f` | 2,929 / 2,931 | Three animations, 282 frame updates; no dissolve work |
+| Throne, clean | `throne-clean-c`, `throne-clean-d` | 3,761 / 3,768 | Nine timer requests, six draws, 676 adaptive quanta |
+| Throne, generated | `throne-warm-c`, `throne-warm-d` | 3,787 / 3,775 | Same timer/drawing workload; one fewer generation |
+
+Each pair has identical executable/ELF receipts, curated entry state, requested
+work and curated return state, with measured scope within 2%. The scene checker requires
+positive natural return, the named completed stop, and restored hardware/input.
+Twenty-two altered-evidence/workload controls reject changed workload, build
+identity, clock signature, completion, machine, truncated records and wrong
+clock sites; the observer control also excludes runtime writes and per-frame
+debugger stops. The zero-timer carpet
+pilot `carpet-c` is rejected because its recorder attempted an empty memory dump; corrected
+runs explicitly record zero rows. The GDB-write boundary pilot `throne-clean-pilot` is also
+rejected. Neither pilot supplies the accepted timings above.
+
+
+The common opening baseline (`scenes-before-c/d`) and post-change pair
+(`scenes-after-c/d`) each cover 81 frames and 375 PAL fields. All four meet all
+81 requested intervals from `ref/mame/runs/opening-noright-1`; repeats retain
+all 81 identical Kid records and phase/stall boundaries. Each run has `opening`,
+`report` and `work` output for every phase 0–4. The full host suite and the
+scene report/assistance controls pass.
+
+
+`make integration-check` passes in `tmp/integration-gate-jdbe6x2l` on
+`a1200-030`: title state, two natural-route runs and the no-Right outcome,
+including all existing altered-evidence controls. The four service-contract
+references are fresh (`20261017-004211-0b1e62c9`, `20261017-004304-a362556d`,
+`20261017-004350-ab006073`, `20261017-004519-d2d7f9f4`) and their ten
+rejection controls pass.
+
+VBL `.run-LgXmfk` matches the original countdown/removal and deferred-dispatch
+contracts, user-mode ABI and restoration, with all twelve altered-evidence
+controls rejected.
+
+Time Manager `.run-2Qev0D` matches delay units, active prime, cancellation, zero
+delay, rearm, user-mode ABI and restoration, including twelve rejection controls.
+Flat entry counters independently match the original’s two copy operations and
+zero text pages for carpet, and one copy/nine text pages for throne.
+
+Cadence `.run-CAjYI8` passes 59 consecutive original five-tick intervals and six
+rejection controls. Its separate five-update window is 18 PAL fields
+(72 ms/update); all 59 conversions occur at frame end. The performance checker
+also passes its altered-evidence controls.
+
+The restored ordinary release `.run-vMBOus` reaches the original first-text
+checkpoint with matching full viewport pixels. `make release` passes the HUNK,
+link and ordinary-build audits, with no runtime hashing, trap trace or hash
+counters. Its executable is byte-for-byte identical to the pinned 19.7 release
+(`c913cb3947c50d1cfe99297bec4636953ce9a7b93b7236101cdd62f8c6641247`).
+`manifest/scenes-reference.sha256` pins the paired original scene evidence;
+`manifest/scenes-profile.sha256` pins the six native scene measurements, four
+opening runs, common gates, controls and frozen ordinary release. The four
+large service-contract captures are pinned through their directory-local
+`contract-evidence.sha256` indexes; verify both the tracked manifest and those
+indexes to check every captured file. Captures,
+profiles, binaries and reference disks remain ignored. No ordinary game-service
+implementation or original game decision changes in this item.

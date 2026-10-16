@@ -203,6 +203,12 @@ local function command()
    -- Match the original minute cheats at CODE 2+49C2/+49E4: reset
    -- sub-minute counters and request clock redraw. Story selection stays original.
    writes={{0x4fce,value},{0x4fcc,0},{0x4fca,0},{0x4fa2,1}}
+  elseif kind=='protection' then
+   assert(value==1 and mem:readv_u16(a5-0x4fd2)==5,'GAMEPLAY ASSIST PROTECTION CONTEXT')
+   assert(mem:readv_u16(a5-0x50b4)>0,'GAMEPLAY ASSIST CANNOT REVIVE DEAD ACTOR')
+   -- D6: match the existing accepted-copy-protection seam. An assisted jump
+   -- to level five otherwise consumes its exit cinematic with protection 100.
+   writes={{0x56d8,1}}
   elseif kind=='shadow' then
    assert(value==1 and mem:readv_u16(a5-0x4fd2)==14,'GAMEPLAY ASSIST SHADOW CONTEXT')
    assert(mem:readv_u16(a5-0x50b4)>0,'GAMEPLAY ASSIST CANNOT REVIVE DEAD ACTOR')

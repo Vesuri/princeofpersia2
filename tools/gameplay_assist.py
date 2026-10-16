@@ -3,7 +3,7 @@ import argparse
 from pathlib import Path
 from replay_gameplay_route import status, wait
 
-LIMITS = {'minutes': (0, 75), 'shadow': (1, 1), 'health': (1, 12), 'level': (1, 14), 'x': (230, 720), 'room': (1, 32), 'y': (106, 346)}
+LIMITS = {'protection': (1, 1), 'minutes': (0, 75), 'shadow': (1, 1), 'health': (1, 12), 'level': (1, 14), 'x': (230, 720), 'room': (1, 32), 'y': (106, 346)}
 
 
 def assist(run, kind, value):
