@@ -45,6 +45,7 @@ private:
     uint8_t* arena_ = 0;
     // Sum of free physical spans; moving/coalescing blocks preserves it.
     uint32_t bytes_ = 0, end_ = 0, freeBytes_ = 0;
+    mutable uint32_t searchStart_ = headerBytes;
     uint16_t masters_ = 64;
     int16_t error_ = 0;
     Handle freeMasters_ = 0;

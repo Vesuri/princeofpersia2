@@ -87,3 +87,10 @@ its own 20-second deadline.
 Display, input, audio, continued gameplay, WHDLoad execution and release validation
 remain at their existing gates. The reference is authoritative only for the
 bounded startup path demonstrated here.
+
+Heap allocation uses the pinned shared first-fit search, in-place resize and
+MoveHHi helpers. The occupied-prefix hint is outside the Macintosh arena and
+is invalidated on topology changes; it does not change allocation order. Clear
+requests reuse the shared longword fill and retain their exact logical extent.
+See the item-19.7 measurements and original-paired fixtures in
+[performance](performance.md#heap-allocation-and-local-resize-197).

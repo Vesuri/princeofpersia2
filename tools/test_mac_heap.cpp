@@ -18,6 +18,14 @@ static void freeChain(MacHeap& heap,uint8_t* arena,std::vector<MacHeap::Handle> 
     uint32_t head=0;for(unsigned i=8;i<12;++i)head=(head<<8)|arena[i];
     CHECK(head==uint32_t((unsigned long)previous));CHECK(heap.check());
 }
+static void checkCoalesced(const uint8_t* arena,uint32_t bytes) {
+    bool previousFree=false;
+    for(uint32_t at=64;at<bytes-16;) {
+        uint32_t span,kind;std::memcpy(&span,arena+at,4);std::memcpy(&kind,arena+at+12,4);
+        CHECK(span>=32 && at+span<=bytes-16);
+        CHECK(!(previousFree && kind==0));previousFree=kind==0;at+=span;
+    }
+}
 static void checkRegionCopy() {
     alignas(8) uint8_t arena[16384];MacHeap h;CHECK(h.init(arena,sizeof(arena)));
     auto dst=h.newHandle(10,true);auto barrier=h.newPtr(128,true);
@@ -239,25 +247,85 @@ int main() {
         auto barrier=h.newHandle(128);CHECK(a&&b&&hole&&barrier);
         pattern(*a,1024,0x6d);pattern(*b,512,0x42);pattern(*barrier,128,0x91);
         CHECK(h.setState(barrier,0x80)==0);auto fixed=*barrier;before=*a;
-        auto middle=*b;auto targetSpan=*hole-before;
+        auto middle=*b;
         auto middleSpan=*barrier-middle;auto freeBefore=h.freeBytes();
         CHECK(h.disposeHandle(hole)==0);auto gapSpan=h.freeBytes()-freeBefore;
         auto freeAfter=h.freeBytes();CHECK(h.moveHigh(a)==0);
-        CHECK(*a==before+gapSpan+middleSpan && *b==middle-targetSpan);
+        CHECK(*a==before+gapSpan+middleSpan && *b==before);
         CHECK(patternIs(*a,1024,0x6d) && patternIs(*b,512,0x42));
         CHECK(*barrier==fixed && patternIs(*barrier,128,0x91));
         CHECK(h.state(barrier)==0x80 && h.freeBytes()==freeAfter && h.check());
     }
+    // Original MoveHHi with a free tail: only the target moves. Locked
+    // barriers bound the search; purgeable neighbours are retained.
+    for(unsigned state: {0u,0x40u}) {
+        CHECK(h.init(arena,sizeof(arena)));
+        a=h.newHandle(1024);b=h.newHandle(512);auto hole=h.newHandle(8192);
+        auto barrier=h.newHandle(512);CHECK(a&&b&&hole&&barrier);
+        CHECK(h.setState(b,state)==0 && h.setState(barrier,0x80)==0);
+        pattern(*a,1024,0x17);pattern(*b,512,0x31);pattern(*barrier,512,0x51);
+        auto oldA=*a,oldB=*b,oldBarrier=*barrier;auto targetSpan=*b-*a;
+        CHECK(h.disposeHandle(hole)==0);auto free=h.freeBytes();
+        CHECK(h.moveHigh(a)==0 && *a==oldBarrier-targetSpan && *a>oldA);
+        CHECK(*b==oldB && *barrier==oldBarrier && h.freeBytes()==free);
+        CHECK(patternIs(*a,1024,0x17) && patternIs(*b,512,0x31));
+        CHECK(patternIs(*barrier,512,0x51) && h.state(b)==state && h.check());
+    }
+    // Original no-room case still succeeds by moving the unlocked neighbour;
+    // a purgeable neighbour is moved, not purged. A locked one blocks the move.
+    for(unsigned state: {0u,0x40u,0x80u}) {
+        CHECK(h.init(arena,sizeof(arena)));
+        a=h.newHandle(1024);b=h.newHandle(512);
+        auto rest=h.newHandle(h.largestBlock());CHECK(a&&b&&rest);
+        CHECK(h.setState(rest,0x80)==0 && h.setState(b,state)==0);
+        auto oldA=*a,oldB=*b;pattern(*a,1024,0x17);pattern(*b,512,0x31);
+        CHECK(h.freeBytes()==0 && h.moveHigh(a)==0 && h.freeBytes()==0);
+        if(state==0x80)CHECK(*a==oldA && *b==oldB);
+        else CHECK(*a>oldA && *b==oldA);
+        CHECK(h.state(b)==state && patternIs(*a,1024,0x17));
+        CHECK(patternIs(*b,512,0x31) && h.check());
+    }
+    // Exact fit and a tail remainder too small for a free-block header.
+    for(unsigned extra: {0u,8u,16u,24u,32u}) {
+        CHECK(h.init(arena,sizeof(arena)));
+        a=h.newHandle(1024);b=h.newHandle(512);auto hole=h.newHandle(1024+extra);
+        auto barrier=h.newHandle(512);CHECK(a&&b&&hole&&barrier);
+        CHECK(h.setState(barrier,0x80)==0);auto oldB=*b;
+        pattern(*a,1024,0x17);CHECK(h.disposeHandle(hole)==0);
+        CHECK(h.moveHigh(a)==0 && *b==oldB && h.handleSize(a)==1024);
+        CHECK(patternIs(*a,1024,0x17) && h.check());
+        CHECK(h.disposeHandle(a)==0 && h.disposeHandle(b)==0 && h.check());
+    }
+    // Paired with mac_heap.lua's System 7.5.5 in-place resize/failure cases.
+    CHECK(h.init(arena,sizeof(arena)));
+    a=h.newHandle(1024);b=h.newHandle(512);c=h.newHandle(128);
+    CHECK(a&&b&&c && h.setState(c,0x80)==0);pattern(*a,1024,17);
+    before=*a;CHECK(h.disposeHandle(b)==0);
+    for(unsigned size: {1024u,256u,512u,1024u}) {
+        CHECK(h.setHandleSize(a,size)==0 && *a==before && h.handleSize(a)==size);
+        CHECK(patternIs(*a,256,17) && h.check());checkCoalesced(arena,sizeof(arena));
+    }
+    CHECK(h.setState(a,0x80)==0 && h.setHandleSize(a,131072)==MacHeap::memFullErr);
+    CHECK(*a==before && h.handleSize(a)==1024 && patternIs(*a,256,17) && h.check());
     // Deterministic fragmentation: validate every surviving payload after every operation.
     CHECK(h.init(arena,sizeof(arena)));handles.assign(48,nullptr);uint32_t rng=1;
     unsigned sizes[48]={};
     for(unsigned step=0;step<2500;++step) {
         rng=rng*1664525U+1013904223U;unsigned slot=(rng>>16)%48;
-        if(handles[slot]) { CHECK(h.disposeHandle(handles[slot])==0);handles[slot]=nullptr; }
+        if(handles[slot] && step%3) {
+            unsigned n=(rng%900)+1,old=sizes[slot];
+            uint8_t state=h.state(handles[slot]);
+            int error=h.setHandleSize(handles[slot],n);
+            CHECK(error==0 || error==MacHeap::memFullErr);
+            CHECK(h.state(handles[slot])==state);
+            CHECK(patternIs(*handles[slot],error ? old : std::min(old,n),slot+1));
+            if(!error) {sizes[slot]=n;pattern(*handles[slot],n,slot+1);}
+        }
+        else if(handles[slot]) { CHECK(h.disposeHandle(handles[slot])==0);handles[slot]=nullptr; }
         else { unsigned n=(rng%700)+1;auto x=h.newHandle(n);if(x){handles[slot]=x;sizes[slot]=n;pattern(*x,n,slot+1);} }
         if(step%7==0)h.compact();
         if(step%11==0 && handles[slot])CHECK(h.moveHigh(handles[slot])==0);
-        CHECK(h.check());
+        CHECK(h.check());checkCoalesced(arena,sizeof(arena));
         for(unsigned i=0;i<48;++i)if(handles[i])CHECK(patternIs(*handles[i],sizes[i],i+1));
     }
     // Force many master blocks interleaved with data and holes.

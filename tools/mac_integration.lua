@@ -1,3 +1,4 @@
+local heapFixture=dofile('tools/mac_heap.lua')
 local rectangles=dofile('tools/mac_rectangles.lua')
 -- Read-only original-call contracts for native startup integration.
 local M={}
@@ -99,6 +100,7 @@ function M.startNil()
  assert(not pending,'INTEGRATION PENDING AT FIXTURE')
  local code=(cpu.state.SP.value&0xffffff)-8192
  assert(code>0x100000,'INTEGRATION FIXTURE EXTENT')
+ if os.getenv('POP2_HEAP_PROBE') then heapFixture.start(code,M.finish);return end
  if os.getenv('POP2_RECTANGLE_PROBE') then rectangles.start(code,M.finish);return end
  if os.getenv('POP2_EQUAL_RECT_PROBE') then
   equalBase=code;equalIndex=1
@@ -151,6 +153,7 @@ function M.startFixed()
  nextFixed()
 end
 function M.poll()
+ if heapFixture.poll()then return true end
  if rectangles.poll()then return true end
  if not meta or dbg.execution_state~='stop' then return false end
  local pc=cpu.state.PC.value

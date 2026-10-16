@@ -741,3 +741,112 @@ cache and an already generated cache for comparison. The pinned clean route in
 in `manifest/gameplay-throne-reference.sha256` reproduce the scene. Measure
 release execution on `a1200-030` before calling it a bottleneck; current debugger
 and verification wall times are not performance measurements.
+
+### Heap allocation and local resize (19.7)
+
+The allocator uses AmigaXDev's `HeapResize.inc` and `HeapMoveHigh.inc`.
+In-place resize merges only its newly split tail instead of rescanning the
+whole zone. MoveHHi retains the original's free-tail placement and compacted
+neighbour behavior, including pinned and purgeable blocks. A fresh System 7.5.5
+fixture (`heap-contract-4`) covers nine placement cases plus unchanged-size,
+shrink, growth and locked low-memory failure; host fixtures pair those outcomes.
+Reproduce with `POP2_INTEGRATION=1 POP2_NULL_DISPOSE=1 POP2_HEAP_PROBE=1`
+on `tools/run_reference.py --name NAME`, then run
+`tools/check_heap_contract.py ref/mame/runs/NAME --controls`. The fixture is
+opt-in and uses its own private Macintosh heap zone.
+
+NewHandle and NewPtr retain their existing logical clear extent and use the
+already shared `FillRect8::fillSpan` longword stores. No game-visible bytes are
+left uncleared to obtain a saving. `HeapFindSpace.inc` skips only a known occupied
+prefix, preserving first-fit order even when the first free block is too small.
+The hint occupies one 32-bit word outside the guest arena. Split rewinds it,
+coalescing records the first free block, and compaction resets it. The diagnostic
+whole-heap invariant checks that it names a block boundary with no free block
+before it. No slot order, error guard, heap size or release verification policy
+changes.
+
+The helper is published in AmigaXDev's `codex/heap-search-start` (`b09d897`),
+with canonical, installed and vendored sources identical. Shared sanitizer
+checks cover 2,555 small occupancy/hint/request cases; the consumer checks
+20,040 first-fit queries across 2,500 mixed operations and explicit shrink,
+compaction and reset cases. Removing each of the split, coalescing and
+compaction updates is rejected. Dirty-reuse clearing tests cover empty, short
+and long allocations, padding and neighbouring payloads. The shared resize and
+MoveHHi sources are pinned at `4ef7305` and `2fcb917`. Vette uses Exec allocation;
+Alone in the Dark supplies the common arena allocator and original fixture.
+Its remaining clearing/search work is recorded as HEAP.3 in that project's queue.
+
+MEASURED: fresh parent `02e3c20` runs `heap-before-c/d` and candidate
+`heap-final-a/b` use `amiga/aprof.sh`, `a1200-030`, exact cycles, no MMU,
+`PROFILE=1 VERIFY=0` and the existing opening recorder. Each has `opening`,
+`report` and `work` reports for all five phases, compared with
+`ref/mame/runs/opening-noright-1`. Both pairs pass repeatability. Before/after
+comparisons retain all 81 Kid records, counters, phase states and original
+requests; both final runs meet all 81 timer intervals exactly. The complete
+opening takes 375 PAL fields in both final runs (baseline 375–376). Measurements are emulator results, not hardware
+claims or startup/scene-loading benchmarks.
+
+Landing uses the established six reported rows/seven publications denominator:
+
+| Quantity | Before, two runs | After, two runs |
+|---|---:|---:|
+| NewHandle, seven trap calls, inclusive ms/call | 4.012–4.208 | **0.453–0.455** |
+| NewHandle inclusive ms/reported frame | 4.681–4.910 | 0.528–0.531 |
+| Allocate, twenty calls, inclusive µs/call | 251.6–252.4 | 17.88 |
+| Whole-zone coalescing, calls per landing phase | 28 | 14 |
+| Coalescing inclusive ms/reported frame | 1.708–1.839 | 0.856–0.941 |
+| Entire phase CPU ms/reported frame | 94.25–94.40 | 92.53–93.90 |
+| Exception/STOP gaps, separately reported ms/frame | 3.00 | 2.88–2.92 |
+
+The NewHandle budget includes the full trap subtree, including dispatch and
+nested callbacks; it is not an average diluted with tiny internal allocations.
+`tools/check_heap_profile.py` requires all seven calls and ≤0.5 ms/call, rejects
+the baseline and the initial clear/resize-only candidate (0.701 ms/call in `heap-after-a`), and
+rejects four missing-work/over-budget controls. Inclusive rows overlap and must
+not be summed. The retained clear/resize-only pair is `heap-after-a/b`.
+
+Work outside the original timer-wait subtree, ms/reported frame:
+
+| Phase | Before, two runs | After, two runs |
+|---|---:|---:|
+| 0 landing | 81.98–82.38 | 77.47–77.84 |
+| 1 stand-off | 40.45–40.74 | 39.60–39.81 |
+| 2 attack | 39.39–39.40 | 37.51–38.17 |
+| 3 attack | 40.25–40.70 | 38.99–39.73 |
+| 4 fall | 24.89–25.39 | 24.26–24.61 |
+
+These are matched `work` reports under the existing call-tree accounting, not
+new D13 scoped clock/dispatch measurements. Faster work leaves more time in the
+original wait; original requested cadence and gameplay decisions are retained.
+
+Validation on `a1200-030`: `integration-gate-i8jvujoe` passes the title-state,
+natural route, repeat and no-Right control, including all existing evidence
+controls. `gameplay-restart-gate-5oryb2xi` and
+`gameplay-save-gate-iqtxfntv` pass two native runs each, with 15 restart and 22
+save/load rejection controls. Freed-handle run `.run-uL7oeU` reaches the
+supported disposed-palette path once, matches all four original expired-story
+checkpoints and restores normally. Its checker rejects zero/missing hits and
+missing completion; the original isolated, live-scene and ending handle
+contracts remain pinned and pass. VBL `.run-qWISIc` passes the original
+countdown/removal and deferred-callback contracts, ABI, restoration and all 12
+rejection controls.
+Time Manager `.run-CJBHtM` passes delay units, active prime, cancellation, zero
+delay, rearm, user-mode ABI and restoration, including 12 rejection controls.
+Cadence `.run-oPtM2V` passes all 58 consecutive original five-tick intervals
+and six rejection controls. Its five-update window is 18 PAL fields (72
+ms/update); all 58 conversions occur once at frame end. This instrumented
+window is separate from the full opening profile above.
+
+Release `.run-O2eZ1P` with 4 MB Fast RAM positively reports `CORE / MEMORY`,
+without an exception, at preparation stage 1 before hardware takeover. It is an
+expected launch rejection, not a completed/restored gameplay run. Six controls
+reject altered build/configuration, stop reason, exception, stage and completion
+records. The original private-zone fixture also confirms failed locked growth
+returns `memFullErr` with its address, old size and payload preserved.
+The ordinary 8 MB release `.run-5LNhfV` reaches the original first-text
+checkpoint with identical full viewport pixels. `make release` restores the
+ordinary flags and passes the HUNK/link and release audits: no runtime hashing,
+trap trace or hash counters. `manifest/heap-allocation.sha256` pins the original
+fixture, all six profiling runs (including the rejected clearing-only pilot),
+common-gate evidence, controls and frozen release binary. Build receipts match
+within each accepted profiling pair; release output matches its tested receipt.

@@ -5,6 +5,7 @@
 #endif
 #endif
 #include "MacHeap.h"
+#include "FillRect8.h"
 
 static void heapWrite32(uint8_t* at, uint32_t value)
 {
@@ -39,7 +40,7 @@ void MacHeap::reset()
     arena_=0;bytes_=end_=freeBytes_=0;error_=0;freeMasters_=0;
     masterBlockCount_=0;masterBlocksOverflow_=false;
     cachedMasterStart_=cachedMasterLength_=0;
-    masterRanges_.clear();
+    masterRanges_.clear();searchStart_=headerBytes;
 }
 bool MacHeap::init(uint8_t* arena, uint32_t bytes, uint16_t masters)
 {
@@ -127,15 +128,10 @@ uint32_t MacHeap::largestBlock() const
         if(block(off).kind==freeBlock && block(off).span>largest)largest=block(off).span;
     return largest ? largest-blockBytes : 0;
 }
-uint32_t MacHeap::findSpace(uint32_t bytes) const
-{
-    uint32_t needed=physical(bytes);if(!needed)return 0;
-    for(uint32_t off=headerBytes;off<end_;off+=block(off).span)
-        if(block(off).kind==freeBlock && block(off).span>=needed)return off;
-    return 0;
-}
+#include "HeapFindSpace.inc"
 void MacHeap::split(uint32_t off,uint32_t span,uint32_t logical,uint32_t kind,uint32_t owner)
 {
+    if(off<searchStart_)searchStart_=off;
     uint32_t stateOffset=kind==handleBlock ? flags((Handle)(arena_+owner))-arena_ : 0;
     uint32_t available=block(off).span;
     if(block(off).kind==freeBlock)freeBytes_-=available;
@@ -146,7 +142,9 @@ void MacHeap::split(uint32_t off,uint32_t span,uint32_t logical,uint32_t kind,ui
 }
 void MacHeap::coalesce()
 {
+    searchStart_=end_;
     for(uint32_t off=headerBytes;off<end_;) {
+        if(block(off).kind==freeBlock && searchStart_==end_)searchStart_=off;
         uint32_t next=off+block(off).span;
         if(block(off).kind==freeBlock && next<end_ && block(next).kind==freeBlock)
             block(off).span+=block(next).span;
@@ -171,6 +169,7 @@ void MacHeap::publish()
 }
 uint32_t MacHeap::compact()
 {
+    searchStart_=headerBytes;
     uint32_t dst=headerBytes;
     for(uint32_t src=headerBytes;src<end_;) {
         Block saved=block(src);uint32_t next=src+saved.span;
@@ -191,6 +190,7 @@ uint32_t MacHeap::compact()
 }
 void MacHeap::compactUp()
 {
+    searchStart_=headerBytes;
     // Each interval is bounded by a pointer, master block or locked handle.
     uint32_t start=headerBytes;
     while(start<end_) {
@@ -283,7 +283,7 @@ uint8_t* MacHeap::newPtr(uint32_t bytes,bool clear)
     compactUp();
     uint32_t off=allocate(bytes,ptrBlock);if(!off)return 0;
     uint8_t* ptr=arena_+off+blockBytes;
-    if(clear)for(uint32_t i=0;i<bytes;++i)ptr[i]=0;
+    if(clear)FillRect8::fillSpan(ptr,bytes,0);
     return ptr;
 }
 int16_t MacHeap::disposePtr(uint8_t* ptr)
@@ -296,18 +296,7 @@ uint32_t MacHeap::ptrSize(uint8_t* ptr)
     uint32_t off=findPtr(ptr,ptrBlock);queryResult(off ? 0 : memWZErr);
     return off ? block(off).logical : 0;
 }
-bool MacHeap::resizeInPlace(uint32_t off,uint32_t bytes)
-{
-    uint32_t needed=physical(bytes);if(!needed)return false;
-    Block saved=block(off);
-    if(needed>saved.span) {
-        uint32_t next=off+saved.span;
-        if(next>=end_ || block(next).kind!=freeBlock || saved.span+block(next).span<needed)return false;
-        freeBytes_-=block(next).span;
-        block(off).span+=block(next).span;
-    }
-    split(off,needed,bytes,saved.kind,saved.owner);coalesce();return true;
-}
+#include "HeapResize.inc"
 int16_t MacHeap::setPtrSize(uint8_t* ptr,uint32_t bytes)
 {
     uint32_t off=findPtr(ptr,ptrBlock);if(!off)return result(memWZErr);
@@ -330,7 +319,7 @@ MacHeap::Handle MacHeap::newHandle(uint32_t bytes,bool clear)
     uint32_t off=allocate(bytes,handleBlock,(uint8_t*)h-arena_);
     if(!off) { *flags(h)=0;releaseMaster(h);result(memFullErr);return 0; }
     *h=arena_+off+blockBytes;
-    if(clear)for(uint32_t i=0;i<bytes;++i)(*h)[i]=0;
+    if(clear)FillRect8::fillSpan(*h,bytes,0);
     result(0);return h;
 }
 int16_t MacHeap::disposeHandle(Handle h)
@@ -392,34 +381,7 @@ MacHeap::Handle MacHeap::recoverHandle(uint8_t* ptr)
     }
     queryResult(nilHandleErr);return 0;
 }
-int16_t MacHeap::moveHigh(Handle h)
-{
-    if(!isHandle(h) || !*h)return result(nilHandleErr);
-    if(*flags(h)&0x80)return result(memLockedErr);
-    uint32_t off=findPtr(*h,handleBlock);if(!off)return result(memWZErr);
-    uint32_t span=block(off).span,limit=off+span;
-    while(limit<end_ && (block(limit).kind==freeBlock || movable(limit)))limit+=block(limit).span;
-    uint32_t next=off+span;
-    if(next<limit && block(next).kind==freeBlock) {
-        // Swap past unused space without reading/copying its payload. Continue
-        // the same rotation through any live blocks beyond the hole, retaining
-        // their order and the target's final address before the next barrier.
-        uint32_t gap=block(next).span;
-        moveBytes(arena_+off+gap,arena_+off,span);
-        block(off)={gap,0,0,freeBlock,0,0};
-        off+=gap;
-    }
-    // Nothing follows the target after a free-gap swap: only publish its new
-    // master pointer; avoid reversing a potentially large sample twice.
-    if(off+span==limit) { *h=arena_+off+blockBytes;coalesce();return result(0); }
-    // Rotate blocks without allocating scratch memory; immovable barriers remain fixed.
-    reverseWords(arena_+off,arena_+off+span);
-    reverseWords(arena_+off+span,arena_+limit);
-    reverseWords(arena_+off,arena_+limit);
-    for(uint32_t at=off;at<limit;at+=block(at).span)
-        if(block(at).kind==handleBlock)*(Handle)(arena_+block(at).owner)=arena_+at+blockBytes;
-    coalesce();return result(0);
-}
+#include "HeapMoveHigh.inc"
 int16_t MacHeap::setHandleSize(Handle h,uint32_t bytes)
 {
     if(!isHandle(h) || !*h)return result(nilHandleErr);
@@ -452,6 +414,7 @@ bool MacHeap::check() const
     uint32_t off=headerBytes,freeBytes=0;
     uint16_t masters=0;
     Handle previousFree=0;
+    bool foundSearchStart=searchStart_==end_;
     while(off<end_) {
         const Block& b=block(off);
         if(b.span<minimumBlock || (b.span&7) || b.span>end_-off || b.kind>masterBlock)return false;
@@ -463,7 +426,8 @@ bool MacHeap::check() const
             // The direct lookup must agree with the authoritative chain walk.
             if(findHandleBlock(*h)!=off || scanPtr(*h,handleBlock)!=off)return false;
         }
-        if(b.kind==freeBlock)freeBytes+=b.span;
+        if(off==searchStart_)foundSearchStart=true;
+        if(b.kind==freeBlock) {if(off<searchStart_)return false;freeBytes+=b.span;}
         if(b.kind==masterBlock) {
             if(b.logical!=b.owner*(sizeof(uint8_t*)+1))return false;
             if(!masterBlocksOverflow_) {
@@ -482,5 +446,5 @@ bool MacHeap::check() const
         off+=b.span;
     }
     if(!masterBlocksOverflow_ && masters!=masterBlockCount_)return false;
-    return off==end_ && freeBytes==freeBytes_ && previousFree==freeMasters_;
+    return foundSearchStart && off==end_ && freeBytes==freeBytes_ && previousFree==freeMasters_;
 }

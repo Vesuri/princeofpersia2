@@ -49,3 +49,6 @@ Alone in the Dark	85611935ab158dfcca3ae07450bbd9b0c2b89cf9	disjoint-band convers
 AmigaXDev	1dcd44e399643b7e35341334cb4d549a8528ff09	shared blitter completion policy; asynchronous queue progress, immediate completion and early-drain tests; codex/blitter-completion
 Alone in the Dark	85611935ab158dfcca3ae07450bbd9b0c2b89cf9	blocking blitter synchronization and FRAME profiling inspected for item 19.4
 Vette	b3074ba6784a834864c222db9b4f0ccabd38de03	dirty-buffer synchronization and frame ownership inspected for item 19.4
+AmigaXDev	2fcb917fba621120a574cd74d4372741dc274a34	canonical MoveHHi free-tail placement and fragmented fallback; adopted under 19.7 with fresh System 7.5.5 fixture
+AmigaXDev	4ef730560c270876d0f57304ff28440a564dd518	canonical local-tail in-place heap resize; adopted under 19.7
+AmigaXDev	b09d8972e3313e2ffcdb4ca32e2b82404b3b007c	canonical first-fit occupied-prefix search; published on codex/heap-search-start with topology and mutation controls
