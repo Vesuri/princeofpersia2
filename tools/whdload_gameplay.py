@@ -49,7 +49,7 @@ def prepare(base):
     action=options.get('save_action')
     updates=16 if action=='load' else 11 if action=='save' else 8
     from whdload_save import observer
-    file_route=observer(options.get('save_action'),c2,address)
+    file_route=observer(options.get('save_action'),c2,address,mmu=options.get('mmu_functional',False))
     s=f'''set $world={a5:#x}
     set $c2={c2:#x}
     set $c15={c15:#x}
@@ -126,6 +126,7 @@ def prepare(base):
      disable 8
      continue
     end
+    {'disable 8' if options.get('mmu_functional') else ''}
     {file_route}
     monitor key 66 1
     monitor key 10 1
@@ -166,6 +167,7 @@ def check(base):
     options=json.loads((base/'gameplay-options.json').read_text()) if (base/'gameplay-options.json').exists() else {}
     quit_key=options.get('quit_key')
     action=options.get('save_action')
+    mmu=options.get('mmu_functional',False)
     updates=16 if action=='load' else 11 if action=='save' else 8
     first=re.findall(r'^PLAY FIRST level=1 room=4 step=(\d+)$',log,re.M)
     moved=re.findall(r'^PLAY MOVED level=1 room=4 step=(\d+)$',log,re.M)
@@ -178,8 +180,9 @@ def check(base):
         markers+=['QUIT F10 INJECTED']
     else:
         markers+=['PLAY RESTORED error=0 view=1 vbi=1 input=1',
-                  'QUIT WINDOW RETURN stack=4 fallback=1','QUIT AUDIO RETURN selector=8 result=0',
+                  'QUIT WINDOW RETURN stack=4 fallback=1',
                   'QUIT PATCHES load=0 exit=0','"CORE / EXIT TO SHELL"']
+        if not mmu:markers+=['QUIT AUDIO RETURN selector=8 result=0']
         assert re.search(r'CORE STOP trap=a9f4\b',log), 'QUIT / ORIGINAL EXIT TRAP'
     for marker in markers:
         assert log.count(marker)==1, 'QUIT / MISSING COMPLETION '+marker
@@ -188,6 +191,14 @@ def check(base):
     report=base/'game/.whdl_register'
     if report.exists():
         assert report.read_text(encoding='latin1').count('\nReturn OK.\n')==1, 'QUIT / WHDLOAD ERROR'
+    if mmu:
+        assert options.get('setup')=='a1200-040' and options.get('mmu') and action in ('save','load') and not quit_key, 'MMU / FUNCTIONAL SCOPE'
+        config=(base/'logs/debug.uae').read_text().splitlines()
+        assert all(setting in config for setting in ('cpu_model=68040','mmu_model=68040','cachesize=0','cpu_compatible=true','cpu_data_cache=true')), 'MMU / EFFECTIVE MACHINE'
+        registers=report.read_text(encoding='latin1')
+        assert 'TC=8000 ' in registers and 'CACR=80008000 ' in registers, 'MMU / ACTIVE TRANSLATION AND CACHES'
+        launch=(base/'boot/s/startup-sequence').read_text()
+        assert re.search(r'\bMMU\b',launch) and not re.search(r'\bNOMMU\b',launch), 'MMU / WHDLOAD OPTION'
     receipt=json.loads((base/'receipt.json').read_text())
     assert set(receipt['flags'].split())=={'-DPOP2_'+v for v in ('CORE','DISPLAY','INPUT','UI','AUDIO')}, 'QUIT / RELEASE BUILD'
     assert hashlib.sha256((base/'game/PrinceOfPersia2').read_bytes()).hexdigest()==receipt['exe'], 'QUIT / EXECUTABLE IDENTITY'
@@ -197,7 +208,8 @@ def check(base):
     result={'result':'WHDLOAD GAMEPLAY AND QUIT PASS','exe':receipt['exe'],'updates':updates,'quit':'F10' if quit_key else 'Amiga-Q'}
     from whdload_save import check as save_check
     save_check(base)
-    (base/'gameplay-quit.json').write_text(json.dumps(result,indent=2)+'\n')
+    if mmu:result.update(result='WHDLOAD MMU FILE AND QUIT FUNCTIONAL PASS',audio_return='not observed')
+    (base/('mmu-functional.json' if mmu else 'gameplay-quit.json')).write_text(json.dumps(result,indent=2)+'\n')
     print(json.dumps(result))
 
 

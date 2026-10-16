@@ -3,11 +3,13 @@ import hashlib
 import json
 
 
-def observer(action,c2,address):
+def observer(action,c2,address,mmu=False):
     if action is None:return ''
     assert action in ('save','load')
     label=action.upper();key='21' if action=='save' else '18'
     picker=7001 if action=='save' else 7002
+    dialog_check='' if mmu else f" || *(unsigned long*){address('g_uiOverlay'):#x} != {picker}"
+    dialog_marker=f'{label} DIALOG reached=1' if mmu else f'{label} PICKER shown={picker}'
     returned=c2+(0x143e if action=='save' else 0x11e2)
     script=f'''disable 4
     break *{address('pop2UIOverlayShown'):#x}
@@ -17,10 +19,10 @@ def observer(action,c2,address):
     continue
     printf "{label} DIALOG id=%lu pc=%lx\\n",*(unsigned long*){address('g_uiOverlay'):#x},$pc
     dump binary memory {action}-dialog.bin {address('g_uiOverlayPixels'):#x} {address('g_uiOverlayPixels')+640*480:#x}
-    if $pc != {address('pop2UIOverlayShown'):#x} || *(unsigned long*){address('g_uiOverlay'):#x} != {picker}
+    if $pc != {address('pop2UIOverlayShown'):#x}{dialog_check}
      quit 1
     end
-    printf "{label} PICKER shown={picker}\\n"
+    printf "{dialog_marker}\\n"
     monitor key {key} 0
     monitor key 66 0
     disable 9
@@ -57,12 +59,14 @@ def observer(action,c2,address):
 
 def check(base):
     options=base/'gameplay-options.json'
-    action=json.loads(options.read_text()).get('save_action') if options.exists() else None
+    settings=json.loads(options.read_text()) if options.exists() else {}
+    action=settings.get('save_action')
     if action is None:return
     assert action in ('save','load'), 'SAVE / ACTION'
     log=(base/'gdb.log').read_text()
     label=action.upper();picker=7001 if action=='save' else 7002
-    for marker in (f'{label} PICKER shown={picker}',f'{label} COMPLETED result=1'):
+    dialog_marker=f'{label} DIALOG reached=1' if settings.get('mmu_functional') else f'{label} PICKER shown={picker}'
+    for marker in (dialog_marker,f'{label} COMPLETED result=1'):
         assert log.count(marker)==1, 'SAVE / ORIGINAL ROUTINE COMPLETION '+marker
     assert (base/(action+'-return-a5.bin')).stat().st_size==22266, 'SAVE / WORLD EXTENT'
     # The original-paired save fixture establishes this document layout.

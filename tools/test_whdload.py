@@ -13,6 +13,7 @@ def main():
     p.add_argument('--setup',choices=['a1200-030','a1200-040'],default='a1200-030')
     p.add_argument('--no-preload',action='store_true')
     p.add_argument('--mmu',action='store_true')
+    p.add_argument('--mmu-functional',action='store_true',help='040/MMU save/load and normal-exit coverage; excludes per-trap return observations')
     p.add_argument('--seconds',type=int,default=180)
     p.add_argument('--slave',type=Path,default=ROOT/'build/whdload/PrinceOfPersia2.slave')
     p.add_argument('--ticks',type=int,default=1500)
@@ -27,8 +28,9 @@ def main():
     assert not (a.gameplay and a.store_reference), 'WHDLOAD / ONE OBSERVER'
     assert not (a.save_game or a.load_game_from) or (a.gameplay and not a.quit_key), 'WHDLOAD / SAVE REQUIRES NORMAL GAMEPLAY'
     debug=a.gameplay or bool(a.store_reference)
+    assert not a.mmu_functional or (a.setup=='a1200-040' and a.mmu and a.gameplay and (a.save_game or a.load_game_from)), 'WHDLOAD / MMU FUNCTIONAL ROUTE'
     if debug:
-        assert a.setup=='a1200-030' and not a.mmu, 'WHDLOAD / VALIDATED DEBUGGER SETUP'
+        assert a.mmu_functional or (a.setup=='a1200-030' and not a.mmu), 'WHDLOAD / VALIDATED DEBUGGER SETUP'
         from whdload_store import emulator
         emulator()
     receipt=verify()
@@ -56,7 +58,7 @@ def main():
     rom=Path(os.environ['KICKSTART_A1200']);rtb=Path(str(rom)+'.RTB')
     for src in [rom,rtb]:shutil.copyfile(src,boot/'devs/Kickstarts'/src.name)
     options=('' if a.no_preload else 'PRELOAD ')+('MMU ' if a.mmu else 'NOMMU ' if debug else '')
-    (base/'gameplay-options.json').write_text(json.dumps({'setup':a.setup,'mmu':a.mmu,'preload':not a.no_preload,'quit_key':a.quit_key,'save_action':'save' if a.save_game else 'load' if a.load_game_from else None})+'\n')
+    (base/'gameplay-options.json').write_text(json.dumps({'setup':a.setup,'mmu':a.mmu,'mmu_functional':a.mmu_functional,'preload':not a.no_preload,'quit_key':a.quit_key,'save_action':'save' if a.save_game else 'load' if a.load_game_from else None})+'\n')
     timeout='' if a.quit_key else f'TIMEOUT={a.ticks} '
     (boot/'s/WHDLoad.prefs').write_text(('' if a.quit_key else 'Expert\n')+'ReadDelay=0\n')
     diagnostics='' if a.quit_key else 'COREDUMP '

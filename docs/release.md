@@ -74,13 +74,42 @@ The first two runs' complete first/moved context captures match the accepted
 030 route byte-for-byte. WHDLoad reports TC=$8000 and CACR=$80008000;
 the effective machine has CPU/MMU 68040.
 
-These are positive functional observations, but the strict audio-close return
-observer remains unresolved: the guest return probe is missed, and an attempted
-native-return stack read is inconsistent. Preserve these failed strict reports;
-do not infer an audio result from an unreached probe or change game code from
-that uncertain debugger read. The reusable accepted release observer remains
-030/NOMMU. Fresh-boot save persistence passes below; 040 qualification and
-hardware validation remain open.
+These runs do not establish their stricter audio-return observation: the guest
+return probe is missed and an attempted native-return memory read is inconsistent.
+Their failed strict reports remain failed. The shared MMU playbook instead
+requires positive startup, gameplay, file operations and normal exit, with the
+effective machine and saved MMU state checked. The dedicated workflow below
+covers that functional scope without claiming the individual audio result.
+
+### MMU functional workflow
+
+MEASURED: fresh 040/MMU release runs save
+(`tmp/whdload-release-j1sbq4xw`) and load in a new boot
+(`tmp/whdload-release-ce6kvhlq`). Both original file routines return success;
+the load reaches a new level-1/room-4 first frame and a completed update. Both
+complete ExitToShell, restore the platform and return successfully to the shell.
+The save forks and metadata remain byte-identical after loading. The effective
+CPU/MMU are 68040, JIT is disabled, compatible/data-cache emulation is active,
+and WHDLoad records TC=$8000 and CACR=$80008000. These satisfy the functional
+MMU scenario in AmigaXDev's `docs/playbooks/whdload-mmu.md`; they do not establish
+cadence or real-hardware acceptance.
+
+`--mmu-functional` is an explicit, separate observer scope. Its report is
+`mmu-functional.json`, with `audio_return: not observed`; the paired cleanup
+checker still rejects it without its required audio-return marker. The dialog
+callback and original file-routine register returns are observed. In both MMU
+runs the raw dialog ID reads as zero despite the callback and successful file
+operation; cache-incoherent debugger memory reads are INFERRED, not yet proven.
+This diagnostic issue is deferred in item 20. No game code or cache policy was
+changed to accommodate it, and no failed strict result has been relabelled.
+
+Reproduce with `tools/test_whdload.py --gameplay --setup a1200-040 --mmu
+--mmu-functional --save-game --seconds 600 --ticks 24000`, then replace
+`--save-game` with `--load-game-from SAVE_RUN`. Use the pinned debugger emulator.
+`tools/check_whdload_mmu.py RUN --controls` checks the result and rejects eight
+alterations (translation/cache state, CPU, JIT, NoMMU option, shell result,
+restoration and file completion). The separate save/load corruption controls
+also pass. Original-paired service cleanup remains covered on 030/NOMMU.
 
 ### Indirect low-memory store
 
@@ -191,6 +220,7 @@ Add `--seconds 600 --ticks 24000` to both. Check either run with
 On the owner's A1200 68040/40, 32 MB, MMU:
 
 - Install from the original SIT with Installer 43. Keep the installer messages.
+- Try a damaged **copy** of the SIT; confirm the error can be dismissed and the existing installation stays intact.
 - Launch using the supplied icon (PRELOAD), start with Space, and play several rooms.
 - Save with Amiga-S, quit with Amiga-Q, relaunch and load with Amiga-O.
 - Check music, effects, movement, and the F10 WHDLoad exit.

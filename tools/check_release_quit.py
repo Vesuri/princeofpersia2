@@ -28,6 +28,7 @@ def check(original, native):
     assert entered and returned and entered[1]==entered[2]==returned[2] and returned[1]!=returned[2], 'QUIT / ORIGINAL PORT FALLBACK'
     assert 'QUIT_EXIT_TO_SHELL count=1 ' in log, 'QUIT / ORIGINAL EXIT'
     native_check(native)
+    assert (native/'gdb.log').read_text().count('QUIT AUDIO RETURN selector=8 result=0')==1, 'QUIT / PAIRED AUDIO RETURN'
     for name,size in [('quit-window-before.bin',156),('quit-port-after.bin',108)]:
         actual=(native/name).read_bytes();reference=evidence[name]
         assert len(actual)==len(reference)==size, 'QUIT / PORT EXTENT'

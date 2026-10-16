@@ -33,10 +33,10 @@ Items remain open until their acceptance gates pass.
     The original null-channel write that corrupted the WHDLoad privilege vector
     now has a paired relocation/store check. Release 030/NOMMU gameplay and
     normal quit pass with PRELOAD on/off; ordinary F10 and fresh-boot save/load
-    persistence also pass. 040/MMU runs reach gameplay and normal exit with matching
-    context captures, but their strict audio-close return observation remains
-    unresolved; preserve the failed reports and investigate the debugger reading
-    before changing runtime behavior (see `docs/release.md`).
+    persistence also pass. Fresh 040/MMU save/load, resumed gameplay and normal
+    exit pass the shared functional MMU workflow, with translation/caches active
+    and eight evidence-corruption controls. The separate, unresolved debugger
+    memory observation is retained in item 20 (see `docs/release.md`).
     Installer-only archive rejection passes on the host; the real Installer 43
     rejection requester still needs an interactive dismissal check.
 
@@ -160,3 +160,18 @@ Items remain open until their acceptance gates pass.
     profile meets every requested interval on the exact 68030 model, with
     reproducible matched-workload results for the further scenes. Emulator
     results are not hardware performance claims.
+
+20. **Deferred MMU debugger memory observations.** During release validation,
+    040/MMU guest/native audio-return observations are missing or inconsistent;
+    the raw dialog ID also reads as zero at the reached dialog callback. Fresh
+    save/load routines nevertheless return success and their persisted files,
+    resumed gameplay and normal exit pass the separate functional gate. See
+    `docs/release.md` for exact evidence. Cache-incoherent debugger memory reads
+    are INFERRED; do not treat the raw values as established runtime defects or
+    relabel the failed paired-return checks. Following the owner's focus rule,
+    keep this tool investigation separate from functional release validation.
+    Acceptance: an authored, controlled fixture establishes coherent debugger
+    observations with MMU/data cache on and off, including negative controls.
+    Inspect the other ports and AmigaXDev's debugger patches first; publish any
+    reusable correction there. Do not flush or disable the guest cache merely
+    to make an observation pass.
