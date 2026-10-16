@@ -18,7 +18,10 @@ archive rejection, cancellation and staging cleanup pass. The native helper repr
 (3272 bytes unused at completion). Real Installer 43 passes fresh, reuse,
 replacement and incomplete-data cases, including saved-file preservation and
 native icon.library checks. The damaged-archive requester needs an interactive
-dismissal check; its unattended fixture was stopped and is not a pass. The final
+dismissal check. The bounded Return-key attempt reaches the real rejection
+requester but does not return; the visible attempt also remains incomplete
+because Computer Use access to the emulator was not approved. Neither is a pass
+(`tmp/installer43-akceplca`, `tmp/installer43-wetwdn3c`). The final
 preferences-repair guard passes the native bad-options case: damaged preferences
 stay in the backup and the repaired installation uses verified originals. Host
 sanitizer tests pass, including the preferences checks.
@@ -32,10 +35,10 @@ Native output is checked against independently generated host inputs.
 MEASURED: the current `a1200-040` preset passes original-paired VBL and Time
 Manager fixtures including restoration and rejection controls. Runs
 `.run-K5MX0d` and `.run-Y340pU` retain the evidence under ignored `amiga/`.
-The cadence run `.run-dS7sF6` completes its route and restoration, with 58
+The current-runtime cadence run `.run-joH7V1` completes its route and restoration, with 58
 conversion passes over 58 updates and none outside frame end. Of 58 timer
-intervals, 57 are five ticks and one is six. The strict cadence gate fails;
-this is not 68040 release acceptance. The five-update profiling window is 21
+intervals, 57 are five ticks and one is six. All six altered-record controls reject, but the strict cadence gate fails;
+this is not 68040 release acceptance. The ordinary release build is restored. The five-update profiling window is 21
 PAL fields. This preset's MMU core does not establish real-hardware speed.
 
 ## Build and WHDLoad
@@ -50,9 +53,10 @@ is recorded in item 19.9. The ordinary release
 build is versioned 0.90 and passes the no-runtime-hash/trace audit. The installer
 archive reproduces byte-for-byte and passes independent Lhasa extraction and
 member-hash checks. Full standalone integration passes in
-`tmp/integration-gate-8i3xpo2i`: title rendering, two completed gameplay routes,
-restoration, original pixels/state and the no-right control. These runs predate
-only the padding fix; the allocated data and relocation bytes are unchanged.
+`tmp/integration-gate-tadhjrhi`: title rendering, two completed gameplay routes,
+restoration, original pixels/state and the no-right control. This gate includes
+the normal-quit service changes; its 20 native-title, six reference-title and
+19 gameplay evidence controls reject incomplete or damaged observations.
 `make dist` includes `tools/check_release.py`; the JSON beside
 the archive records its current size and SHA-256. Building is not publication.
 
@@ -61,11 +65,22 @@ runtime installs only guest Line-A under WHDLoad, leaving WHDLoad's protected
 real exception table alone. Standalone exception handling is unchanged. These
 policies reuse Alone in the Dark through pinned AmigaXDev helpers.
 
-MEASURED: the 040/MMU observation `tmp/whdload-release-vt22nnlp` reaches
-`CORE / RUNNING` with no scaffold error, TC=$8000 and CACR=$80008000. The run
-ends at WHDLoad's diagnostic timeout. This establishes neither gameplay nor
-normal quit. The 030/NOMMU gameplay and normal-quit checks below pass;
-040/MMU gameplay, save persistence and hardware validation remain open.
+MEASURED: ordinary release 040/MMU observations
+`tmp/whdload-release-dhk447_d`, `tmp/whdload-release-x2vzwus5` and
+`tmp/whdload-release-4jxr81ou` reach level 1, room 4, advance eight updates,
+complete original ExitToShell and return to the shell with `Return OK.`.
+Window disposal, restored trap patches and platform restoration are observed.
+The first two runs' complete first/moved context captures match the accepted
+030 route byte-for-byte. WHDLoad reports TC=$8000 and CACR=$80008000;
+the effective machine has CPU/MMU 68040.
+
+These are positive functional observations, but the strict audio-close return
+observer remains unresolved: the guest return probe is missed, and an attempted
+native-return stack read is inconsistent. Preserve these failed strict reports;
+do not infer an audio result from an unreached probe or change game code from
+that uncertain debugger read. The reusable accepted release observer remains
+030/NOMMU. Fresh-boot save persistence passes below; 040 qualification and
+hardware validation remain open.
 
 ### Indirect low-memory store
 
@@ -93,11 +108,8 @@ is unchanged, and N/Z/V/C are 1/0/0/0. `tools/check_indirect_store.py` pairs tha
 capture with the completed Macintosh demo; deliberately damaged vector and status captures are
 rejected. This is a store-correctness gate, not WHDLoad gameplay or quit acceptance.
 
-The changed runtime also passes the title-rendering/gameplay/restoration
-comparison in `amiga/.run-TuYPvR` (original pixels/state and positive route
-completion). The additional repeat run was stopped to prioritize the release
-checks; `tmp/integration-gate-mvnul9r4` is not a completed full repeat gate.
-Host tests and installation recipe tests pass with the updated input.
+The changed runtime passes the full original-paired integration gate described
+above. Host tests and installation recipe tests pass with the updated input.
 The rebuilt archive also passes a fresh native Installer 43 run
 (`tmp/installer43-yw0udxgb`): all 100 installed inputs match their pins and
 the installed icon passes native checks. A clean rebuild reproduces the archive
@@ -153,6 +165,26 @@ the native route with `python3 tools/test_whdload.py --gameplay --seconds 1200
 --ticks 24000`, optionally adding `--no-preload`, using the pinned debugger
 emulator described above. Pair its output with `python3 tools/check_release_quit.py
 ref/mame/runs/release-quit-4 NATIVE_RUN --controls`.
+
+### Save persistence
+
+MEASURED: the ordinary release saves `Level 1` at the existing original-verified
+idle checkpoint (`tmp/whdload-release-yexl3ytj`), then exits normally. A fresh
+WHDLoad boot (`tmp/whdload-release-3asjabw1`) loads those files, reaches a new
+level-1/room-4 first frame and a completed gameplay update, then exits normally.
+The 100-byte data fork, empty resource fork and metadata remain byte-identical
+after loading. Type/creator match the pinned original save fixture. This is a
+level checkpoint, not an exact-position save. Saving immediately after Right
+movement reaches an error dialog; the accepted fixture uses the original's idle
+save point instead of changing that game decision.
+
+`tools/whdload_save.py` requires original routine success, resumed gameplay,
+valid metadata and unchanged persisted bytes. Three save and five load evidence
+controls reject missing completion, truncated/corrupt files and a missing resumed
+update. Reproduce with `tools/test_whdload.py --gameplay --save-game`, followed
+by `--gameplay --load-game-from SAVE_RUN`, using the pinned debugger emulator.
+Add `--seconds 600 --ticks 24000` to both. Check either run with
+`python3 tools/whdload_save.py RUN --controls`.
 
 ## Hardware candidate checks
 

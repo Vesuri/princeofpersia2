@@ -385,8 +385,8 @@ saves, repeats the native route, runs rejection controls and restores the releas
 build. All 26 consumed key-state records must match. The 62-byte player record
 is identified by the original record copy at CODE 4+3272; no pointer or
 clock masks are applied to it. Save/load is a session route, not a whole-level
-route. This gate does not yet prove reading this application-folder save after a
-fresh boot; the earlier persistence fixtures use a file in `Data`.
+route. This diagnostic gate covers one session. The separate ordinary-release WHDLoad
+fresh-boot save/load gate now passes; see `release.md`.
 
 ## Original route discovery
 

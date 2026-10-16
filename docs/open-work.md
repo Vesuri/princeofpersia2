@@ -32,8 +32,11 @@ Items remain open until their acceptance gates pass.
     test an A1200 68040/40 with 32 MB and MMU.
     The original null-channel write that corrupted the WHDLoad privilege vector
     now has a paired relocation/store check. Release 030/NOMMU gameplay and
-    normal quit pass with PRELOAD on/off; ordinary F10 also passes. Save
-    persistence and 040/MMU gameplay remain open (see `docs/release.md`).
+    normal quit pass with PRELOAD on/off; ordinary F10 and fresh-boot save/load
+    persistence also pass. 040/MMU runs reach gameplay and normal exit with matching
+    context captures, but their strict audio-close return observation remains
+    unresolved; preserve the failed reports and investigate the debugger reading
+    before changing runtime behavior (see `docs/release.md`).
     Installer-only archive rejection passes on the host; the real Installer 43
     rejection requester still needs an interactive dismissal check.
 

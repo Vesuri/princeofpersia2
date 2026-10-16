@@ -3,7 +3,7 @@
 Staging/CLI protocol adapted from Vette! and Alone in the Dark. The shared
 launcher owns only this fixture's recorded emulator PID.
 """
-import argparse,json,os,shutil,subprocess,tempfile,time
+import argparse,hashlib,json,os,shutil,subprocess,tempfile,time
 from pathlib import Path
 from build_receipt import verify
 ROOT=Path(__file__).resolve().parents[1]
@@ -19,9 +19,13 @@ def main():
     p.add_argument('--store-reference',type=Path,help='verify the CODE 20 store against a completed original demo trace')
     p.add_argument('--gameplay',action='store_true',help='exercise release gameplay and normal quit with guest keyboard input')
     p.add_argument('--quit-key',action='store_true',help='use WHDLoad F10 after the gameplay checkpoint')
+    saves=p.add_mutually_exclusive_group()
+    saves.add_argument('--save-game',action='store_true',help='save Level 1 before normal quit')
+    saves.add_argument('--load-game-from',type=Path,help='load Level 1 from a completed release save fixture in a fresh boot')
     a=p.parse_args()
     assert not a.quit_key or a.gameplay, 'WHDLOAD / QUIT KEY REQUIRES GAMEPLAY'
     assert not (a.gameplay and a.store_reference), 'WHDLOAD / ONE OBSERVER'
+    assert not (a.save_game or a.load_game_from) or (a.gameplay and not a.quit_key), 'WHDLOAD / SAVE REQUIRES NORMAL GAMEPLAY'
     debug=a.gameplay or bool(a.store_reference)
     if debug:
         assert a.setup=='a1200-030' and not a.mmu, 'WHDLOAD / VALIDATED DEBUGGER SETUP'
@@ -36,11 +40,23 @@ def main():
     shutil.copyfile(ROOT/'amiga/out/PrinceOfPersia2.exe',game/'PrinceOfPersia2')
     shutil.copyfile(a.slave,game/'PrinceOfPersia2.slave')
     subprocess.run(['python3',str(ROOT/'tools/stage_core.py'),str(game)],check=True)
+    if a.load_game_from:
+        from whdload_gameplay import check
+        source=a.load_game_from.resolve()
+        check(source)
+        assert json.loads((source/'gameplay-options.json').read_text()).get('save_action')=='save', 'WHDLOAD / COMPLETED SAVE REQUIRED'
+        hashes={}
+        for name in ('Level 1','Level 1.rsrc','Level 1.finfo'):
+            assert not (game/name).exists(), 'WHDLOAD / FRESH SAVE DESTINATION'
+            shutil.copyfile(source/'game'/name,game/name)
+            hashes[name]=hashlib.sha256((game/name).read_bytes()).hexdigest()
+        shutil.copyfile(source/'save-return-a5.bin',base/'save-input-a5.bin')
+        (base/'save-input.json').write_text(json.dumps(hashes,indent=2)+'\n')
     shutil.copyfile(os.environ['WHDLOAD_BINARY'],game/'WHDLoad')
     rom=Path(os.environ['KICKSTART_A1200']);rtb=Path(str(rom)+'.RTB')
     for src in [rom,rtb]:shutil.copyfile(src,boot/'devs/Kickstarts'/src.name)
     options=('' if a.no_preload else 'PRELOAD ')+('MMU ' if a.mmu else 'NOMMU ' if debug else '')
-    (base/'gameplay-options.json').write_text(json.dumps({'quit_key':a.quit_key})+'\n')
+    (base/'gameplay-options.json').write_text(json.dumps({'setup':a.setup,'mmu':a.mmu,'preload':not a.no_preload,'quit_key':a.quit_key,'save_action':'save' if a.save_game else 'load' if a.load_game_from else None})+'\n')
     timeout='' if a.quit_key else f'TIMEOUT={a.ticks} '
     (boot/'s/WHDLoad.prefs').write_text(('' if a.quit_key else 'Expert\n')+'ReadDelay=0\n')
     diagnostics='' if a.quit_key else 'COREDUMP '

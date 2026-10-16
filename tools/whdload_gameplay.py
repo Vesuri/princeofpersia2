@@ -45,6 +45,11 @@ def prepare(base):
     a5=long(address('g_coreA5'));assert a5
     audio=long(a5-0xf24)
     assert read(audio,4)==bytes.fromhex('affc4e75'), 'QUIT / AUDIO ENTRY'
+    options=json.loads((base/'gameplay-options.json').read_text())
+    action=options.get('save_action')
+    updates=16 if action=='load' else 11 if action=='save' else 8
+    from whdload_save import observer
+    file_route=observer(options.get('save_action'),c2,address)
     s=f'''set $world={a5:#x}
     set $c2={c2:#x}
     set $c15={c15:#x}
@@ -74,9 +79,9 @@ def prepare(base):
     set $context=*(unsigned long*)($world-0x5014)
     dump binary memory first-context.bin $context $context+0x2200
     dump binary memory first-a5.bin $world-22266 $world
-    monitor key 4e 1
+    monitor key 4e {0 if action=='save' else 1}
     break *{c2+0x68b2:#x}
-    ignore 3 7
+    ignore 3 {updates-1}
     continue
     if $pc != {c2+0x68b2:#x}
      quit 1
@@ -86,8 +91,6 @@ def prepare(base):
     dump binary memory moved-a5.bin $world-22266 $world
     monitor key 4e 0
     disable 3
-    monitor key 66 1
-    monitor key 10 1
     break *{address('pop2UIOverlayShown'):#x}
     break *{address('pop2ScaffoldRestored'):#x}
     break *{c2+0x3e36:#x}
@@ -123,6 +126,9 @@ def prepare(base):
      disable 8
      continue
     end
+    {file_route}
+    monitor key 66 1
+    monitor key 10 1
     continue
     if $pc == {address('pop2UIOverlayShown'):#x}
      printf "PLAY CONFIRM id=%lu\\n",*(unsigned long*){address('g_uiOverlay'):#x}
@@ -147,8 +153,8 @@ def prepare(base):
     monitor key 10 0
     monitor key 66 0
     '''
-    if json.loads((base/'gameplay-options.json').read_text()).get('quit_key'):
-        s=s.split('    monitor key 66 1')[0]+('    monitor key 59 1\n    monitor fields 40\n'
+    if options.get('quit_key'):
+        s=s.split(f'    break *{address("pop2UIOverlayShown"):#x}')[0]+('    monitor key 59 1\n    monitor fields 40\n'
             '    monitor key 59 0\n    monitor fields 80\n    printf \"QUIT F10 INJECTED\\n\"\n')
     (base/'game-next.gdb').write_text(s)
     
@@ -157,8 +163,14 @@ def prepare(base):
 def check(base):
     import re
     log=(base/'gdb.log').read_text()
-    quit_key=(base/'gameplay-options.json').exists() and json.loads((base/'gameplay-options.json').read_text()).get('quit_key')
-    markers=['PLAY FIRST level=1 room=4 step=1','PLAY MOVED level=1 room=4 step=9']
+    options=json.loads((base/'gameplay-options.json').read_text()) if (base/'gameplay-options.json').exists() else {}
+    quit_key=options.get('quit_key')
+    action=options.get('save_action')
+    updates=16 if action=='load' else 11 if action=='save' else 8
+    first=re.findall(r'^PLAY FIRST level=1 room=4 step=(\d+)$',log,re.M)
+    moved=re.findall(r'^PLAY MOVED level=1 room=4 step=(\d+)$',log,re.M)
+    assert len(first)==len(moved)==1 and all(int(v)<65536 for v in first+moved) and (int(moved[0])-int(first[0]))%65536==updates, 'QUIT / GAMEPLAY UPDATE SEQUENCE'
+    markers=[]
     if quit_key:
         launch=(base/'boot/s/startup-sequence').read_text()
         assert 'TIMEOUT=' not in launch and 'COREDUMP' not in launch, 'QUIT / ORDINARY F10 OPTIONS'
@@ -182,7 +194,9 @@ def check(base):
     for name in ('first','moved'):
         assert (base/(name+'-context.bin')).stat().st_size==0x2200, 'QUIT / CONTEXT EXTENT'
         assert (base/(name+'-a5.bin')).stat().st_size==22266, 'QUIT / WORLD EXTENT'
-    result={'result':'WHDLOAD GAMEPLAY AND QUIT PASS','exe':receipt['exe'],'updates':8,'quit':'F10' if quit_key else 'Amiga-Q'}
+    result={'result':'WHDLOAD GAMEPLAY AND QUIT PASS','exe':receipt['exe'],'updates':updates,'quit':'F10' if quit_key else 'Amiga-Q'}
+    from whdload_save import check as save_check
+    save_check(base)
     (base/'gameplay-quit.json').write_text(json.dumps(result,indent=2)+'\n')
     print(json.dumps(result))
 
