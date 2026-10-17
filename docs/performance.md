@@ -272,6 +272,30 @@ planning path. The prototype is removed from both the port and AmigaXDev;
 ignored sources and measurements are pinned in
 `manifest/performance-68020-row-trim.sha256`. The accepted baseline is unchanged.
 
+### Original-caller classification (item 15)
+
+Original CODE lives in separately allocated memory and cannot overlap the linked
+native fixture routines. Once CODE ownership is verified, the dispatcher skips
+the redundant native-fixture range comparisons. Other callers retain the full
+classification and all stack, callback, patched-trap and pending-service guards.
+
+MEASURED: calibrated `item15-dispatch-owner-020-a/b` record 292.43/293.12 ms per
+landing frame, versus 295.06/295.36 ms for the zone baseline. Exclusive dispatch
+cost is 65.27/65.54 ms versus 67.91 ms in baseline C. Both routes take 607 PAL
+fields, retain all 82 baseline player records and endpoint images, and pass the
+phase-repeat check. Both still miss 61 of 82 timer intervals; item 15 remains
+open against 83.3 ms. The existing extra death-phase frame is not waived.
+
+The verification route `.run-VtXyJL` passes the quick-entry/callback controls,
+live guard checks, original CODE audit and restoration. First-room pixels,
+colours, RNG/context, AGA planes and copper palette/mode match the pinned
+Macintosh reference. The ordinary release link/probe audit passes.
+`manifest/performance-68020-dispatch-owner.sha256` pins these captures.
+
+An otherwise unchanged speed-compilation pilot (`item15-dispatch-o3-020-a`)
+records 295.05 ms landing and 68.82 ms dispatch. It provides no useful saving
+and is rejected; production retains its existing compilation policy.
+
 ### Zone services inside callbacks (item 15)
 
 Alone in the Dark's specialized GetZone/SetZone entries were inspected first.

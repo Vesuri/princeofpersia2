@@ -1552,10 +1552,12 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
     // Their original return owner is still checked below.
     bool codeCaller=!cachedCaller && location(pc,seg,off);
     bool tableCaller=pc>=(uint32_t)a5+app.world().jumpOffset && pc<(uint32_t)a5+app.world().jumpOffset+app.world().jumpBytes;
-    bool fixtureCaller=(pc>=(uint32_t)pop2_audio_lookup && pc<(uint32_t)pop2_audio_fixture_end) || (pc>=(uint32_t)pop2_ui_fixture && pc<(uint32_t)pop2_ui_fixture_end) || (pc>=(uint32_t)pop2_display_scene_init && pc<(uint32_t)pop2_display_scene_end) || (pc>=(uint32_t)pop2_display_fixture && pc<(uint32_t)pop2_display_fixture_end) || (pc>=(uint32_t)pop2_identity_fixture && pc<(uint32_t)pop2_identity_fixture_end) ||
+    // Original CODE allocations cannot overlap the linked native fixtures.
+    // Resolve uncommon native callers only after the common owner succeeds/fails.
+    bool fixtureCaller=!codeCaller && ((pc>=(uint32_t)pop2_audio_lookup && pc<(uint32_t)pop2_audio_fixture_end) || (pc>=(uint32_t)pop2_ui_fixture && pc<(uint32_t)pop2_ui_fixture_end) || (pc>=(uint32_t)pop2_display_scene_init && pc<(uint32_t)pop2_display_scene_end) || (pc>=(uint32_t)pop2_display_fixture && pc<(uint32_t)pop2_display_fixture_end) || (pc>=(uint32_t)pop2_identity_fixture && pc<(uint32_t)pop2_identity_fixture_end) ||
         (pc>=(uint32_t)pop2_file_fixture && pc<(uint32_t)pop2_file_fixture_end) ||
         (pc>=(uint32_t)pop2_replay_fixture && pc<(uint32_t)pop2_replay_fixture_end) ||
-        (pc>=(uint32_t)pop2_resource_fixture && pc<(uint32_t)pop2_resource_fixture_end);
+        (pc>=(uint32_t)pop2_resource_fixture && pc<(uint32_t)pop2_resource_fixture_end));
 #ifdef POP2_TIMING_TM_PROBE
     bool timingTmCaller=pc>=(uint32_t)pop2_timing_tm_fixture && pc<(uint32_t)pop2_timing_tm_end;
     if(timingTmCaller){
