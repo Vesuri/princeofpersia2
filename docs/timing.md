@@ -89,12 +89,11 @@ copy into it. FrameAdv updates and ordinary full-screen animation retain deferre
 synchronization. This schedules scene-load work earlier; it is not a claim of
 reduced total copying or faster scene loading. Original timer requests are intact.
 
-The 68040 preset remains below the cadence gate: the measured scene-copy
-experiment has 48 five-tick intervals and eight intervals of six to eight ticks.
-Its five-update endpoint matches, but its death image differs from the 68030
-parent, so the complete parent-route comparison fails. This is an emulator
-measurement, not a prediction of relative hardware CPU speeds, and is not an
-accepted faster-CPU result.
+The current 68040 preset passes two repeated routes with all 58 five-tick
+intervals, including the first step. Both reject six altered cadence records;
+window and death pixels/context agree between repeats. See
+[release validation](release.md#68040-timing) for run identities and scope.
+These emulator results do not establish real-hardware performance.
 
 Use the profiling route in [performance measurements](performance.md), then:
 

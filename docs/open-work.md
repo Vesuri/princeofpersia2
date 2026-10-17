@@ -5,6 +5,7 @@ and performance work 19.9 remain deferred beyond 0.90, retaining
 their acceptance gates. This does not waive item 14’s
 68040 cadence, real-hardware or installer validation. Gameplay coverage (12)
 remains accepted under D10–D12 on `a1200-030`.
+Under D15, complete 19.10 and then 21 before qualifying 0.90.
 Items remain open until their acceptance gates pass.
 
 15. **68020 support.** Measure and optimize
@@ -28,12 +29,14 @@ Items remain open until their acceptance gates pass.
     68040 MMU test; deterministic LHA.
     Acceptance: the original/native timing gates pass on every additional claimed
     CPU configuration, and the playbook §14 release checklist passes, including
-    real hardware. The 68040 cadence overrun remains unresolved; 030 results do
-    not establish 040 acceptance. Version 0.90 (16.10.2026) is in progress;
+    real hardware. Two current 68040 cadence repeats pass all 58 original five-tick
+    intervals; this does not establish hardware performance.
+    Version 0.90 (16.10.2026) is in progress;
     current installer and 040 evidence is in `docs/release.md`. The owner will
-    test an A1200 68040/40 with 32 MB and MMU. Regenerate and audit the LHA
-    candidate with the conversion-bounds, buffer-synchronization and heap changes
-    before hardware testing.
+    test an A1200 68040/40 with 32 MB and MMU. The refreshed, independently audited
+    LHA includes the conversion-bounds,
+    buffer-synchronization and heap changes; two clean builds reproduce it.
+    Hardware testing has not yet been performed.
     The original null-channel write that corrupted the WHDLoad privilege vector
     now has a paired relocation/store check. Release 030/NOMMU gameplay and
     normal quit pass with PRELOAD on/off; ordinary F10 and fresh-boot save/load

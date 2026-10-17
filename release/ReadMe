@@ -52,6 +52,6 @@ Complete installer helper sources and build instructions are in InstallerSource.
 Known differences
 -----------------
 The recorded gameplay timing, animation and RNG differences remain under
-item 16. The 68040 emulator currently has one six-tick interval among 58
-observed gameplay intervals where the original requests five ticks.
+item 16. Two current 68040 emulator runs meet all 58 observed five-tick gameplay
+intervals. Emulator timing is not a real-hardware performance measurement.
 This candidate has not yet passed the real-hardware release gate.

@@ -2,7 +2,7 @@
 
 Adapted from Alone in the Dark. No helper/copy/rename/error operation is mocked.
 """
-import argparse,hashlib,os,shutil,subprocess,sys,tempfile,time
+import argparse,hashlib,json,os,shutil,subprocess,sys,tempfile,time
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'tools'))
@@ -26,7 +26,13 @@ def replace_form(text,start,replacement):
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--case',choices=['fresh','reuse','replace','incomplete','bad-options','bad-archive'],default='reuse')
-    a=p.parse_args();base=Path(tempfile.mkdtemp(prefix='installer43-',dir=ROOT/'tmp'))
+    p.add_argument('--interactive-error',action='store_true',
+                   help='show the real bad-archive requester for manual dismissal')
+    a=p.parse_args()
+    if a.interactive_error and a.case!='bad-archive':p.error('--interactive-error requires --case bad-archive')
+    from scaffold_inputs import verify
+    for group in ('run','build','installer-run'):verify(group)
+    base=Path(tempfile.mkdtemp(prefix='installer43-',dir=ROOT/'tmp'))
     print(base,flush=True)
     boot=base/'boot';out=base/'out';source=base/'source';dest=out/'Prince of Persia 2'
     for d in [boot/'s',base/'state',out,source]:d.mkdir(parents=True,exist_ok=True)
@@ -47,9 +53,10 @@ def main():
         if a.case=='bad-options':(dest/'Data/Prince2.opt').write_bytes(b'damaged preferences')
     (out/'other').mkdir();(out/'other/keep').write_bytes(b'unrelated')
     before={str(f.relative_to(dest)):f.read_bytes() for f in dest.rglob('*') if f.is_file()} if dest.exists() else {}
+    (base/'before.json').write_text(json.dumps({n:hashlib.sha256(b).hexdigest() for n,b in before.items()},indent=2)+'\n')
     build=ROOT/'build/install-data'
     subprocess.run(['m68k-amiga-elf-gcc','-O2','-m68020','-nostdlib','-Wno-volatile-register-var','-Wl,--emit-relocs,-Ttext=0,-e,_start',str(ROOT/'tools/install-data/start.s'),str(ROOT/'tools/install-data/test_icon.c'),'-o',str(build/'test-icon.elf')],check=True)
-    subprocess.run(['elf2hunk',str(build/'test-icon.elf'),str(build/'test-icon.exe'),'-s'],check=True)
+    subprocess.run([os.environ['ELF2HUNK'],str(build/'test-icon.elf'),str(build/'test-icon.exe'),'-s'],check=True)
     for src,n in [(Path(os.environ['INSTALLER43']),'Installer'),(Path(os.environ['WHDLOAD_BINARY']),'WHDLoad'),(build/'test-icon.exe','IconTest')]:shutil.copyfile(src,boot/n)
     shutil.copyfile(boot/'PrinceOfPersia2.inf',boot/'GameTemplate.info');(boot/'Package').mkdir();shutil.copyfile(base/'Prince of Persia 2 Install.info',boot/'Package.info')
     script=(boot/'Install').read_text()
@@ -68,7 +75,7 @@ FSUAE_RUN=.
 . "$FSUAE_COMMON"
 trap 'fsuae_stop' EXIT
 FSUAE="$FSUAE_ARM"
-AMIGA_SETUP=a1200-030 DEBUG=0 SOUND=0 WINDOW=none WARP=1 NTSC=0
+AMIGA_SETUP=a1200-030 DEBUG=0 SOUND=0 WINDOW="${INSTALLER_WINDOW:-none}" WARP=1 NTSC=0
 EXTRA_ARGS='--uae_cpu_speed=max --uae_cpu_cycle_exact=false --uae_cpu_memory_cycle_exact=false'
 fsuae_options
 fsuae_launch --hard_drive_0="$PWD/boot" --hard_drive_0_priority=10 --hard_drive_1="$PWD/source" --hard_drive_2="$PWD" --floppy_drive_0="$WORKBENCH_ADF" --floppy_drive_volume=0 --floppy_drive_volume_empty=0 --state_dir="$PWD/state"
@@ -76,7 +83,8 @@ wait "$FSUAE_PID"
 ''')
     try:
         with (base/'emulator.log').open('w') as log:
-            emu=subprocess.Popen(['/bin/bash',str(launch),str(base),str(ROOT)],stdout=log,stderr=log)
+            env=dict(os.environ,INSTALLER_WINDOW='front' if a.interactive_error else 'none')
+            emu=subprocess.Popen(['/bin/bash',str(launch),str(base),str(ROOT)],stdout=log,stderr=log,env=env)
             deadline=time.monotonic()+900
             while time.monotonic()<deadline and not (base/'returned').exists():
                 if emu.poll() is not None:raise RuntimeError('Installer emulator exited')
@@ -100,6 +108,8 @@ wait "$FSUAE_PID"
                 assert (dest/'Data/Fixture Save').read_bytes()==b'preserve unrelated saved-game fixture'
             assert not list(out.glob('.pop2-stage-*'))
         print('INSTALLER 43 PASS:',a.case,flush=True)
+        (base/'result.json').write_text(json.dumps({'case':a.case,'interactive_error':a.interactive_error,
+            'returned':True,'preservation_checked':bool(before),'status':'pass'},indent=2)+'\n')
     finally:
         subprocess.run(['/bin/bash','-c','. "$1/amiga/env.sh"; FSUAE_RUN="$2"; . "$FSUAE_COMMON"; fsuae_stop_previous','stop',str(ROOT),str(base)],check=True)
         if 'emu' in locals():emu.wait(timeout=10)

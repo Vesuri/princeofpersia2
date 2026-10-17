@@ -1,17 +1,18 @@
 # Version 0.90 (16.10.2026)
 
 Item 14 is in progress. No release archive has been qualified or published.
-The retained LHA candidate predates the conversion-bounds, buffer-synchronization and heap
-changes; its measurements below describe that candidate.
+The refreshed LHA candidate includes the conversion-bounds, buffer-synchronization
+and heap changes. Its identity is recorded below.
 The owner will test an Amiga 1200 with 68040/40, 32 MB and MMU. Hardware
 confirmation remains required; emulator observations do not replace it.
 
-Under owner decision D14, item 15 (68020 support) and remaining performance
-items 19.8–19.9 are deferred beyond 0.90. The owner separately authorized
-19.4, 19.5 and 19.7 ahead of release. The deferred items’ future acceptance gates
-remain intact.
-Item 14’s 040 cadence, hardware and installer gates remain
-required before this candidate can be qualified.
+Under owner decision D14, item 15 (68020 support) and shared-tooling item
+19.9 are deferred beyond 0.90. The owner separately authorized
+19.4, 19.5, 19.7 and 19.8 ahead of release; those items are complete.
+The deferred items’ future acceptance gates remain intact.
+Under D15, items 19.10 and 21 must both be completed before 0.90.
+The refreshed 040 timing gates pass. Hardware and interactive installer
+validation remain required before this candidate can be qualified.
 
 ## Installer
 
@@ -35,24 +36,67 @@ preferences-repair guard passes the native bad-options case: damaged preferences
 stay in the backup and the repaired installation uses verified originals. Host
 sanitizer tests pass, including the preferences checks.
 
+The fixture now pins Installer 43, Workbench and WHDLoad before use and retains
+an installed-file hash inventory and successful result record. Its icon probe
+uses the pinned fixed converter. `--case bad-archive --interactive-error`
+opens the real rejection requester for manual dismissal; other answers remain
+scripted, so this is specifically an error-dialog check, not full interactive
+installer coverage. Computer Use access was not approved in the current session;
+the dismissal gate remains open and is included in the hardware checklist.
+
+The refreshed fresh-install repeat (`tmp/installer43-73cudhiv`) reached archive
+selection and passed the native package-icon check, but timed out after 900
+seconds during extraction without returning from Installer. It is a failed run,
+not fresh-install acceptance for this candidate. Its helper and Install script
+are byte-identical to the earlier passing `tmp/installer43-yw0udxgb` fixture
+(`tmp/release14-final/installer-identity.json`); that earlier evidence retains
+its original scope. No subsequent queued installer cases were launched.
+
 No original bytes are embedded in installer source. Generated headers contain
 names, coordinates, lengths, hashes and authored replacement instructions.
 Native output is checked against independently generated host inputs.
 
 ## 68040 timing
 
-MEASURED: the current `a1200-040` preset passes original-paired VBL and Time
-Manager fixtures including restoration and rejection controls. Runs
-`.run-K5MX0d` and `.run-Y340pU` retain the evidence under ignored `amiga/`.
-The current-runtime cadence run `.run-joH7V1` completes its route and restoration, with 58
-conversion passes over 58 updates and none outside frame end. Of 58 timer
-intervals, 57 are five ticks and one is six. All six altered-record controls reject, but the strict cadence gate fails;
-this is not 68040 release acceptance. The ordinary release build is restored. The five-update profiling window is 21
-PAL fields. This preset's MMU core does not establish real-hardware speed.
+MEASURED: the refreshed 040 VBL fixture `.run-RFnvRl` matches the original's
+countdown/removal, user-mode callback ABI and six-field deferred dispatch,
+including thirteen altered-evidence controls. Original runs
+`release-vbl-stable` and `release-vbl-delayed` establish the same 30-tick
+countdown contract with zero and three deliberate ticks between installation
+and sampling. Three altered original start/end/missing-sample controls reject.
+
+The old fixture assumed installation and its first TickCount sample shared an
+epoch. Its new 040 run `.run-rYTIlU` reports thirty elapsed ticks but dormant
+counts decremented 31 times; it remains rejected. That result is consistent
+with an installation-to-sample tick (DERIVED), but the old capture did not
+record its start counts. The revised authored fixtures take stable clock/count
+samples at both ends and check exactly thirty decrements between them. Neither
+runtime VBL scheduling nor the original's service contract was changed.
+
+The refreshed Time Manager fixture `.run-Uvy7cR` passes its original-paired
+contract, user-mode ABI and restoration, with all twelve rejection controls.
+On the shared `a1200-040` preset (25 MHz, full 68040 MMU, 2 MB Chip and
+8 MB Fast RAM), two current-runtime repeats (`.run-gbKwxa`, `.run-ro8FxX`)
+each pass all 58
+consecutive original five-tick intervals, including the first step. Both pass
+all six cadence rejection controls. Their five-update windows span 20 PAL
+fields; window and death pixels/context are byte-identical across repeats.
+Each route performs 58 conversion passes over 58 updates, all at frame end.
+These explicit profiling builds omit runtime hashing and broad verification.
+The previous `.run-joH7V1` failure remains a failed historical capture; it is
+not the current cadence result. This preset's MMU core does not establish
+real-hardware speed.
 
 ## Build and WHDLoad
 
-Two final clean builds produce identical stripped executables. The bundled
+Two clean release builds produce identical stripped executables and byte-identical
+LHAs for the refreshed candidate. The executable remains
+`c913cb3947c50d1cfe99297bec4636953ce9a7b93b7236101cdd62f8c6641247`,
+identical to the release covered by items 19.8 and 20. The current changes are
+confined to verification fixtures, input pins and documentation. The retained
+19.8 integration and item-20 MMU evidence hashes have been rechecked; their
+scope is unchanged. `manifest/release14-evidence.sha256` pins the new timing,
+reference and clean-build evidence. The bundled
 converter exposed uninitialized section padding during an incremental/clean
 comparison. AmigaXDev `ba5cc6c` supplies the pinned zero-padding fix; the checker
 proves that section data, layout and relocation bytes are unchanged. The game
@@ -62,7 +106,7 @@ is recorded in item 19.9. The ordinary release
 build is versioned 0.90 and passes the no-runtime-hash/trace audit. The installer
 archive reproduces byte-for-byte and passes independent Lhasa extraction and
 member-hash checks. Full standalone integration passes in
-`tmp/integration-gate-tadhjrhi`: title rendering, two completed gameplay routes,
+`tmp/integration-gate-jdbe6x2l`: title rendering, two completed gameplay routes,
 restoration, original pixels/state and the no-right control. This gate includes
 the normal-quit service changes; its 20 native-title, six reference-title and
 19 gameplay evidence controls reject incomplete or damaged observations.
@@ -206,7 +250,8 @@ ordinary play and the existing functional-only observer retain their behavior.
 Host tests pass. The ordinary release executable remains byte-identical at
 `c913cb3947c50d1cfe99297bec4636953ce9a7b93b7236101cdd62f8c6641247`.
 These results establish debugger observation and functional correctness;
-68040 cadence and real-hardware acceptance remain open in item 14.
+The current 68040 cadence repeats above pass; real-hardware acceptance remains
+open in item 14.
 
 ### Indirect low-memory store
 
@@ -325,9 +370,9 @@ On the owner's A1200 68040/40, 32 MB, MMU:
 - Repeat with the WHDLoad MMU option enabled; retain any `.whdl_register` report.
 
 These observations establish functionality on the stated hardware, not an exact
-five-tick cadence match. The unresolved original-paired 040 cadence gate stays open.
+five-tick cadence match. The original-paired emulator cadence gate is covered separately above.
 
 ## Candidate identity
 
-`dist/PrinceOfPersia2-0.90.lha`: 182,823 bytes, SHA-256
-`a9c3854a4b7f9ce6eff96fab26449e0d71f57f6532d0776580252739ad88be70`. This installer archive contains no original game data.
+`dist/PrinceOfPersia2-0.90.lha`: 183,876 bytes, SHA-256
+`e40f2b2e6ffb152bad306fb20661e2375540f4c1e2bd75b5da8a4f2df0b548c3`. This installer archive contains no original game data.

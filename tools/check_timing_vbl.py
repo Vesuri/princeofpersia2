@@ -23,6 +23,16 @@ def original(reference):
     require("FAIL REFERENCE" not in log and "[LUA ERROR]" not in log, "ORIGINAL FAILURE")
     rows = re.findall(r"^TIMING_VBL initial=([0-9A-F]{4}) calls=(\d+) error=([0-9A-F]{4}) count=([0-9A-F]{4}) link=[0-9A-F]{8} last=([0-9A-F]{8})$", log, re.M)
     require(len(rows) == 4, "ORIGINAL TASK RECORDS")
+    starts = re.findall(r"^TIMING_VBL_START initial=([0-9A-F]{4}) count=([0-9A-F]{4})$", log, re.M)
+    if starts:
+        require(len(starts)==4 and [r[0] for r in starts]==[r[0] for r in rows], 'ORIGINAL STABLE SAMPLES')
+        normalized=[]
+        for i,(a,b,c,d,e) in enumerate(rows):
+            if i>=2:
+                require(((int(starts[i][1],16)-int(d,16))&0xffff)==30, 'ORIGINAL OBSERVED COUNTDOWN')
+                d=f'{(int(a,16)-30)&0xffff:04X}'
+            normalized.append((a,b,c,d,e))
+        rows=normalized
     require([(int(a,16),int(b),int(c,16),int(d,16)) for a,b,c,d,e in rows] ==
             [(1,3,0,0),(2,3,0,0),(0,0,0,0xffe2),(0xffff,0,0,0xffe1)], "ORIGINAL COUNTDOWN CONTRACT")
     require(re.findall(r"^TIMING_VREMOVE initial=([0-9A-F]{4}) error=([0-9A-F]{4})$", log, re.M) ==
@@ -39,7 +49,7 @@ def original(reference):
 
 
 
-def records(data):
+def records(data, stable=False):
     require(len(data) == 160, "RECORD EXTENT")
     rows = [struct.unpack(">IHIHHHHHIHHI", data[i:i+32]) for i in range(0,160,32)]
     callbacks = {r[2] for r in rows}
@@ -52,7 +62,8 @@ def records(data):
             require(first != 0 and ((last-first)&0xffffffff) == 2, "CONSECUTIVE CALLBACK TICKS " + str(i))
         else:
             require(calls == 0 and first == last == 0 and removed == 0, "DORMANT TASK " + str(i))
-            require(observed == (0xffe2 if i == 2 else 0xffe1), "DORMANT COUNTDOWN " + str(i))
+            expected=((unused-30)&0xffff) if stable else (0xffe2 if i == 2 else 0xffe1)
+            require(observed == expected, "DORMANT COUNTDOWN " + str(i))
     return rows
 
 
@@ -64,7 +75,7 @@ def evidence(log, data):
     require(log.count("TIMING VBL RESTORED\n") == 1, "RESTORED MILESTONE")
     require(re.findall(r"^TIMING VBL result=(\d+) elapsed=(\d+) user_calls=(\d+) deferred_fields=(\d+)$", log, re.M) ==
             [("1","30","9","6")], "ABI, USER MODE AND DEFERRED DISPATCH")
-    records(data)
+    records(data, stable=log.count('TIMING VBL STABLE_SAMPLES\n')==1)
 
 
 def check(run, reference, setup, controls=False):
@@ -87,6 +98,9 @@ def check(run, reference, setup, controls=False):
             bad = bytearray(data)
             struct.pack_into(">H",bad,offset,value)
             require(bad != data, "INACTIVE RECORD CONTROL")
+            changed.append((log,bytes(bad)))
+        if 'TIMING VBL STABLE_SAMPLES\n' in log:
+            bad=bytearray(data);bad[2*32+14]^=1
             changed.append((log,bytes(bad)))
         bad = bytearray(data)
         struct.pack_into(">I",bad,4*32+20,struct.unpack_from(">I",bad,4*32+28)[0]+1)

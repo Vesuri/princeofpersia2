@@ -1221,6 +1221,33 @@ pop2_integration_death_return:
 | Authored counterpart of mac_timing.lua: four countdowns, thirty ticks,
 | three callbacks then automatic removal, followed by explicit VRemove.
 | The callback deliberately damages registers to check deferred dispatch ABI.
+| Installation can cross a tick before the observation begins. Take a stable
+| clock/count pair at both ends instead of assuming installation was atomic.
+	.macro timing_vbl_snapshot tick,offset
+7:
+	subq.l #4,sp
+	.word 0xa975
+	move.l (sp)+,\tick
+	move.l g_timingVblRecords,a2
+	moveq #3,d7
+6:
+	move.w 10(a2),\offset(a2)
+	lea 32(a2),a2
+	dbra d7,6b
+	subq.l #4,sp
+	.word 0xa975
+	move.l (sp)+,d0
+	cmp.l \tick,d0
+	bne 7b
+	move.l g_timingVblRecords,a2
+	moveq #3,d7
+6:
+	move.w 10(a2),d0
+	cmp.w \offset(a2),d0
+	bne 7b
+	lea 32(a2),a2
+	dbra d7,6b
+	.endm
 pop2_timing_vbl_fixture:
 	movem.l d2-d7/a2-a6,-(sp)
 	move.l #0x13579bdf,d2
@@ -1233,9 +1260,7 @@ pop2_timing_vbl_fixture:
 	move.w d0,18(a2)
 	lea 32(a2),a2
 	dbra d7,1b
-	subq.l #4,sp
-	.word 0xa975
-	move.l (sp)+,d6
+	timing_vbl_snapshot d6,14
 2:
 	subq.l #4,sp
 	moveq #0,d0
@@ -1249,11 +1274,13 @@ pop2_timing_vbl_fixture:
 	sub.l d6,d0
 	cmp.l #30,d0
 	blo 2b
+	timing_vbl_snapshot d5,24
+	move.l d5,d0
+	sub.l d6,d0
 	move.l d0,g_timingVblElapsed
 	move.l g_timingVblRecords,a2
 	moveq #3,d7
 3:
-	move.w 10(a2),24(a2)
 	move.l a2,a0
 	.word 0xa034
 	move.w d0,26(a2)

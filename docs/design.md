@@ -57,6 +57,11 @@ open with their acceptance gates intact. Items 19.4, 19.5, 19.7 and 19.8 are aut
 This deferral does not waive item 14’s 68040 cadence, real-hardware or installer
 validation gates. Work necessary to meet those release gates remains required.
 
+D15 (owner-authorized): complete cinematic deadline item 19.10 and diagnostic
+return-wrapper condition-code item 21 before version 0.90. Neither is deferred
+by D14. Complete 19.10, then 21, before qualifying the release; hardware and
+installer validation remain required.
+
 ## Faithfulness boundary
 
 The original Macintosh execution under the D2 reference is the correctness reference.

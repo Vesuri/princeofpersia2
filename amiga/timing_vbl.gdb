@@ -14,6 +14,7 @@ commands
  printf "CORE RESTORE stage=%lu error=%lu vector=%lu heap=%lu zone=%lu dma=%u/%u irq=%u/%u view=%u vbi=%u\n",g_scaffoldStage,g_scaffoldError,g_coreVectorRestored,g_coreHeapOK,g_coreZoneBytes,g_savedDMA,g_actualDMA,g_savedIRQ,g_actualIRQ,g_viewRestored,g_vectorRestored
  printf "CORE EXCEPTION vector=%lu pc=%08lx\n",g_coreException,g_coreFaultPC
  printf "TIMING VBL result=%lu elapsed=%lu user_calls=%lu deferred_fields=%lu\n",g_timingVblResult,g_timingVblElapsed,g_timingVblUserCalls,g_timingVblDeferredFields
+ echo TIMING VBL STABLE_SAMPLES\n
  dump binary memory @RUN@/timing-vbl.bin g_timingVblRecords g_timingVblRecords+160
  printf "INTEGRATION INPUT right_reads=%lu\n",g_integrationRightReads
  printf "INTEGRATION SPACE events=%lu\n",g_integrationSpaceEvents
