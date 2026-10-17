@@ -13,6 +13,7 @@ def main():
     p.add_argument('--setup',choices=['a1200-030','a1200-040'],default='a1200-030')
     p.add_argument('--no-preload',action='store_true')
     p.add_argument('--mmu',action='store_true')
+    p.add_argument('--cache-memory',action='store_true',help='opt-in pinned 68040 debugger physical data-cache overlay')
     p.add_argument('--mmu-functional',action='store_true',help='040/MMU save/load and normal-exit coverage; excludes per-trap return observations')
     p.add_argument('--seconds',type=int,default=180)
     p.add_argument('--slave',type=Path,default=ROOT/'build/whdload/PrinceOfPersia2.slave')
@@ -29,10 +30,12 @@ def main():
     assert not (a.save_game or a.load_game_from) or (a.gameplay and not a.quit_key), 'WHDLOAD / SAVE REQUIRES NORMAL GAMEPLAY'
     debug=a.gameplay or bool(a.store_reference)
     assert not a.mmu_functional or (a.setup=='a1200-040' and a.mmu and a.gameplay and (a.save_game or a.load_game_from)), 'WHDLOAD / MMU FUNCTIONAL ROUTE'
+    assert not (a.cache_memory and a.mmu_functional), 'WHDLOAD / ONE MEMORY OBSERVER SCOPE'
+    assert not a.cache_memory or (a.gameplay and not a.quit_key and a.setup=='a1200-040' and a.mmu), 'WHDLOAD / CACHE OBSERVER SCOPE'
     if debug:
-        assert a.mmu_functional or (a.setup=='a1200-030' and not a.mmu), 'WHDLOAD / VALIDATED DEBUGGER SETUP'
+        assert a.cache_memory or a.mmu_functional or (a.setup=='a1200-030' and not a.mmu), 'WHDLOAD / VALIDATED DEBUGGER SETUP'
         from whdload_store import emulator
-        emulator()
+        emulator(a.cache_memory)
     receipt=verify()
     assert set(receipt['flags'].split())=={'-DPOP2_CORE','-DPOP2_DISPLAY','-DPOP2_INPUT','-DPOP2_UI','-DPOP2_AUDIO'}
     base=Path(tempfile.mkdtemp(prefix='whdload-release-',dir=ROOT/'tmp'))
@@ -58,7 +61,7 @@ def main():
     rom=Path(os.environ['KICKSTART_A1200']);rtb=Path(str(rom)+'.RTB')
     for src in [rom,rtb]:shutil.copyfile(src,boot/'devs/Kickstarts'/src.name)
     options=('' if a.no_preload else 'PRELOAD ')+('MMU ' if a.mmu else 'NOMMU ' if debug else '')
-    (base/'gameplay-options.json').write_text(json.dumps({'setup':a.setup,'mmu':a.mmu,'mmu_functional':a.mmu_functional,'preload':not a.no_preload,'quit_key':a.quit_key,'save_action':'save' if a.save_game else 'load' if a.load_game_from else None})+'\n')
+    (base/'gameplay-options.json').write_text(json.dumps({'cache_memory':a.cache_memory,'setup':a.setup,'mmu':a.mmu,'mmu_functional':a.mmu_functional,'preload':not a.no_preload,'quit_key':a.quit_key,'save_action':'save' if a.save_game else 'load' if a.load_game_from else None})+'\n')
     timeout='' if a.quit_key else f'TIMEOUT={a.ticks} '
     (boot/'s/WHDLoad.prefs').write_text(('' if a.quit_key else 'Expert\n')+'ReadDelay=0\n')
     diagnostics='' if a.quit_key else 'COREDUMP '

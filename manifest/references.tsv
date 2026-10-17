@@ -54,3 +54,6 @@ AmigaXDev	4ef730560c270876d0f57304ff28440a564dd518	canonical local-tail in-place
 AmigaXDev	b09d8972e3313e2ffcdb4ca32e2b82404b3b007c	canonical first-fit occupied-prefix search; published on codex/heap-search-start with topology and mutation controls
 Alone in the Dark	deb42b1802f84f28b9524b8a7a1f3682f9aa201c	event-segmented scene profiling, transition accounting and repeatability inspected for 19.8
 Vette	b3074ba6784a834864c222db9b4f0ccabd38de03	profile accounting and original-code attribution inspected for 19.8
+AmigaXDev	20bf49fb508ca286022abd2245b0240b406186db	opt-in physical 68040 cache observer and authored MMU/cache matrix; published on codex/cache-observer
+Alone in the Dark	deb42b1802f84f28b9524b8a7a1f3682f9aa201c	WHDLoad MMU/cache harness and MEASURE.3 debugger-write controls inspected for item 20
+Vette	b3074ba6784a834864c222db9b4f0ccabd38de03	WHDLoad/debugger harness inspected for item 20; no cache-aware memory reader to reuse

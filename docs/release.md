@@ -85,7 +85,8 @@ the effective machine has CPU/MMU 68040.
 
 These runs do not establish their stricter audio-return observation: the guest
 return probe is missed and an attempted native-return memory read is inconsistent.
-Their failed strict reports remain failed. The shared MMU playbook instead
+Their failed strict reports remain failed. The cache-aware observer below now
+passes fresh strict runs. The shared MMU playbook separately
 requires positive startup, gameplay, file operations and normal exit, with the
 effective machine and saved MMU state checked. The dedicated workflow below
 covers that functional scope without claiming the individual audio result.
@@ -108,9 +109,10 @@ cadence or real-hardware acceptance.
 checker still rejects it without its required audio-return marker. The dialog
 callback and original file-routine register returns are observed. In both MMU
 runs the raw dialog ID reads as zero despite the callback and successful file
-operation; cache-incoherent debugger memory reads are INFERRED, not yet proven.
-This diagnostic issue is deferred in item 20. No game code or cache policy was
-changed to accommodate it, and no failed strict result has been relabelled.
+operation. The controlled debugger fixture below establishes that physical RAM
+reads miss dirty copyback data. Fresh cache-aware runs observe the expected IDs
+and audio returns. No game code or cache policy was changed to accommodate the
+observer, and no failed strict result has been relabelled.
 
 Reproduce with `tools/test_whdload.py --gameplay --setup a1200-040 --mmu
 --mmu-functional --save-game --seconds 600 --ticks 24000`, then replace
@@ -119,6 +121,92 @@ Reproduce with `tools/test_whdload.py --gameplay --setup a1200-040 --mmu
 alterations (translation/cache state, CPU, JIT, NoMMU option, shell result,
 restoration and file completion). The separate save/load corruption controls
 also pass. Original-paired service cleanup remains covered on 030/NOMMU.
+
+### Debugger memory coherence
+
+MEASURED: the authored AmigaXDev `CacheObserver.s` fixture reproduces stale
+Barto debugger reads with 68040 MMU and copyback data caching enabled. CPU
+register loads contain the expected values while the stock debugger reads the
+old physical RAM bytes. This establishes the observation defect independently
+of the original game. The separate MMU write-attribute core fix was already
+present in both emulator builds.
+
+The opt-in `monitor memory cache` mode overlays valid physical data-cache bytes
+without flushing, invalidating, allocating or writing any cache line. Misses
+read the original byte address; `monitor memory physical` restores raw reads.
+This is a **physical-address observer**, not logical MMU translation or an
+instruction-cache view. Its validated scope is the 68040 and the fixture/game's
+identity-mapped data addresses. GDB's host register cache must be refreshed after
+`monitor fields`; this does not flush the guest cache. Debugger writes remain
+unsupported and are not used to stimulate these tests.
+
+| Controlled configuration | Stock/raw reads | Cache-aware reads |
+|---|---|---|
+| MMU on, data cache on | Stale in both observation phases | All 96 authored bytes match |
+| MMU on, data cache off | Match | Match |
+| MMU off, data cache on | Match | Match |
+| MMU off, data cache off | Match | Match |
+
+Two corrected repeats of each configuration pass in
+`tmp/mmu-observer/accepted`; a four-run stock baseline is in
+`tmp/mmu-observer/baseline-matrix`. Each run checks actual TC/CACR and effective
+emulator configuration, CPU-loaded register values, a changed second value,
+uncached Chip RAM, untouched bytes, cache misses and a longword crossing a line
+boundary. Raw RAM stays byte-identical across each cache-aware observation.
+Compiled continuation checks and normal WHDLoad/shell return establish positive
+completion. All 64 evidence-corruption controls reject their damaged inputs.
+Wrong emulator/compiler pins and an empty matrix are rejected before launch.
+
+WHDLoad NOMMU itself leaves caches disabled. The authored fixture explicitly
+sets the requested CACR during setup, then restores WHDLoad's prior value only
+after the final observation and native completion checks. No flush or cache
+policy change occurs inside the observation window. This experimental setup is
+not a change to the game's cache policy.
+
+Fresh ordinary-release MMU runs save (`tmp/whdload-release-lksg3pys`) and load
+in a new boot (`tmp/whdload-release-4w5qb7iq`) with cache-aware observations.
+The actual dialog IDs are 7001 and 7002, original file routines return success,
+the persisted files match, and loading resumes gameplay. Both observe the
+original audio-return selector 8/result 0, window disposal, restored patches,
+ExitToShell and normal shell return. Both pass `check_release_quit.py` against
+`ref/mame/runs/release-quit-4`, including six rejection controls each; save/load
+corruption controls pass (three/five). The quit-control harness now retains each
+scenario's options and requires its undamaged copy to pass before sabotage.
+The prior failed strict reports remain failed.
+
+The shared patch, authored fixture and runner are published in AmigaXDev
+`codex/cache-observer`, commit `20bf49f`; main's existing dirty files were left
+untouched. `manifest/mmu-observer-shared.sha256` pins these sources relative to
+that checkout, `manifest/mmu-observer-inputs.json` pins the fixture dependencies,
+and `manifest/mmu-observer-evidence.sha256` pins the captures and reports.
+`manifest/release-debug.sha256` retains both emulator identities. The dedicated
+installed build is `fs-uae-cache-observer` under `AMIGA_SHARE`.
+
+Reproduce the controlled matrix after verifying the shared checkout's manifest:
+
+```sh
+. amiga/env.sh
+(cd "$AMIGAXDEV_SOURCE" && shasum -a 256 -c "$OBSERVER_SHARED_MANIFEST")
+python3 "$AMIGAXDEV_SOURCE/scripts/test_cache_observer.py" \
+  --emulator "$AMIGA_SHARE/fs-uae-cache-observer/fs-uae" \
+  --sha256 "$(awk '$2=="fs-uae-cache-observer" {print $1}' manifest/release-debug.sha256)" \
+  --input-pins manifest/mmu-observer-inputs.json --work-dir tmp/cache-observer-repeat
+```
+
+Set `AMIGAXDEV_SOURCE` to that shared checkout and `OBSERVER_SHARED_MANIFEST` to
+this repository's absolute shared-manifest filename. The shared runner also
+accepts `--baseline --repeats 1` with the stock binary and its pinned hash.
+For game observations, set
+`FSUAE_WHDLOAD="$AMIGA_SHARE/fs-uae-cache-observer/fs-uae"` and run
+`tools/test_whdload.py --gameplay --setup a1200-040 --mmu --cache-memory
+--save-game --seconds 600 --ticks 24000`; replace `--save-game` with
+`--load-game-from SAVE_RUN` for the fresh boot. `--cache-memory` is explicit;
+ordinary play and the existing functional-only observer retain their behavior.
+
+Host tests pass. The ordinary release executable remains byte-identical at
+`c913cb3947c50d1cfe99297bec4636953ce9a7b93b7236101cdd62f8c6641247`.
+These results establish debugger observation and functional correctness;
+68040 cadence and real-hardware acceptance remain open in item 14.
 
 ### Indirect low-memory store
 

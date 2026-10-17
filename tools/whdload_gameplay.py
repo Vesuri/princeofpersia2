@@ -191,8 +191,9 @@ def check(base):
     report=base/'game/.whdl_register'
     if report.exists():
         assert report.read_text(encoding='latin1').count('\nReturn OK.\n')==1, 'QUIT / WHDLOAD ERROR'
-    if mmu:
-        assert options.get('setup')=='a1200-040' and options.get('mmu') and action in ('save','load') and not quit_key, 'MMU / FUNCTIONAL SCOPE'
+    if mmu or options.get('cache_memory'):
+        assert options.get('setup')=='a1200-040' and options.get('mmu') and not quit_key, 'MMU / OBSERVER SCOPE'
+        if mmu:assert action in ('save','load'), 'MMU / FUNCTIONAL SCOPE'
         config=(base/'logs/debug.uae').read_text().splitlines()
         assert all(setting in config for setting in ('cpu_model=68040','mmu_model=68040','cachesize=0','cpu_compatible=true','cpu_data_cache=true')), 'MMU / EFFECTIVE MACHINE'
         registers=report.read_text(encoding='latin1')
@@ -216,7 +217,8 @@ def check(base):
 def run(base, seconds):
     import os,shlex,shutil,subprocess,time
     from whdload_store import emulator
-    emulator()
+    cache_memory=json.loads((base/'gameplay-options.json').read_text()).get('cache_memory',False)
+    emulator(cache_memory)
     shutil.copyfile(ROOT/'amiga/out/PrinceOfPersia2.elf',base/'PrinceOfPersia2.elf')
     for _ in range(100):
         if (base/'debug-port').exists():
@@ -225,7 +227,8 @@ def run(base, seconds):
         time.sleep(.2)
     else:raise AssertionError('QUIT / DEBUGGER LISTENER')
     commands=('set pagination off\nset confirm off\nset remotetimeout 300\n'
-              f'target remote 127.0.0.1:{port}\nmonitor fields 1200\n'
+              f'target remote 127.0.0.1:{port}\n'+('monitor memory cache\nset stack-cache off\nset code-cache off\n' if cache_memory else '')+
+              'monitor fields 1200\n'
               'dump binary memory before-fast.bin 0x200000 0xa00000\n'
               'dump binary memory before-chip.bin 0 0x200000\n'
               'shell python3 '+shlex.quote(str(Path(__file__).resolve()))+' --prepare\n'

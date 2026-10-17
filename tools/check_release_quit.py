@@ -48,6 +48,22 @@ def controls(original,native):
         if (native/'game/.whdl_register').exists():shutil.copyfile(native/'game/.whdl_register',base/'game/.whdl_register')
         (base/'boot').mkdir()
         for name in ['passed','returned']:shutil.copyfile(native/'boot'/name,base/'boot'/name)
+        # Preserve the scenario when testing save/load routes. Otherwise the
+        # default eight-update check would reject every mutation for the wrong reason.
+        options=native/'gameplay-options.json'
+        if options.exists():
+            shutil.copyfile(options,base/options.name)
+            settings=json.loads(options.read_text())
+            if settings.get('mmu_functional') or settings.get('cache_memory'):
+                for name in ('logs/debug.uae','boot/s/startup-sequence'):
+                    (base/name).parent.mkdir(parents=True,exist_ok=True)
+                    shutil.copyfile(native/name,base/name)
+            action=settings.get('save_action')
+            if action:
+                names=[action+'-return-a5.bin','game/Level 1','game/Level 1.rsrc','game/Level 1.finfo']
+                if action=='load':names+=['save-input.json','save-input-a5.bin','loaded-first-a5.bin']
+                for name in names:shutil.copyfile(native/name,base/name)
+        check(original,base)  # The undamaged control must pass first.
         path=base/'gdb.log';text=path.read_text()
         for marker in ['PLAY MOVED','CORE / EXIT TO SHELL','QUIT AUDIO RETURN']:
             path.write_text(text.replace(marker,'UNREACHED'))

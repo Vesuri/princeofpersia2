@@ -34,9 +34,9 @@ def prepare(base):
         'dump binary memory after-chip.bin 0 0x200000\n')
 
 
-def emulator():
+def emulator(cache_memory=False):
     path = Path(os.environ.get('FSUAE_WHDLOAD') or os.environ['FSUAE_MMU'])
-    expected = pins(ROOT/'manifest/release-debug.sha256')['fs-uae-pop2-release']
+    expected = pins(ROOT/'manifest/release-debug.sha256')['fs-uae-cache-observer' if cache_memory else 'fs-uae-pop2-release']
     assert hashlib.sha256(path.read_bytes()).hexdigest() == expected, 'STORE / DEBUGGER EMULATOR PIN'
     return path
 
