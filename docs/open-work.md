@@ -9,15 +9,18 @@ Items remain open until their acceptance gates pass.
 
 15. **68020 support.** Measure and optimize
     the fixed 68020 configuration without changing original game decisions.
-    Two current baseline runs miss all 53 five-tick intervals and measure
-    424–428 ms/update in the matched five-update window. Full-route death pixels
-    also differ from the pinned parent. Item 19's opening profile on `a1200-fast`
-    misses all 81 requested intervals (about 12 fields per frame) and shows port
-    work about four times the original's. The original's own landing work is
-    99.8 ms/frame, above the 83.3 ms five-tick budget, so port optimization alone
-    cannot meet that scene's cadence (DERIVED). See `docs/performance.md`. This
-    does not waive the acceptance gate; changing it requires an owner decision.
-    Use the completed item 19 reductions as the next measurement baseline.
+    Two clock-corrected runs after item 19 complete the opening route in 660
+    PAL fields each, with 61 of 82 requested intervals late. Landing takes
+    328.92–329.19 ms/frame, including 104.96–105.04 ms in original game code,
+    against the 83.3 ms request. These are exclusive PC costs, not call-tree
+    estimates. Both repeats have identical player records, but take one extra
+    death-phase frame relative to the original and fail the original-request
+    comparison. VBL and Time Manager service fixtures pass with 13 and 12
+    rejection controls respectively; gameplay timing acceptance is not met.
+    See `docs/performance.md` for captures and the corrected emulator clock;
+    previous explicit-frequency baselines ran too fast. D16 authorizes equivalent,
+    byte-guarded original-rendering replacements with original-paired validation;
+    the cadence gate remains unchanged.
     Acceptance: original timing-service contracts and game-step cadence pass on
     `a1200-fast`, matched gameplay regressions pass, and the release hardware and
     installer requirements accurately include the validated configuration.
@@ -68,3 +71,16 @@ Items remain open until their acceptance gates pass.
     Acceptance: explain and resolve the differences with original-paired
     evidence, including any effects on gameplay decisions. Check the other
     ports before service changes; keep diagnostics opt-in and release ordinary.
+
+22. **Revalidate accelerated timing with the corrected emulator clock.** The
+    retained item-19 68030 profiler uses cycle unit 32 at requested 50 MHz,
+    instead of the corrected integer unit 36. The legacy native emulator also
+    predates AmigaXDev’s explicit-frequency fix. Preserve earlier captures as
+    historical measurements; do not treat them as calibrated target timings.
+    Re-run the claimed 68030 cadence and performance budgets with the shared
+    clock-corrected build, and review affected 68040 release evidence while
+    retaining the documented limits of its timing model. Keep the original
+    workloads and acceptance budgets. Acceptance: verify live clock metadata,
+    obtain repeated matched-workload measurements and positive timing gates,
+    update the pins and claims, and retain failed controls. This is separate
+    from item 15’s fixed-68020 qualification and item 14’s physical-hardware gate.

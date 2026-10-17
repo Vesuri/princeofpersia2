@@ -2,9 +2,10 @@
 
 The current owner-directed target is `a1200-030`: the shared 50 MHz 68030,
 AGA, PAL, 2 MB Chip RAM and 8 MB Fast RAM preset with data cache enabled.
-The owner deferred 68020 item 15 beyond 0.90 (D14); its baseline below fails cadence.
-These are emulator measurements, not
-real-hardware performance claims. The Fast RAM requirement is 8 MB (D5).
+68020 item 15 is required before 0.90 (D14); its earlier baseline below fails cadence.
+The retained accelerated measurements below use the legacy explicit-frequency
+calculation; item 22 requires requalification with the corrected clock.
+These are emulator measurements, not real-hardware performance claims. The Fast RAM requirement is 8 MB (D5).
 
 ## Measurement boundary
 
@@ -62,40 +63,92 @@ percentage speedup or all-scene frame rate.
 
 ## 68020 evaluation (item 15)
 
-MEASURED: two runs of the same current profiling executable on `a1200-fast`
-(68EC020 at 14,187,580 Hz, instruction cache, no data cache, 2 MB Chip and
-8 MB Fast RAM) complete the route and restoration. Both satisfy the existing
-performance-window checks against original `timing-route-1`; neither passes
-`check_timing_cadence.py`. All six cadence-checker rejection controls pass.
+Item 15 remains open. The fixed target is `a1200-fast`: 68EC020 at
+14,187,580 Hz, instruction cache enabled, no data cache, 2 MB Chip and 8 MB
+Fast RAM. The current candidate does not meet the original cadence.
 
-| Run | Five-update PAL fields | ms/update, including pacing | Five-tick intervals met |
-|---|---:|---:|---:|
-| `.run-2awJXm` | 107 | 428 | 0 of 53 |
-| `.run-c11jR8` | 106 | 424 | 0 of 53 |
+### Clock calibration
 
-Each route's timer intervals range from 7 to 29 ticks against the original
-five-tick contract (about 83.3 ms). Both five-update windows perform five C2P
-passes, ten rectangles and 179,328 converted pixels, with zero input and no
-conversion outside frame end. Window screen/context bytes agree between runs
-and with the pinned parent captures. Death screen/context also agree between
-these two runs; the death screen differs from the older pinned parent, although
-its context matches. That full-route picture comparison remains a failure.
-No new gameplay exception is inferred from D12.
+MEASURED: the legacy pinned profiler reports `cycleunit 115`, rather than 128,
+for this preset. AmigaXDev’s shared `fsuae-cpu-frequency.patch` corrects the
+explicit-frequency calculation. The already installed register-observer build
+includes that correction and reports 128, with `CYCLE_UNIT 512`, colour clock
+3,546,895 Hz and CPU model 68020. The ratio corresponds to the target’s four CPU
+cycles per colour clock. The legacy unit gives an approximately 11.3% faster
+CPU cycle budget; its field timings are not calibrated 14 MHz evidence.
 
-The build uses `PROFILE=1 VERIFY=0`: no runtime hashing, broad trap tracing or
-exit CODE/heap audit, and no debugger stops inside the measured window. These
-are emulated-field measurements, not host elapsed times or real-hardware results.
-`manifest/performance-68020-baseline.sha256` pins both runs relative to the
-repository root, including frozen executable/symbols, observer, machine settings,
-positive completion and captures. Original inputs retain their existing pins.
+`CALIBRATED_CPU=1` selects the separately pinned shared corrected emulator for
+this project’s diagnostic launcher. `FSUAE_CALIBRATED` is overridable through
+`amiga/env.sh`; the selected binary must match `manifest/scaffold-inputs.tsv`.
+Build that shared installation from AmigaXDev with
+`scripts/build-fsuae.sh fs-uae-register-observer patches/fsuae-aprof.patch`;
+its source revision and patch hashes are retained with the evidence.
+The legacy default remains available for reproducing prior measurements.
+This changes the host measurement tool, not game instructions or clocks.
+Accelerated requalification is recorded separately in item 22.
 
-The repeat confirms a substantial gap, not a marginal missed deadline.
-Recommendation: extend item 19's matched-workload profiling to this 68020 target
-before attempting item 15 optimization. Attribute original execution, service
-handling and presentation costs and establish feasible savings first. This is
-not proof that 68020 support is impossible. No runtime optimization was applied;
-the ordinary release build is restored. Item 15 remains open, including timing
-services, matched gameplay regressions and supported hardware requirements.
+```sh
+CALIBRATED_CPU=1 amiga/aprof.sh NAME a1200-fast 1200
+```
+
+### Timing services
+
+The corrected-clock 68020 VBL fixture `.run-9Nuaeq` passes the pinned original
+countdown/removal contract, user-mode register/CCR checks, six-field deferred
+callback dispatch and restoration. All 13 altered-evidence controls are rejected.
+The Time Manager fixture `.run-NkFKHo` also passes the pinned original delay
+units, active priming, cancellation, zero-delay, rearm, user-mode ABI and
+restoration checks; its 12 altered-evidence controls are rejected. These are
+service correctness results, not cadence passes. Reproduce the commands in
+`docs/timing.md` with `AMIGA_SETUP=a1200-fast CALIBRATED_CPU=1`.
+
+### Current opening measurements
+
+MEASURED: `item15-calibrated-020-a` and `item15-calibrated-020-b` in
+`tmp/aprof/` use the same post-item-19 executable and corrected emulator.
+Both complete the no-input route, death-song endpoint and hardware restoration,
+with no clock fault. Both record 82 frames over 660 PAL fields and miss 61 of
+82 requested timer intervals. All 82 player records agree between repeats.
+The six landing player records also match the earlier opening baseline.
+
+Exclusive PC costs per recorded landing frame (phase 0):
+
+| Cost | Repeat A | Repeat B |
+|---|---:|---:|
+| Entire profile window | 328.92 ms | 329.19 ms |
+| Original game code | 105.04 ms | 104.96 ms |
+| Trap entry and dispatch | 74.43 ms | 74.48 ms |
+| C2P | 54.68 ms | 54.72 ms |
+| CopyBits | 18.56 ms | 18.61 ms |
+| Other presentation | 14.48 ms | 14.47 ms |
+
+The landing request is five ticks (83.3 ms). Original-code costs include its
+callbacks and rendering, not just game logic; this is not an immutable hardware
+lower bound. Nevertheless, these measurements do not support closing the gate
+through service optimization alone. D16 authorizes equivalent replacements for hot original rendering routines
+while retaining the existing cadence gate. Vette’s byte-guarded row-copy replacement and original/register/CCR
+fixtures provide a reuse precedent; no replacement has been implemented here.
+
+The original comparison **fails**: the native route requests 35 five-tick and
+48 six-tick delays, retaining one extra death-phase frame beyond the documented
+one-frame initial observation offset. Do not normalize away that extra frame
+or infer a new D12 exception. The original-request failure report is retained.
+Unmatched returns also remain in the profiles; only exclusive PC costs are
+used here, not inclusive or call-tree-derived active-work estimates.
+
+The legacy-profiler controls `item15-current-020-b/c` complete in 599/597 fields,
+with the same 82 player records, and report cycle unit 115. Their phase-zero
+cost is approximately 291 ms/frame, but they are rejected as fixed-clock
+qualification. The sandboxed first launch `item15-current-020-a` never acquired
+its debugger and is an incomplete control, not a performance result.
+Earlier runs in `manifest/performance-68020-baseline.sha256` and the opening
+baseline below also use the legacy clock calculation. Preserve their pins;
+do not compare them with corrected-clock results as an optimization speedup.
+
+`manifest/performance-68020-current.sha256` pins the current captures, frozen
+builds, machine settings, original-comparison failure, service results and
+clock controls. Host tests and the calibrated-input altered-binary rejection
+pass. Ordinary release is restored after the diagnostics; game code is unchanged.
 
 ## Frame-end conversion
 
@@ -355,7 +408,7 @@ costs. Before-change call labels are `CACHED SectRect`, `CACHED UnionRect` and
 
 Items 19.2 and 19.3 pass their service, integration, timing and measurement
 gates on `a1200-030`. Ordinary release is restored and passes the diagnostic-
-exclusion audit. Overall release and deferred CPU validation remain open.
+exclusion audit. Overall release and additional CPU validation remain open.
 
 The ordinary entry uses indexed dispatch and native entries for SystemTask,
 TickCount, HLock, HGetState, StripAddress and SwapMMUMode. Code-owner candidates

@@ -61,6 +61,13 @@ return-wrapper condition-code item 21 before version 0.90. Neither is deferred
 by D14. Complete 19.10, then 21, before qualifying the release; hardware and
 installer validation remain required.
 
+D16 (owner-authorized): item 15 may replace hot original rendering routines
+with equivalent native implementations. Guard original bytes before installing
+any replacement and validate memory, registers, condition codes and live callers
+against the original. Preserve game decisions and the existing fixed-68020
+cadence gate. Reuse Vette’s validation approach and share reusable helpers through
+AmigaXDev.
+
 ## Faithfulness boundary
 
 The original Macintosh execution under the D2 reference is the correctness reference.

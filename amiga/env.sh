@@ -4,3 +4,6 @@
 export AMIGA_PREFIX
 export SUPPORT="${SUPPORT:-$AMIGA_PREFIX/support}"
 export ELF2HUNK="${ELF2HUNK:-$AMIGA_SHARE/elf2hunk-fixed}"
+
+# Explicit-clock validation uses the shared frequency and register corrections.
+export FSUAE_CALIBRATED="${FSUAE_CALIBRATED:-$AMIGA_SHARE/fs-uae-register-observer/fs-uae}"

@@ -6,9 +6,9 @@ all release gates have passed. See docs/release.md in the source repository.
 
 Requirements
 ------------
-PAL AGA, 2 MB Chip RAM and at least 8 MB Fast RAM. The current validated timing
-target is a 68030. 68020 support is deferred. 68040/MMU release validation is
-in progress; hardware testing is planned on an A1200 68040/40 with 32 MB RAM.
+PAL AGA, 2 MB Chip RAM and at least 8 MB Fast RAM. The current target is a
+68030; timing requalification with the corrected emulator clock is pending.
+68020 support is not yet validated. 68040/MMU release validation is in progress; hardware testing is planned on an A1200 68040/40 with 32 MB RAM.
 WHDLoad and PRELOAD need memory in addition to the game's allocated memory.
 Install WHDLoad and Installer 43 or newer separately. WHDLoad needs the A1200
 Kickstart 3.1 image and its matching RTB in DEVS:Kickstarts, named

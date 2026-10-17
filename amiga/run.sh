@@ -32,7 +32,11 @@ CHECK_PROFILE
   if [ -z "$SCRIPT" ]; then SCRIPT="$PWD/performance.gdb"; fi
 fi
 [[ "${CPU_PROFILE:-0}" = 0 || "${CPU_PROFILE:-0}" = 1 ]] || exit 2
-if [ "${CPU_PROFILE:-0}" = 1 ]; then
+[[ "${CALIBRATED_CPU:-0}" = 0 || "${CALIBRATED_CPU:-0}" = 1 ]] || exit 2
+if [ "${CALIBRATED_CPU:-0}" = 1 ]; then
+  python3 ../tools/scaffold_inputs.py calibrated
+  FSUAE="$FSUAE_CALIBRATED"
+elif [ "${CPU_PROFILE:-0}" = 1 ]; then
   python3 ../tools/scaffold_inputs.py profiler
   FSUAE="$FSUAE_APROF"
 else

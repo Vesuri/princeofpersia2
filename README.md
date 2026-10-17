@@ -9,9 +9,9 @@ The release can be inspected and extracted reproducibly (see the source inventor
 A pinned headless Macintosh reference reaches the opening cutscene, with a verified
 static/live map of that route. Paired service, audio and presentation probes exist.
 Original native startup reaches the first playable room, with matching reference
-pixels and state and verified gameplay input. Timing passes on the current `a1200-030` target.
+pixels and state and verified gameplay input. Timing passed on the retained `a1200-030` setup; item 22 requires corrected-clock requalification.
 Gameplay coverage is accepted with the recorded D11/D12 exceptions; release
-and deferred CPU validation remain open.
+and additional CPU validation remain open.
 
 ## Setup checks
 
