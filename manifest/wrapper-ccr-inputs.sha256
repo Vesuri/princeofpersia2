@@ -1,0 +1,8 @@
+36d712010bafb67423a34c176783583f1c4dc6c564ef9ed96263f1f5e693decc  tmp/wrapper-ccr/fixed/image.bin
+968ffc36c1d4401a50284c020a984e994789223ce54db0324937d5d3149f8e80  tmp/wrapper-ccr/fixed/metadata.json
+6cf87173aa222a591042a4d11bfcc1e4fe76dd09eaef5e64e5fc05cc9ecbd1c4  tmp/wrapper-ccr/fixed/metadata.lua
+1fe85b85df178aecf3f04cf70f8e7a08aef31f8d44b147279bb21d7fa1c878df  tmp/wrapper-ccr/fixed/fixture.h
+fb74c5e727b3faf844f5f3847b13c2655e48f9dd50d1afe4bcd72f5d54746bdf  tmp/wrapper-ccr/before/image.bin
+ce0ff004d7d72b8dc686131e0a70c311cb0b4fecd9de7848d9752444c828a3e1  tmp/wrapper-ccr/before/metadata.json
+75d7eb513e33edcee92975c36be5ce2664d892604eb308e8ab4b73598005239b  tmp/wrapper-ccr/before/metadata.lua
+df832065d498f1adf9ff9f27728ca8fc9c0918316ccda00e868d98a4cb555beb  tmp/wrapper-ccr/before/fixture.h

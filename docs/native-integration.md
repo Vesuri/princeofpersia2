@@ -216,3 +216,79 @@ AMIGA_SETUP=a1200-040 CORE=1 RELEASE_STARTUP=1 \
   RELEASE_REFERENCE=/path/to/completed/reference \
   GDBSCRIPT="$PWD/amiga/release_startup.gdb" DEADLINE=240 /bin/bash amiga/run.sh
 ```
+
+## Diagnostic continuation flags (item 21)
+
+DERIVED: ten opt-in assembly observers used `MOVE.L` to push their continuation
+address after restoring CCR. That overwrote N/Z/V/C. The wrappers now reserve
+that slot with flag-neutral `LEA`, populate it before restoring CCR, then restore
+registers and execute `RTS`. Title/death entry callbacks still receive the
+original stack pointer. This follows Alone in the Dark's user-mode VBL
+trampoline and this port's scene observer; inspection of Vette's geometry
+observer found no additional reusable service body to move into AmigaXDev.
+
+MEASURED: the actual assembled wrappers, linked with authored callbacks that
+clobber every register and CCR, pass 640 paired continuations on the reference
+Macintosh CPU and native `a1200-030`: ten wrappers, two register patterns and all
+32 CCR combinations. Every D0–D7/A0–A6 value, stack balance, caller-stack canary
+and callback argument agrees. Observation occurs after the real wrapper `RTS`,
+before a flag-changing capture instruction. The Macintosh harness restores its
+original CPU state before exiting. This is an authored ABI fixture executed on
+the original machine, not a claim that gameplay naturally exercises every CCR.
+
+The pre-fix assembly is a negative control: 600 of 640 cases corrupt CCR, across
+all ten wrappers, while the other values agree. The checker also rejects 33
+altered results, missing completion/restoration signals, memory-access errors,
+wrong CPU configuration, unpinned inputs and modified executable evidence.
+The first Macintosh trial had invalid teardown and remains rejected; the
+accepted repeat includes verified restoration and no fixture-scoped unmapped
+access. Input and evidence identities are in
+`manifest/wrapper-ccr-inputs.sha256` and `manifest/wrapper-ccr-evidence.sha256`.
+
+The accepted pair is `ref/mame/runs/wrapper-ccr-fixed-2` and
+`tmp/wrapper-native-rnsmnjp2`; `tmp/wrapper-native-w0s91r5u` is the pre-fix
+negative control. Rebuild the authored image with
+`python3 tools/build_wrapper_fixture.py tmp/wrapper-ccr/fixed` after sourcing
+`amiga/env.sh`. Original execution uses `POP2_INTEGRATION=1 POP2_NULL_DISPOSE=1
+POP2_WRAPPER_FIXTURE=tmp/wrapper-ccr/fixed` with `tools/run_reference.py`.
+Native execution uses `tools/run_wrapper_fixture.py tmp/wrapper-ccr/fixed`.
+Recheck the recorded pair with `python3 tools/check_wrapper_ccr.py --original
+ref/mame/runs/wrapper-ccr-fixed-2 --native tmp/wrapper-native-rnsmnjp2 --controls`.
+`tools/wrapper_live.py generate` adds one-shot observations immediately after
+the wrappers save CCR, guarded by their ten-byte instruction prologue, to the
+existing gameplay scripts. `POP2_WRAPPER_LIVE=1` adds save/load return samples
+at byte-checked original `RTS` sites; `wrapper_live.py check` compares D0 and CCR.
+All fixture images, raw rows, captures and emulator state remain ignored.
+
+MEASURED: `tmp/integration-gate-cvim5b2n` passes the original-paired service
+contracts, title-renderer check, two natural startup/death routes and the
+no-Right control on `a1200-030`. The two natural runs reproduce first-room and
+death pixels; the control starts from identical pixels, consumes zero Right
+reads and completes with a different outcome. The gate also rejects 20 altered
+native title observations, six altered reference observations and 19 altered
+natural-route observations. Restoring `make release` reproduces executable
+SHA-256 `c913cb3947c50d1cfe99297bec4636953ce9a7b93b7236101cdd62f8c6641247`.
+
+MEASURED: the restart pair in `tmp/gameplay-restart-gate-4huqb_tg` and save/load
+pair in `tmp/gameplay-save-gate-rbxb6o28` pass their original comparisons and
+15/22 rejection controls. The first restart capture was initially checked against
+an older original log lacking the menu-command sample; it passes unchanged
+against `gameplay-restart-2`, with `gameplay-restart-3` providing the repeat.
+
+Live save/load returns in `ref/mame/runs/wrapper-ccr-save-original-1` and
+`amiga/.run-l3WUkZ` both have D0=1 and CCR=0. The native observation reads the
+word written by `MOVE CCR`, before the callback runs; the ABI fixture verifies
+that it survives the subsequent wrapper return. Earlier raw GDB `$sr` samples
+in `amiga/.run-Nkb2ni` and `amiga/.run-eW5nEu` reported CCR=4 at entry and are
+rejected as flag evidence. The CPU-saved observation and complete save/load
+route pass. Investigating the debugger's stale SR report remains in shared-tool
+item 19.9; no game behavior was changed to accommodate that report.
+Four live-observation controls reject altered D0, CCR=4, a missing sample and
+missing route completion.
+
+MEASURED: ending/Hall run `amiga/.run-Vlasd1` passes 81 original-paired
+checkpoints, 385 frames, 387 consumed key reads, natural ending completion and
+the persisted Hall name/score. The one-shot observations plus the normal
+integration death-entry/return markers cover all ten changed wrappers.
+`tmp/wrapper-ccr/report.json` records the complete gate and unchanged release
+identities. `make release` is restored; item 21 is complete.

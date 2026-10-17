@@ -1106,33 +1106,36 @@ pop2_integration_seed:
 	rts
 	.globl pop2_integration_title
 pop2_integration_title:
+	lea -4(sp),sp
 	movem.l d0-d7/a0-a6,-(sp)
 	move.w ccr,-(sp)
-	pea 62(sp)
+	pea 66(sp)
 	jsr pop2IntegrationTitleHook
 	addq.l #4,sp
+	move.l g_integrationTitleTarget,62(sp)
 	move.w (sp)+,ccr
 	movem.l (sp)+,d0-d7/a0-a6
-	move.l g_integrationTitleTarget,-(sp)
 	rts
 
 	.globl pop2_integration_opening
 pop2_integration_opening:
+	lea -4(sp),sp
 	movem.l d0-d7/a0-a6,-(sp)
 	move.w ccr,-(sp)
 	jsr pop2IntegrationOpeningHook
+	move.l g_integrationOpeningReturn,62(sp)
 	move.w (sp)+,ccr
 	movem.l (sp)+,d0-d7/a0-a6
-	move.l g_integrationOpeningReturn,-(sp)
 	rts
 	.globl pop2_integration_room
 pop2_integration_room:
+	lea -4(sp),sp
 	movem.l d0-d7/a0-a6,-(sp)
 	move.w ccr,-(sp)
 	jsr pop2IntegrationRoomHook
+	move.l g_integrationRoomReturn,62(sp)
 	move.w (sp)+,ccr
 	movem.l (sp)+,d0-d7/a0-a6
-	move.l g_integrationRoomReturn,-(sp)
 	rts
 	.ifdef POP2_SCENE_PROFILE
 	.ifdef POP2_SCENE_DEADLINES
@@ -1184,77 +1187,84 @@ pop2_scene_return:
 	.ifdef POP2_GAMEPLAY_ROUTE_PROBE
 	.globl pop2_gameplay_route_hall
 pop2_gameplay_route_hall:
+	lea -4(sp),sp
 	movem.l d0-d7/a0-a6,-(sp)
 	move.w ccr,-(sp)
 	jsr pop2GameplayRouteHall
+	move.l g_routeHallReturn,62(sp)
 	move.w (sp)+,ccr
 	movem.l (sp)+,d0-d7/a0-a6
-	move.l g_routeHallReturn,-(sp)
 	rts
 	.globl pop2_gameplay_route_ending
 pop2_gameplay_route_ending:
+	lea -4(sp),sp
 	movem.l d0-d7/a0-a6,-(sp)
 	move.w ccr,-(sp)
 	jsr pop2GameplayRouteEnding
+	move.l g_routeEndingReturn,62(sp)
 	move.w (sp)+,ccr
 	movem.l (sp)+,d0-d7/a0-a6
-	move.l g_routeEndingReturn,-(sp)
 	rts
 	.globl pop2_gameplay_route_frame
 pop2_gameplay_route_frame:
+	lea -4(sp),sp
 	movem.l d0-d7/a0-a6,-(sp)
 	move.w ccr,-(sp)
 	move.l d0,-(sp)
 	jsr pop2GameplayRouteFrame
 	addq.l #4,sp
+	move.l g_routeReturn,62(sp)
 	move.w (sp)+,ccr
 	movem.l (sp)+,d0-d7/a0-a6
-	move.l g_routeReturn,-(sp)
 	rts
 	.endif
 	.ifdef POP2_GAMEPLAY_SAVE_PROBE
 	.globl pop2_gameplay_saved
 pop2_gameplay_saved:
+	lea -4(sp),sp
 	movem.l d0-d7/a0-a6,-(sp)
 	move.w ccr,-(sp)
 	move.l d0,-(sp)
 	jsr pop2GameplaySaved
 	addq.l #4,sp
+	move.l g_gameplaySaveReturn,62(sp)
 	move.w (sp)+,ccr
 	movem.l (sp)+,d0-d7/a0-a6
-	move.l g_gameplaySaveReturn,-(sp)
 	rts
 	.globl pop2_gameplay_loaded
 pop2_gameplay_loaded:
+	lea -4(sp),sp
 	movem.l d0-d7/a0-a6,-(sp)
 	move.w ccr,-(sp)
 	move.l d0,-(sp)
 	jsr pop2GameplayLoaded
 	addq.l #4,sp
+	move.l g_gameplayLoadReturn,62(sp)
 	move.w (sp)+,ccr
 	movem.l (sp)+,d0-d7/a0-a6
-	move.l g_gameplayLoadReturn,-(sp)
 	rts
 	.endif
 	.globl pop2_integration_death
 pop2_integration_death:
+	lea -4(sp),sp
 	movem.l d0-d7/a0-a6,-(sp)
 	move.w ccr,-(sp)
-	pea 62(sp)
+	pea 66(sp)
 	jsr pop2IntegrationDeathHook
 	addq.l #4,sp
+	move.l g_integrationDeathTarget,62(sp)
 	move.w (sp)+,ccr
 	movem.l (sp)+,d0-d7/a0-a6
-	move.l g_integrationDeathTarget,-(sp)
 	rts
 	.globl pop2_integration_death_return
 pop2_integration_death_return:
+	lea -4(sp),sp
 	movem.l d0-d7/a0-a6,-(sp)
 	move.w ccr,-(sp)
 	jsr pop2IntegrationDeathReturned
+	move.l g_integrationDeathReturn,62(sp)
 	move.w (sp)+,ccr
 	movem.l (sp)+,d0-d7/a0-a6
-	move.l g_integrationDeathReturn,-(sp)
 	rts
 
 	.endif

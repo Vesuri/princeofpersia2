@@ -20,6 +20,13 @@ def digest(path):
 
 
 def run(name=None, control=None, deadline=None):
+    if os.environ.get('POP2_WRAPPER_FIXTURE'):
+        fixture=Path(os.environ['POP2_WRAPPER_FIXTURE']).resolve()
+        recorded=pins(ROOT/'manifest/wrapper-ccr-inputs.sha256')
+        for artifact in ('image.bin','metadata.json','metadata.lua'):
+            path=fixture/artifact;key=str(path.relative_to(ROOT))
+            if key not in recorded or digest(path)!=recorded[key]:
+                raise ValueError('REFERENCE / WRAPPER FIXTURE INPUT PIN '+key)
     if os.environ.get('POP2_GAMEPLAY') and not os.environ.get('POP2_DISPLAY_ROUTE'):
         raise ValueError('REFERENCE / GAMEPLAY REQUIRES POP2_DISPLAY_ROUTE=1')
     if deadline is not None and not 1 <= deadline <= 43200:
@@ -111,7 +118,11 @@ def run(name=None, control=None, deadline=None):
         log=(destination/'session.log').read_text()
         if log.count('HANDLE_STATE_FIXTURE_COMPLETE\n')!=1 or 'FAIL REFERENCE' in log:
             raise ValueError('REFERENCE / HANDLE STATE FIXTURE INCOMPLETE')
-    if env.get('POP2_NULL_DISPOSE') and not any(env.get(k) for k in ('POP2_HEAP_PROBE','POP2_HANDLE_STATE_PROBE','POP2_HANDLE_COPY_PROBE','POP2_EQUAL_RECT_PROBE','POP2_RECTANGLE_PROBE')):
+    if env.get('POP2_WRAPPER_FIXTURE'):
+        log=(destination/'session.log').read_text()
+        if log.count('WRAPPER_FIXTURE_COMPLETE cases=640\n')!=1 or log.count('WRAPPER_FIXTURE_RESTORED\n')!=1 or 'FAIL REFERENCE' in log:
+            raise ValueError('REFERENCE / WRAPPER FIXTURE INCOMPLETE')
+    if env.get('POP2_NULL_DISPOSE') and not any(env.get(k) for k in ('POP2_HEAP_PROBE','POP2_HANDLE_STATE_PROBE','POP2_HANDLE_COPY_PROBE','POP2_EQUAL_RECT_PROBE','POP2_RECTANGLE_PROBE','POP2_WRAPPER_FIXTURE')):
         log=(destination/'session.log').read_text()
         for marker in ('DISPOSE_FIXTURE stage=1 d0=00000000 memerr=0000',
                        'DISPOSE_FIXTURE stage=2 d0=00000000 memerr=0000 a0=00000000',

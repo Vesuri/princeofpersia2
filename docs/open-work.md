@@ -5,7 +5,7 @@ and performance work 19.9 remain deferred beyond 0.90, retaining
 their acceptance gates. This does not waive item 14’s
 68040 cadence, real-hardware or installer validation. Gameplay coverage (12)
 remains accepted under D10–D12 on `a1200-030`.
-Under D15, cinematic deadline item 19.10 is complete; finish 21 before qualifying 0.90.
+Under D15, cinematic deadline item 19.10 and diagnostic wrapper item 21 are complete.
 Items remain open until their acceptance gates pass.
 
 15. **68020 support.** Measure and optimize
@@ -107,7 +107,14 @@ Items remain open until their acceptance gates pass.
     HEAP items solved similar costs. Figures are 68030 ms per landing frame
     unless noted.
 
-    - **19.9 Share the profile report.** Integrate the published
+    - **19.9 Share the profile report.** Validate debugger CCR observations:
+      item 21's direct GDB `$sr`
+      samples reported CCR 4 at save/load wrapper entry, while the CPU's own
+      saved CCR and original Macintosh returns both report 0. The guarded
+      post-save observation passes; investigate stale debugger SR reporting
+      before using raw register samples as condition-code evidence. Keep this
+      shared-tool investigation separate from the completed wrapper ABI fix.
+      Integrate the published
       `codex/cache-observer` debugger/fixture branch (`20bf49f`) when AmigaXDev
       main is clean. Its opt-in 68040 physical data-cache overlay is validated
       separately from logical MMU translation; other ports must retain that scope.
@@ -170,16 +177,3 @@ Items remain open until their acceptance gates pass.
     profile meets every requested interval on the exact 68030 model, with
     reproducible matched-workload results for the further scenes. Emulator
     results are not hardware performance claims.
-
-21. **Diagnostic return-wrapper condition codes.** DERIVED: several existing
-    integration/gameplay assembly wrappers restore CCR and then push their saved
-    return address with MOVE.L, which changes N/Z/V/C. These are opt-in harness
-    paths, not ordinary release. Compare original/native continuation flags and
-    fix the wrappers while preserving registers, stack and original return
-    values. The ten affected wrappers cover title/death entry, opening/room/death
-    return, route frame/hall/ending and save/load return. Alone in the Dark's
-    user-mode VBL trampoline already reserves its return slot with LEA and fills
-    it before restoring CCR; this port's scene profiler uses that safe ordering
-    too. Keep this harness investigation separate from 19.8.
-    Acceptance: paired continuation and register/CCR controls, followed by the
-    affected gameplay fixtures; inspect the other ports before sharing a fix.

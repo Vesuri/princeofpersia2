@@ -72,6 +72,10 @@ function M.poll()
   print(string.format('GAMEPLAY_FILE_STEP label=%s step=%d',label,mem:readv_u16(a5-0x349a)))
  elseif label=='save-return' or label=='load-return' then
   assert(cpu.state.D0.value&65535==1,'GAMEPLAY FILE FAILED '..label)
+  if os.getenv('POP2_WRAPPER_LIVE')=='1' then
+   assert(mem:readv_u16(cpu.state.PC.value)==0x4e75,'WRAPPER / ORIGINAL RETURN SITE')
+   print(string.format('WRAPPER_LIVE label=%s d0=%08X ccr=%02X',label,cpu.state.D0.value,cpu.state.SR.value&31))
+  end
   phase=label
   dump('gameplay-'..label..'-a5',a5-22266,22266)
   dump('gameplay-'..label..'-context',mem:readv_u32(a5-0x5014)&0xffffff,0x2200)
