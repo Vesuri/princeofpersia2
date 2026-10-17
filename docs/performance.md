@@ -63,6 +63,32 @@ percentage speedup or all-scene frame rate.
 
 ## 68020 evaluation (item 15)
 
+### Bounded sprite-cache feasibility
+
+MEASURED: the final Kalms executable, observed in `.run-BW5Tb2`, completes
+the opening route and restoration with 82 recorded frames. Breakpoints capture
+only landing calls to `PaintRLE` and `BankRLELR`: 78 calls, 4,625 requested rows,
+247,453 requested pixels and 107,605 encoded bytes. This stopped execution is
+an input census, not a timing measurement. Curated routine names are recorded
+in `disasm/symbols.csv`.
+
+DERIVED: retaining every previously seen encoded row by object and row address,
+and requiring its bytes to match, finds 2,178 reused rows representing 79,088
+requested pixels (32%). There are 2,447 distinct rows. This is an unbounded
+input-reuse estimate, not a measured cache speedup: comparison, decoding on
+misses, storage, eviction and drawing still cost work. An exact-window cache
+finds 28 repeated calls representing 65,699 pixels. No sprite cache is installed;
+this evidence does not justify implementing a large cache as the next step.
+The capture, observer, analysis and executable identities are pinned in
+`manifest/performance-68020-rle-census.sha256`.
+
+The next dispatch experiment can reuse Alone in the Dark's quick Toolbox
+return convention (consumed Pascal argument bytes plus one; zero means fallback).
+Its `StateQuick` entry routes QDExtensions through the guarded C bridge, and
+its GetPixBaseAddr body uses the same shared `GWorld8::pixelAddress` helper
+already used here. This identifies a reuse path; it does not establish a
+performance gain or qualify a new entry in this port.
+
 Item 15 remains open. The fixed target is `a1200-fast`: 68EC020 at
 14,187,580 Hz, instruction cache enabled, no data cache, 2 MB Chip and 8 MB
 Fast RAM. The current candidate does not meet the original cadence.

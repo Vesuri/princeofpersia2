@@ -38,6 +38,9 @@ Items remain open until their acceptance gates pass.
     Next target broader full-dispatch overhead and hot rendering/conversion work;
     the remaining gap cannot be closed by small handle shortcuts alone. Keep
     equivalent rendering replacements available under D16.
+    The bounded landing sprite census finds only 32% pixel reuse with an
+    unbounded encoded-row cache, before validation and maintenance costs; no
+    sprite cache is installed. See the pinned census in `docs/performance.md`.
     Acceptance: original timing-service contracts and game-step cadence pass on
     `a1200-fast`, matched gameplay regressions pass, and the release hardware and
     installer requirements accurately include the validated configuration.

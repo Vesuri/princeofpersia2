@@ -1158,3 +1158,6 @@ segment,offset,name,evidence,notes
 15,0x29E0,PaletteAlias2HPurge,MEASURED,Original palette cleanup HPurge immediately follows HUnlock on A5 minus 244C alias
 17,0x520A,SaveRect,DERIVED,LINK entry preceding measured SaveRect MacsBug name
 17,0x53A4,SaveRect_CopyLongwordLoop,DERIVED,Positive padded-width ordered longword copy ending at 0x53C6
+17,0x0004,BankRLELR,DERIVED,Original procedure name at 0x014E; reversed banked RLE drawing
+17,0x5660,PaintRLELR,DERIVED,Original procedure name at 0x57A8; reversed RLE drawing
+17,0x57B6,PaintRLE,DERIVED,Original procedure name at 0x5926; forward RLE drawing
