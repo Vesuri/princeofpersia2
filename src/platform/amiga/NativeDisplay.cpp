@@ -103,7 +103,10 @@ const uint8_t* screen() {return pixels;}
 void reset() {heap=nullptr;valid=nullptr;low=pixels=thePort=windowManagerPort=nullptr;device=map=colors=nullptr;for(auto& v:worlds)v={};for(auto& p:palettes)p={};resource=nullptr;output=nullptr;transfer=nullptr;dirtyCount=0;paletteDirty=false;}
 bool prepare(MacHeap& owner,uint8_t* shadow,Valid validator,Resource reader) {
     reset();heap=&owner;low=shadow;valid=validator;resource=reader;
-    pixels=heap->newPtr(640*480,true);device=heap->newHandle(62,true);
+    // Kalms prefetches one unused longword after its final source span.
+    // Keep the public PixMap extent unchanged; reserve private readable padding
+    // even for a viewport ending at the bottom-right of the physical screen.
+    pixels=heap->newPtr(640*480+4,true);device=heap->newHandle(62,true);
     map=heap->newHandle(50,true);colors=heap->newHandle(2056,true);
     if(!pixels || !device || !map || !colors)return fail("DISPLAY / DEVICE MEMORY");
     Palette8::systemTable(*colors,1);

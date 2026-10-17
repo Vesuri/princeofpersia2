@@ -13,9 +13,9 @@ Items remain open until their acceptance gates pass.
     Macintosh/native cases, full memory/register/CCR comparisons, rejection
     controls and two matched opening runs. Inactive copper palette reuse also
     passes original-table checks across 82 publications and a palette-only change probe.
-    The callback/dispatch shortcuts, shared saved-register copy and guarded HUnlock entry bring
-    the current runs to 589/589 PAL fields (baseline 660), with 60 of 82 requested intervals late. Landing takes
-    284.01–284.51 ms/frame against the 83.3 ms request. Both retain all baseline
+    The callback/dispatch shortcuts, shared saved-register copy, guarded HUnlock entry and shared Kalms kernel bring
+    the current runs to 581/581 PAL fields (baseline 660), with 59 of 82 requested intervals late. Landing takes
+    275.91–275.99 ms/frame against the 83.3 ms request. Both retain all baseline
     player records and first-room/death pixels, but still have an extra death-phase
     frame relative to the original. Cadence acceptance is not met.
     The retained VBL and Time Manager fixtures pass with 13 and 12 rejection controls.
@@ -31,7 +31,10 @@ Items remain open until their acceptance gates pass.
     cases and the original-paired integration route.
     The HUnlock entry passes 256 native/full flag/CCR cases, 96 invalid-handle
     rejections and 32 original-paired freed-handle cases. Its earlier A/B repeat
-    failed; the frozen B/C pair passes and supplies the current figures.
+    failed; its frozen B/C pair passes. The final Kalms pair supplies the current
+    figures and passes 193 native byte/ABI cases plus all 82 full planar images.
+    The 192 KiB block-cache pilot is rejected: comparison and maintenance consume
+    most of its conversion saving; the prototype is removed.
     Next target broader full-dispatch overhead and hot rendering/conversion work;
     the remaining gap cannot be closed by small handle shortcuts alone. Keep
     equivalent rendering replacements available under D16.

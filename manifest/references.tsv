@@ -63,3 +63,4 @@ AmigaXDev	f2367f43adb6d64f3cfe67fc7b774dbb9c50a563	ordered longword copy macro; 
 AmigaXDev	716b6b8df699bbf9d33bc330785c32d153740362	inactive copper palette cache with per-list invalidation; randomized and original/native display gates
 AmigaXDev	9a7b2d99efd223ac198cf0c61368e73575ef8425	shared overlap-safe longword copy and 28,388 byte-oracle fixtures
 Alone in the Dark	29a3d9ebd22aa2b7edab0515803c962c58f0acd1	original BlockMoveBytes and BlockMoveChecks adopted unchanged through AmigaXDev
+AmigaXDev	d4226fd33682865373972dcab421598093186877	shared Kalms 030_2 rectangle adapter; 193 native byte/ABI cases and 82 full planar comparisons on calibrated 68020

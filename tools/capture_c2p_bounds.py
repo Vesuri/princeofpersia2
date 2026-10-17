@@ -11,6 +11,7 @@ ROOT=Path(__file__).resolve().parents[1]
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--replay",type=Path,help="receipt-verified frozen opening build")
+    parser.add_argument("--setup",choices=("a1200-030","a1200-fast"),default="a1200-030")
     args=parser.parse_args()
     if args.replay:args.replay=args.replay.resolve()
     os.chdir(ROOT)
@@ -34,7 +35,7 @@ def main():
     assert opening.count(entry)==1, 'C2P / UNIQUE GAMEPLAY ENTRY'
     opening=opening.replace(entry,entry+'  install-c2p-bounds\n')
     observer.write_text((ROOT/'amiga/c2p_bounds.gdb').read_text()+opening)
-    env=dict(os.environ,CORE='1',OPENING_PROFILE='1',CPU_PROFILE='0',APROF_ACTIVE='0',AMIGA_SETUP='a1200-030',GDBSCRIPT=str(observer),DEADLINE='1800')
+    env=dict(os.environ,CORE='1',OPENING_PROFILE='1',CPU_PROFILE='0',APROF_ACTIVE='0',AMIGA_SETUP=args.setup,GDBSCRIPT=str(observer),DEADLINE='1800')
     with (out/'run.log').open('w') as log:
         result=subprocess.run(['bash','amiga/run.sh'],env=env,stdout=log,stderr=subprocess.STDOUT)
     run=ROOT/'amiga'/(ROOT/'amiga/.run-last.txt').read_text().strip()

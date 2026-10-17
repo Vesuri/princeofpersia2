@@ -99,8 +99,10 @@ verify-file-replay:
 	@python3 ../tools/file_replay.py --verify
 endif
 endif
-obj/DisplayC2P.o: ../src/platform/amiga/DisplayC2P.s ../src/platform/amiga/kalms/c2p1x1_8_c5_gen.s
-	$(VASM) -m68020 -Felf -quiet -x -no-opt -nowarn=62 "$<" -o "$@"
+obj/DisplayC2P.o: ../src/platform/amiga/DisplayC2P.s ../src/platform/amiga/kalms/KalmsC2PRect.s ../src/platform/amiga/kalms/c2p1x1_8_c5_030_2.s ../manifest/kalms-c2p.sha256 ../manifest/kalms-ndk.sha256
+	@cd "$(NDK_ASM)" && shasum -a 256 -c "$(abspath ../manifest/kalms-ndk.sha256)"
+	@cd .. && shasum -a 256 -c manifest/kalms-c2p.sha256
+	$(VASM) -I"$(NDK_ASM)" -m68020 -Felf -quiet -x -no-opt -nowarn=62 "$<" -o "$@"
 obj/SaveRect.o: ../src/platform/amiga/SaveRect.s ../src/mac/ForwardLongCopy.inc
 	cd .. && $(AS) -mcpu=68020 -g --register-prefix-optional src/platform/amiga/SaveRect.s -o amiga/$@
 obj/MacEntry.o: ../src/platform/amiga/MacEntry.s ../src/platform/amiga/RectProbe.inc Makefile

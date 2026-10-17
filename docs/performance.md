@@ -272,6 +272,63 @@ planning path. The prototype is removed from both the port and AmigaXDev;
 ignored sources and measurements are pinned in
 `manifest/performance-68020-row-trim.sha256`. The accepted baseline is unchanged.
 
+### Shared Kalms conversion kernel (item 15)
+
+MEASURED: frozen-build `item15-kalms-final-020-b/c` take **275.99/275.91 ms**
+per stored landing row, against the HUnlock baseline's 284.51/284.01 ms.
+Conversion costs **49.98/50.01 ms**, against 54.77 ms in the latter baseline C.
+Both final routes take **581 PAL fields**, preserve all 82 baseline player
+records and endpoint images, and pass the repeat comparison with identical
+ELF and executable bytes. First-room pixels and palette match the pinned
+Macintosh reference. Both still have **59/82 late requested intervals** and
+an extra death-phase request relative to the original; strict cadence fails.
+The 83.3 ms request and item 15's acceptance are unchanged.
+
+The port uses AmigaXDev's shared rectangle adapter and the unchanged Kalms
+`c2p1x1_8_c5_030_2` kernel from the already pinned upstream revision. Vette and
+Alone in the Dark were inspected first; the adapter follows Alone in the Dark's
+row interface. No changes were made to those ports. The dirty planner, frame-end
+conversion and publication schedule remain unchanged. Ordinary initialization
+is used, never the upstream self-modifying initializer. The source screen has
+four private padding bytes, and the adapter pads its scratch buffer, for the
+kernel's unused final prefetch. Public PixMap dimensions remain 640×480.
+Kernel, adapter and NDK include hashes are verified before assembly.
+
+The standalone calibrated fixture `c2p-native-rhac0g4p` passes **193 cases**:
+all 32-pixel widths through 512, four source alignments, one/two/seven-row spans,
+word-aligned output offsets, full-screen and bottom-right extents, all C ABI saved
+registers, unchanged source and complete output including surrounding guards.
+The existing wrapper fixture launcher is reused. Its first compile failed on a
+freestanding completion-string copy; no emulator ran in that attempt. The final
+fixture uses a static string and returns an explicit completion record.
+
+The final correctness capture `.run-5Nzwoe` passes **82 complete planar image
+comparisons**, minimum dirty coverage, and byte-identical complete viewports
+against the earlier kernel capture `.run-xk0vlH`. The latter also rejects 82
+single-bit plane alterations. Six dirty-coverage controls pass. The checker
+accepts an explicit publication workload; its default 81-publication contract
+is unchanged. The current slow-020 workload explicitly requires 7/28/9/9/29
+publications and does not qualify cadence. Host tests and the ordinary release
+and link audits pass; original timing-service implementations are unchanged.
+
+The initial kernel-only pilots measured 276.47/276.59 ms and passed repeats.
+A separate assembly block-cache pilot measured 272.84 ms with 192 KiB extra
+Fast RAM: conversion plus comparison/cache maintenance cost 45.93 ms, including
+15.92 ms in its wrapper. It skipped over half the conversion blocks, but saved
+only 3.63 ms against the kernel-only pilot. Its player records and endpoints
+match; intermediate display fidelity was not qualified. The cache prototype is
+removed, not shipped. Reconsider it only with a materially cheaper comparison
+and cache-update structure; do not repeat this wrapper unchanged.
+
+Reproduce the standalone fixture with `python3 tools/run_wrapper_fixture.py tmp
+--kind c2p`, and the full-plane capture with `CALIBRATED_CPU=1 python3 tools/capture_c2p_bounds.py
+--setup a1200-fast --replay FROZEN_BUILD`. For the recorded slow-020 route use
+`python3 tools/check_c2p_bounds.py RUN --phase-counts 7 28 9 9 29`. Timings come from
+separate uninterrupted `amiga/aprof.sh` captures. The reporter recognizes both
+Kalms kernels in its exclusive conversion bucket. Inclusive call-tree costs
+remain unverified. `manifest/performance-68020-kalms.sha256` pins the captures,
+reports and rejected cache prototype; original-derived evidence remains ignored.
+
 ### Guarded HUnlock entry (item 15)
 
 The native quick-entry table now handles valid HUnlock calls using the existing
