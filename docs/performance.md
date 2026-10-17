@@ -250,6 +250,28 @@ correctness captures, controls and rejected prototype. The native observer is
 `amiga/copper_palette.gdb`; `tools/check_copper_palette.py` requires pinned
 captures and positive route completion. Timing runs never enable its stops.
 
+### Rejected row-end comparison pilot (item 15)
+
+MEASURED: `item15-row-trim-020-a` and `item15-row-trim16-020-a` compare
+screen CopyBits rows against their existing destination, copy the changed middle,
+and form four- or sixteen-row dirty bands. Both use the calibrated fixed 68020.
+Landing costs 293.19/292.79 ms, versus the accepted zone baseline's
+295.06–295.36 ms. C2P falls to 31.58/36.76 ms from 54.78 ms, but CopyBits
+rises to 29.28/29.32 ms from 18.46 ms and other presentation to 17.85/13.10 ms
+from 10.21 ms. Route totals are 605/609 fields. These are different single-run
+pilots, not repeated measurements of one accepted implementation.
+
+Both complete the route and restoration, with all 82 player records and complete
+first-room/death screen and first-room palette bytes identical to the accepted
+zone baseline. The shared copy helper passes 8,192 sanitizer cases through
+640-pixel rows. This does not establish intermediate display correctness:
+the first pilot can suppress viewport-only publication; the second adds an
+unqualified viewport-dirty guard. Neither has the full original-paired display
+gates. The small net saving does not justify retaining the extra comparison and
+planning path. The prototype is removed from both the port and AmigaXDev;
+ignored sources and measurements are pinned in
+`manifest/performance-68020-row-trim.sha256`. The accepted baseline is unchanged.
+
 ### Zone services inside callbacks (item 15)
 
 Alone in the Dark's specialized GetZone/SetZone entries were inspected first.

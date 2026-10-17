@@ -23,11 +23,13 @@ Items remain open until their acceptance gates pass.
     previous explicit-frequency baselines ran too fast. D16 authorizes further
     equivalent, byte-guarded original-rendering replacements with original-paired
     validation; the cadence gate remains unchanged.
-    Next assess trimming unchanged row ends during screen CopyBits, using the
-    existing destination instead of a separate snapshot. Retained final-frame
-    captures suggest substantially less C2P work, but do not establish the cost
-    of comparisons or intermediate drawing. The earlier tile-cache prototype
-    was slower and remains rejected.
+    Row-end comparison during screen CopyBits is also rejected: four- and
+    sixteen-row bands reduce conversion work but comparison/planning consume
+    nearly all the saving (293.19/292.79 ms landing pilots). Neither establishes
+    full display correctness or a repeatable material gain. Next investigate
+    the remaining dispatch cost with matched measurements, preserving ownership,
+    callback and pending-service guards; keep rendering replacements available
+    under D16. See the rejected-pilot evidence in `docs/performance.md`.
     Acceptance: original timing-service contracts and game-step cadence pass on
     `a1200-fast`, matched gameplay regressions pass, and the release hardware and
     installer requirements accurately include the validated configuration.
