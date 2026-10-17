@@ -36,7 +36,9 @@ Items remain open until their acceptance gates pass.
     test an A1200 68040/40 with 32 MB and MMU. The refreshed, independently audited
     LHA includes the conversion-bounds,
     buffer-synchronization and heap changes; two clean builds reproduce it.
-    Hardware testing has not yet been performed.
+    Hardware testing has not yet been performed. The retained LHA predates the
+    freed-handle caller guards; refresh the candidate and its applicable software
+    evidence before hardware qualification.
     The original null-channel write that corrupted the WHDLoad privilege vector
     now has a paired relocation/store check. Release 030/NOMMU gameplay and
     normal quit pass with PRELOAD on/off; ordinary F10 and fresh-boot save/load
@@ -77,16 +79,6 @@ Items remain open until their acceptance gates pass.
     input continuity, or the discovery tool explicitly detects and reports
     unsupported restore conditions. Consult the other ports before changing
     shared Macintosh input helpers.
-
-18. **Deferred freed-handle error classification.** Original System 7.5.5 returns
-    `memWZErr` for the disposed palette alias at CODE 15+29C2 in story scene 20,
-    but an isolated NewHandle/DisposeHandle/HUnlock fixture returns `memAZErr`.
-    The current gameplay fix supports only the measured caller and a verified
-    free master slot; arbitrary pointers and unmeasured invalid calls still stop.
-    Investigate broader memory-layout-dependent error classification after
-    gameplay coverage, consulting the other ports and shared heap workflow.
-    Acceptance: paired controls establish supported cases without accepting
-    unknown pointers or silently changing the free list.
 
 19. **Scene profiling and reductions.** The opening sequence (window entry,
     guard attack, fall; `docs/performance.md#opening-sequence-profile-item-19`) is

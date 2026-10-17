@@ -114,6 +114,15 @@ def run(name=None, control=None, deadline=None):
         log=(destination/'session.log').read_text()
         if log.count('EQUAL_RECT_COMPLETE calls=36\n')!=1 or 'FAIL REFERENCE' in log:
             raise ValueError('REFERENCE / EQUAL RECT FIXTURE INCOMPLETE')
+    if env.get('POP2_FREED_PROBE'):
+        log=(destination/'session.log').read_text()
+        if log.count('FREED_FIXTURE_COMPLETE\n')!=1 or log.count('FREED_FIXTURE_RESTORED\n')!=1 or 'FAIL REFERENCE' in log:
+            raise ValueError('REFERENCE / FREED FIXTURE INCOMPLETE')
+        from check_freed_handles import check as freed_check
+        freed_check(log)
+    if env.get('POP2_FREED_MEMERROR'):
+        from check_freed_handles import memory_check
+        memory_check((destination/'session.log').read_text())
     if env.get('POP2_HANDLE_STATE_PROBE'):
         log=(destination/'session.log').read_text()
         if log.count('HANDLE_STATE_FIXTURE_COMPLETE\n')!=1 or 'FAIL REFERENCE' in log:
@@ -122,7 +131,7 @@ def run(name=None, control=None, deadline=None):
         log=(destination/'session.log').read_text()
         if log.count('WRAPPER_FIXTURE_COMPLETE cases=640\n')!=1 or log.count('WRAPPER_FIXTURE_RESTORED\n')!=1 or 'FAIL REFERENCE' in log:
             raise ValueError('REFERENCE / WRAPPER FIXTURE INCOMPLETE')
-    if env.get('POP2_NULL_DISPOSE') and not any(env.get(k) for k in ('POP2_HEAP_PROBE','POP2_HANDLE_STATE_PROBE','POP2_HANDLE_COPY_PROBE','POP2_EQUAL_RECT_PROBE','POP2_RECTANGLE_PROBE','POP2_WRAPPER_FIXTURE')):
+    if env.get('POP2_NULL_DISPOSE') and not any(env.get(k) for k in ('POP2_FREED_PROBE','POP2_HEAP_PROBE','POP2_HANDLE_STATE_PROBE','POP2_HANDLE_COPY_PROBE','POP2_EQUAL_RECT_PROBE','POP2_RECTANGLE_PROBE','POP2_WRAPPER_FIXTURE')):
         log=(destination/'session.log').read_text()
         for marker in ('DISPOSE_FIXTURE stage=1 d0=00000000 memerr=0000',
                        'DISPOSE_FIXTURE stage=2 d0=00000000 memerr=0000 a0=00000000',

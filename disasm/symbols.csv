@@ -1151,3 +1151,8 @@ segment,offset,name,evidence,notes
 16,0x0454,MohawkDeadlineRearm,DERIVED,After decoding next animation step sets object+0E to caller tick plus signed word delay at object+0C
 16,0x1358,PlayTheAnimation_ClockPoll,DERIVED,TickCount result passed to virtual due-check method before conditional drawing in full animation path
 16,0x128C,PlayTheAnimation_AlternateClockPoll,DERIVED,TickCount result passed to virtual due-check method in alternate animation path
+3,0x63AA,UnloadLevelHPurge,MEASURED,Original HPurge site reached by expired-story cleanup; freed-alias result observed separately
+3,0x5F9A,DemoAliasHPurge,MEASURED,Original demo cleanup freed-master error observation
+15,0x29B0,PaletteAlias0HPurge,MEASURED,Original palette cleanup HPurge immediately follows HUnlock on A5 minus 2454 alias
+15,0x29C8,PaletteAlias1HPurge,MEASURED,Original palette cleanup HPurge immediately follows HUnlock on A5 minus 2450 alias
+15,0x29E0,PaletteAlias2HPurge,MEASURED,Original palette cleanup HPurge immediately follows HUnlock on A5 minus 244C alias

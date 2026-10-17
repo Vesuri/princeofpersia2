@@ -102,11 +102,14 @@ real-hardware speed.
 
 ## Build and WHDLoad
 
-Two clean release builds produce identical stripped executables and byte-identical
-LHAs for the refreshed candidate. The executable remains
+The retained candidate has two clean builds with identical stripped executables
+and byte-identical LHAs. Its executable is
 `c913cb3947c50d1cfe99297bec4636953ce9a7b93b7236101cdd62f8c6641247`,
-identical to the release covered by items 19.8 and 20. The current changes are
-confined to verification fixtures, input pins and documentation. The retained
+identical to the release covered by items 19.8 and 20. The current ordinary
+release includes the verified freed-handle caller guards described in
+[the freed-handle boundary](freed-handles.md); its executable SHA-256 is
+`957389f5595be880ae57e7c5ab45755140705809672ac28a726651f58731b179`. Refresh the candidate
+and its applicable software evidence before hardware qualification. The retained
 19.8 integration and item-20 MMU evidence hashes have been rechecked; their
 scope is unchanged. `manifest/release14-evidence.sha256` pins the new timing,
 reference and clean-build evidence. The bundled
@@ -260,8 +263,9 @@ For game observations, set
 `--load-game-from SAVE_RUN` for the fresh boot. `--cache-memory` is explicit;
 ordinary play and the existing functional-only observer retain their behavior.
 
-Host tests pass. The ordinary release executable remains byte-identical at
-`c913cb3947c50d1cfe99297bec4636953ce9a7b93b7236101cdd62f8c6641247`.
+Host tests pass. The executable covered by this MMU observation is
+`c913cb3947c50d1cfe99297bec4636953ce9a7b93b7236101cdd62f8c6641247`;
+see the current build identity above.
 These results establish debugger observation and functional correctness;
 The current 68040 cadence repeats above pass; real-hardware acceptance remains
 open in item 14.

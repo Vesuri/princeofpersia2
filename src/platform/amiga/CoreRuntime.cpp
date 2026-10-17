@@ -1,3 +1,4 @@
+#include "../../mac/FreedHandleCall.h"
 #include "../../mac/LineAVector.h"
 extern "C" volatile unsigned long pop2WHDLoadBinding[4];
 #ifdef POP2_CORE
@@ -2301,9 +2302,10 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
     }
     case 0xa049: trap_0xa049:case 0xa04a: trap_0xa04a: {
         auto h=(MacHeap::Handle)regs[8];
-        if(trap==0xa049 && heap.isFreeHandleSlot(h)) {
-            // MEASURED original demo cleanup: HPurge on a disposed master
-            // returns memWZErr in D0/MemError, without modifying the free slot.
+        if(FreedHandleCall::supported(trap,seg,off) && heap.isFreeHandleSlot(h)) {
+            // Matched cleanup contracts preserve the free slot and return an error.
+            // UnloadLevel can return -113 on the Mac; D0 is discarded and
+            // MemError cleared before a read (docs/freed-handles.md).
             regs[0]=int32_t(MacHeap::memWZErr);sw(low+0x220,MacHeap::memWZErr);
             sw(frame,(w(frame)&~15)|8);return (uint32_t)usp;
         }
@@ -2334,7 +2336,7 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
         }
 #endif
         auto h=(MacHeap::Handle)regs[8];
-        if(trap==0xa02a && seg==15 && (off==0x29aa || off==0x29c2 || off==0x29da) && heap.isFreeHandleSlot(h)) {
+        if(FreedHandleCall::supported(trap,seg,off) && heap.isFreeHandleSlot(h)) {
             // MEASURED ending/scene-20 cleanup: disposed palette aliases return
             // memWZErr and preserves the free slot. Other unmeasured invalid
             // calls remain loud stops; freed-slot errors depend on Mac layout.

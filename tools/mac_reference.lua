@@ -8,6 +8,19 @@ local mac=dofile('tools/mame_mac_input.lua')
 local frame=dofile('tools/mame_mac_frame.lua')
 local cpu=manager.machine.devices[':maincpu'];local mem=cpu.spaces.program
 local dbg=assert(manager.machine.debugger,'REFERENCE / DEBUGGER REQUIRED')
+local freedReadTap,freedWriteTap
+local function armFreedMemError()
+ if not os.getenv('POP2_FREED_MEMERROR') or freedReadTap then return end
+ -- Same calibrated IIci physical alias used by mac_gameplay_route.lua.
+ for i=0,0x3ff do assert(mem:read_u8(0x50000+i)==mem:readv_u8(i),'FREED MEMERROR / PHYSICAL ALIAS')end
+ freedReadTap=mem:install_read_tap(0x50220,0x50223,'freed-memerror-read',function(address,data,mask)
+  if mask&0xffff0000~=0 then print(string.format('FREED_MEMERROR read pc=%08X value=%04X mask=%08X',cpu.state.PC.value,(data>>16)&65535,mask))end
+ end)
+ freedWriteTap=mem:install_write_tap(0x50220,0x50223,'freed-memerror-write',function(address,data,mask)
+  if mask&0xffff0000~=0 then print(string.format('FREED_MEMERROR write pc=%08X value=%04X mask=%08X',cpu.state.PC.value,(data>>16)&65535,mask))end
+ end)
+ print('FREED_MEMERROR_ARMED physical-alias-verified')
+end
 local control=os.getenv('POP2_REFERENCE_CONTROL')
 local mapper=os.getenv('POP2_MAP') and dofile('tools/mac_map.lua') or nil
 local resourceCalls=os.getenv('POP2_RESOURCES') and dofile('tools/mac_resource_calls.lua') or nil
@@ -118,6 +131,16 @@ local function observe()
       at(seg,base,0x15e,'logerror "ROUTE_NIS_RETURN kind=%04X result=%04X ticks=%08X\\n",w@(a6+8),d4&0xffff,d@0x16a')
      elseif seg==2 then
       at(seg,base,0x3be,'logerror "ROUTE_PLAYNIS_RETURN kind=%04X result=%04X ticks=%08X\\n",w@(a6+8),d4&0xffff,d@0x16a')
+     end
+    end
+    if seg==3 then
+     if os.getenv('POP2_FREED_MEMERROR') then assert(mem:readv_u16(base+0x63ac)==0x7000,'FREED RESULT / D0 DISCARD')end
+     armFreedMemError()
+    end
+    if os.getenv('POP2_FREED_LIVE') and (seg==3 or seg==15) then
+     for _,offset in ipairs(seg==3 and {0x5f9a,0x63aa} or {0x29b0,0x29c8,0x29e0})do
+      at(seg,base,offset,string.format('logerror "FREED_GAME before site=0x%X handle=%%08X master=%%08X\\n",a0,d@a0',offset),2)
+      at(seg,base,offset+2,string.format('logerror "FREED_GAME after site=0x%X handle=%%08X master=%%08X d0=%%08X error=%%04X\\n",a0,d@a0,d0,w@0x220',offset),2)
      end
     end
     if os.getenv('POP2_HANDLE_TRACE') and seg==3 then

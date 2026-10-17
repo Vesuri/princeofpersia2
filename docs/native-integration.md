@@ -74,6 +74,9 @@ handle addresses remain loud stops. `POP2_DEMO_ROUTE=1` with `POP2_HANDLE_TRACE=
 selects the separate original diagnostic; its completion marker and seed checks
 are distinct from the normal game route. Its log hash is pinned in
 `manifest/integration-demo-reference.sha256`.
+The [freed-handle boundary](freed-handles.md) limits these errors to verified
+cleanup callers and records the original layout-dependent variants and their
+observability checks.
 
 The title callback argument is an advancing animation-frame counter. Natural
 native input follows the first completed logo frame, identified by cue 114 after
