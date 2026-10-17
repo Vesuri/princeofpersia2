@@ -1,6 +1,7 @@
 break pop2QuickProbeDone
 commands
  silent
+ printf "BLOCK MOVE checks=%lu\n",g_blockMoveChecks
  printf "QUICK CONTROLS calls=%lu rejected=%lu failures=%lu\n",g_quickProbeCalls,g_quickProbeRejected,g_quickProbeFailures
  printf "QUICK DEADLINES rejected=%lu\n",g_quickDeadlineRejected
  printf "QUICK ZONE rejected=%lu\n",g_quickZoneRejected

@@ -272,6 +272,39 @@ planning path. The prototype is removed from both the port and AmigaXDev;
 ignored sources and measurements are pinned in
 `manifest/performance-68020-row-trim.sha256`. The accepted baseline is unchanged.
 
+### Shared saved-register copy (item 15)
+
+The dispatcher uses Alone in the Dark’s `BlockMoveBytes` helper, published
+unchanged through AmigaXDev, to move the 60-byte saved-register image when
+Pascal argument cleanup changes the return stack. Both ordinary dispatch and
+the callback shortcut retain overlap semantics. No original game routine,
+rendering decision or scheduling guard changes. Exhaustive checks run only
+under `POP2_QUICK_TRAP_PROBE`, before the game starts; the release audit rejects
+their data and counter symbols.
+
+MEASURED: calibrated `item15-register-copy-020-a/b` take 286.39/287.43 ms per
+landing frame and 595/597 PAL fields for the route, versus 292.43/293.12 ms and
+607/607 fields for the caller-classification baseline. The executable hashes
+are identical across repeats; adding probe-only includes changed ELF debug line
+tables. The phase-repeat gate passes, all 82 player records and endpoint images
+match the baseline, and 59/60 of 82 timer intervals remain late. The strict
+original delay comparison still fails because of the retained extra death-phase
+frame. Item 15’s 83.3 ms cadence requirement is not met.
+
+The profiler previously classified the generic `memmove` under CopyBits; its
+replacement is inlined into dispatch. Bucket movement is not a rendering speedup.
+The whole landing window supplies the before/after measurement above.
+
+Verification route `.run-cfyfp4` passes 28,388 native copy cases, 64 callback
+register/CCR cases, 128 callback rejections, 78 quick-guard rejections, six timer
+deadline rejections and the unsupported-zone control. Its 3,286 live native
+guard checks report zero faults. Fourteen altered-evidence controls reject
+missing or incorrect results. CODE/input audits and hardware restoration pass.
+First-room pixels, colours, RNG/context, AGA planes and copper palette/mode
+match the pinned Macintosh reference. Host sanitizer checks and the full host
+suite pass; `make release` passes the link and diagnostic-exclusion audits.
+Evidence is pinned in `manifest/performance-68020-register-copy.sha256`.
+
 ### Original-caller classification (item 15)
 
 Original CODE lives in separately allocated memory and cannot overlap the linked

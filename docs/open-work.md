@@ -13,10 +13,9 @@ Items remain open until their acceptance gates pass.
     Macintosh/native cases, full memory/register/CCR comparisons, rejection
     controls and two matched opening runs. Inactive copper palette reuse also
     passes original-table checks across 82 publications and a palette-only change probe.
-    The zone-service callback shortcut and original-caller short circuit bring
-    the current runs to 607/607
-    PAL fields (baseline 660), with 61/61 of 82 requested intervals late. Landing takes
-    292.43–293.12 ms/frame against the 83.3 ms request. Both retain all baseline
+    The callback/dispatch shortcuts and shared saved-register copy bring
+    the current runs to 595/597 PAL fields (baseline 660), with 59/60 of 82 requested intervals late. Landing takes
+    286.39–287.43 ms/frame against the 83.3 ms request. Both retain all baseline
     player records and first-room/death pixels, but still have an extra death-phase
     frame relative to the original. Cadence acceptance is not met.
     The retained VBL and Time Manager fixtures pass with 13 and 12 rejection controls.
@@ -27,9 +26,12 @@ Items remain open until their acceptance gates pass.
     Row-end comparison during screen CopyBits is also rejected: four- and
     sixteen-row bands reduce conversion work but comparison/planning consume
     nearly all the saving (293.19/292.79 ms landing pilots). Neither establishes
-    full display correctness or a repeatable material gain. Next measure reuse of Alone in the Dark’s overlap-safe longword copy
-    for the saved-register return image, preserving all dispatch guards; keep
-    rendering replacements available under D16. See the rejected-pilot evidence in `docs/performance.md`.
+    full display correctness or a repeatable material gain. See the rejected-pilot
+    evidence in `docs/performance.md`. The shared register copy passes 28,388 native
+    cases and the original-paired integration route.
+    Next identify the frequent full-dispatch callers and
+    guard misses before choosing broader shortcuts; keep equivalent rendering
+    replacements available under D16.
     Acceptance: original timing-service contracts and game-step cadence pass on
     `a1200-fast`, matched gameplay regressions pass, and the release hardware and
     installer requirements accurately include the validated configuration.

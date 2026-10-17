@@ -9,6 +9,11 @@ extern "C" volatile unsigned long pop2WHDLoadBinding[4];
 #include "SaveRectPatch.h"
 #include "mac/VideoTicks.h"
 #include "mac/BigEndianMemory.h"
+#include "mac/BlockMoveBytes.h"
+#ifdef POP2_QUICK_TRAP_PROBE
+#include "mac/BlockMoveChecks.h"
+extern "C" uint32_t g_blockMoveChecks;
+#endif
 #include "mac/CodeRangeCache.h"
 #pragma push_macro("Read")
 #pragma push_macro("Write")
@@ -1444,6 +1449,10 @@ void pop2QuickStripAddress();void pop2QuickSwapMMUMode();
 void pop2QuickHLock();void pop2QuickHGetState();
 }
 static void prepareQuickTraps() {
+#ifdef POP2_QUICK_TRAP_PROBE
+    // Run the exhaustive copy oracle before starting game clocks/input.
+    g_blockMoveChecks=BlockMoveChecks::run(BlockMoveBytes::move);
+#endif
     static_assert(CodeRangeCache::slots==256,"native code-range index size");
     invalidateQuickOwner();
     g_quickCodeIndexes=codeRanges.indexes();
@@ -2579,7 +2588,7 @@ static uint32_t callbackService(uint32_t* parked) {
     }
     if(!ok)stop(frame,usp,g_coreReason,trap,seg,off);
     uint8_t* image=(uint8_t*)parked+consumed;
-    if(consumed)__builtin_memmove(image,parked,60);
+    if(consumed)BlockMoveBytes::move((const uint8_t*)parked,image,60);
     sw(image+60,w(frame));sl(image+62,l(frame+2));
 #ifdef POP2_TIMING_PROBE
     g_timingPhase=g_timerCallbackActive?0x1001:0x1000;
@@ -2735,7 +2744,7 @@ extern "C" uint32_t pop2UserDispatch(uint32_t* parked) {
         } else quickServicesValid=false;
     }
     uint8_t* image=resumed-66;
-    if(image!=(uint8_t*)parked)__builtin_memmove(image,parked,60);
+    if(image!=(uint8_t*)parked)BlockMoveBytes::move((const uint8_t*)parked,image,60);
     sw(image+60,w(frame));sl(image+62,l(frame+2));
 #ifdef POP2_TIMING_PROBE
     g_timingPhase=g_timerCallbackActive?0x1001:0x1000;

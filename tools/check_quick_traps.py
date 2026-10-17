@@ -7,6 +7,7 @@ from check_core_result import restored
 
 
 def evidence(log):
+    assert log.count('BLOCK MOVE checks=28388\n') == 1, 'QUICK / BLOCK MOVE'
     assert log.count('QUICK CONTROLS calls=84 rejected=78 failures=0\n') == 1, 'QUICK / FIXTURE'
     assert log.count('QUICK DEADLINES rejected=6\n') == 1, 'QUICK / DEADLINE'
     assert log.count('QUICK ZONE rejected=1\n') == 1, 'QUICK / ZONE'
@@ -26,6 +27,7 @@ def check(run, setup):
     restored(run, log, setup)
     evidence(log)
     changes = [
+        ('BLOCK MOVE checks=28388', 'BLOCK MOVE checks=28387'),
         ('calls=84', 'calls=83'), ('rejected=78', 'rejected=77'),
         ('QUICK DEADLINES rejected=6', 'QUICK DEADLINES rejected=5'),
         ('QUICK ZONE rejected=1', 'QUICK ZONE rejected=0'),
@@ -47,7 +49,7 @@ def check(run, setup):
             continue
         raise AssertionError('QUICK / ACCEPTED ALTERATION')
     evidence(log)
-    print('QUICK TRAPS PASS: six positive bodies, 78 rejected guard cases, six due-deadline rejections, invalid zone rejection, 64 callback CCR cases and 128 inactive/pending-audio callback rejections, live native guard audit, restored route; thirteen alterations rejected')
+    print('QUICK TRAPS PASS: 28,388 native copy cases, six positive bodies, 78 rejected guard cases, six due-deadline rejections, invalid zone rejection, 64 callback CCR cases and 128 inactive/pending-audio callback rejections, live native guard audit, restored route; fourteen alterations rejected')
 
 
 if __name__ == '__main__':

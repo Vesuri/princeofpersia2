@@ -5,6 +5,7 @@
 #error Quick trap controls require verification
 #endif
 extern "C" {
+uint32_t g_blockMoveChecks=0;
 uint32_t g_quickProbeCalls=0,g_quickProbeRejected=0,g_quickProbeFailures=0;
 uint32_t g_quickDeadlineRejected=0,g_quickZoneRejected=0;
 uint32_t g_quickCallbackChecks=0,g_quickCallbackRejected=0;
