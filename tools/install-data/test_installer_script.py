@@ -26,9 +26,11 @@ def replace_form(text,start,replacement):
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--case',choices=['fresh','reuse','replace','incomplete','bad-options','bad-archive'],default='reuse')
+    p.add_argument('--seconds',type=int,default=900,help='positive wall-clock limit for Installer to return')
     p.add_argument('--interactive-error',action='store_true',
                    help='show the real bad-archive requester for manual dismissal')
     a=p.parse_args()
+    if a.seconds<=0:p.error('--seconds must be positive')
     if a.interactive_error and a.case!='bad-archive':p.error('--interactive-error requires --case bad-archive')
     from scaffold_inputs import verify
     for group in ('run','build','installer-run'):verify(group)
@@ -85,7 +87,7 @@ wait "$FSUAE_PID"
         with (base/'emulator.log').open('w') as log:
             env=dict(os.environ,INSTALLER_WINDOW='front' if a.interactive_error else 'none')
             emu=subprocess.Popen(['/bin/bash',str(launch),str(base),str(ROOT)],stdout=log,stderr=log,env=env)
-            deadline=time.monotonic()+900
+            deadline=time.monotonic()+a.seconds
             while time.monotonic()<deadline and not (base/'returned').exists():
                 if emu.poll() is not None:raise RuntimeError('Installer emulator exited')
                 time.sleep(.5)
@@ -108,7 +110,7 @@ wait "$FSUAE_PID"
                 assert (dest/'Data/Fixture Save').read_bytes()==b'preserve unrelated saved-game fixture'
             assert not list(out.glob('.pop2-stage-*'))
         print('INSTALLER 43 PASS:',a.case,flush=True)
-        (base/'result.json').write_text(json.dumps({'case':a.case,'interactive_error':a.interactive_error,
+        (base/'result.json').write_text(json.dumps({'case':a.case,'interactive_error':a.interactive_error,'seconds':a.seconds,
             'returned':True,'preservation_checked':bool(before),'status':'pass'},indent=2)+'\n')
     finally:
         subprocess.run(['/bin/bash','-c','. "$1/amiga/env.sh"; FSUAE_RUN="$2"; . "$FSUAE_COMMON"; fsuae_stop_previous','stop',str(ROOT),str(base)],check=True)

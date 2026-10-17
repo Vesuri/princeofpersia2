@@ -52,6 +52,16 @@ are byte-identical to the earlier passing `tmp/installer43-yw0udxgb` fixture
 (`tmp/release14-final/installer-identity.json`); that earlier evidence retains
 its original scope. No subsequent queued installer cases were launched.
 
+The fresh-install retry `tmp/installer43-9h1kor16` passes with an explicit
+3,600-second limit: Installer returns, all 100 runtime outputs match their
+manifest hashes, all packaged files match, the installed icon passes native
+validation, and no staging directory remains. The fixture's default remains
+900 seconds; `--seconds` changes only its wall-clock limit, not its completion
+or content checks. `manifest/release14-evidence.sha256` pins the successful
+result, installed-file hash inventory and fixture inputs. The candidate archive
+is unchanged. This scripted success does not cover the manual error-requester
+dismissal or physical-hardware checks.
+
 No original bytes are embedded in installer source. Generated headers contain
 names, coordinates, lengths, hashes and authored replacement instructions.
 Native output is checked against independently generated host inputs.
