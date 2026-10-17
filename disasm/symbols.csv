@@ -1146,3 +1146,8 @@ segment,offset,name,evidence,notes
 16,0x100C,PlayTheAnimation,DERIVED,Original LINK entry ending at named RTS 0x15A0; animation loops increment D5 after drawing
 16,0x159A,PlayTheAnimation_Return,DERIVED,Original register restore before UNLK and RTS; D5 retains completed animation frame count
 15,0x32F4,CopyNIS,DERIVED,LINK entry ending at observed RTS 0x3310 and original CopyNIS name; profile counts entries independently of return observation
+16,0x0366,MohawkAdvanceIfDue,DERIVED,Original deadline test at 0392 compares unsigned caller tick with object+0E; eligible update stores caller tick plus signed object+0C delay
+16,0x0392,MohawkDeadlineCompare,DERIVED,Initial pending flag has reset object+0E to caller tick before unsigned due test; object+08 gates running state
+16,0x0454,MohawkDeadlineRearm,DERIVED,After decoding next animation step sets object+0E to caller tick plus signed word delay at object+0C
+16,0x1358,PlayTheAnimation_ClockPoll,DERIVED,TickCount result passed to virtual due-check method before conditional drawing in full animation path
+16,0x128C,PlayTheAnimation_AlternateClockPoll,DERIVED,TickCount result passed to virtual due-check method in alternate animation path

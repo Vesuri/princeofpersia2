@@ -11,10 +11,10 @@ from aprof_scenes import observer, check
 
 class Controls(unittest.TestCase):
     def test_matched_workload(self):
-        a=dict(config={'scene':'carpet','cache':'clean'},selector=1,route_start=[12,14],
+        a=dict(animation_signature=[],config={'scene':'carpet','cache':'clean'},selector=1,route_start=[12,14],
                timer_requests=2,states=['initial','final'],request_signature=[[12,0,5,15,0x100]],fields=100,build_identity={'exe':'same','elf':'same'},clock_signature=[[0x3152,240,0]])
         compare(a,copy.deepcopy(a))
-        changes=dict(config={'scene':'carpet','cache':'generated'},selector=6,route_start=[11,14],
+        changes=dict(animation_signature=[[(0,1,7)]],config={'scene':'carpet','cache':'generated'},selector=6,route_start=[11,14],
                      timer_requests=1,states=['initial','corrupt'],request_signature=[[12,0,6,15,0x100]],fields=110,build_identity={'exe':'changed','elf':'same'},clock_signature=[[0x3152,180,0]])
         for key,value in changes.items():
             with self.subTest(key=key):

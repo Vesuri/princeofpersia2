@@ -25,7 +25,7 @@ BASE = '-DPOP2_CORE -DPOP2_DISPLAY -DPOP2_INPUT -DPOP2_UI -DPOP2_AUDIO'
 FLAGS = BASE + ' -DPOP2_INTEGRATION_PROBE -DPOP2_TIMING_PROBE -DPOP2_GAMEPLAY_ROUTE_PROBE -DPOP2_SCENE_PROFILE'
 
 
-def observer(selector):
+def observer(selector, deadlines=False):
     # Same original NIS sites as the paired cutscene observer. Never replace
     # its return result or advance the original to an invented endpoint.
     return r'''
@@ -54,6 +54,12 @@ commands
  printf "SCENE CLOCKS rows=%lu\n",g_sceneClockCount
  if g_sceneClockCount
   dump binary memory @RUN@/scene-clocks.bin &g_sceneClocks[0][0] &g_sceneClocks[g_sceneClockCount][0]
+ end
+ if @DEADLINES@
+  printf "SCENE ANIMATION rows=%lu\n",g_sceneAnimationCount
+  if g_sceneAnimationCount
+   dump binary memory @RUN@/scene-animation.bin &g_sceneAnimations[0][0] &g_sceneAnimations[g_sceneAnimationCount][0]
+  end
  end
  echo SCENE RESTORED\n
  detach
@@ -107,7 +113,7 @@ commands
  continue
 end
 continue
-'''.replace('@SELECTOR@', str(selector))
+'''.replace('@SELECTOR@', str(selector)).replace('@DEADLINES@', str(int(deadlines)))
 
 
 def cache(destination):
@@ -155,7 +161,8 @@ def check(run):
     m = re.search(r'^CORE RESTORE stage=3 error=0 vector=1 heap=0 zone=3145728 dma=(\d+)/(\d+) irq=(\d+)/(\d+) view=1 vbi=1$', text, re.M)
     require(m and m[1] == m[2] and m[3] == m[4], 'SCENE HARDWARE RESTORE')
     receipt = json.loads((run / 'build-receipt.json').read_text())
-    require(set(receipt['flags'].split()) == set((FLAGS + ' -DPOP2_GAMEPLAY_ROUTE_LEVEL=0 -DPOP2_SCENE_SELECTOR='+re.search(r'SCENE START selector=(1|6) ', text)[1]).split()), 'SCENE FLAGS')
+    extra=' -DPOP2_SCENE_DEADLINES' if '-DPOP2_SCENE_DEADLINES' in receipt['flags'].split() else ''
+    require(set(receipt['flags'].split()) == set((FLAGS + extra + ' -DPOP2_GAMEPLAY_ROUTE_LEVEL=0 -DPOP2_SCENE_SELECTOR='+re.search(r'SCENE START selector=(1|6) ', text)[1]).split()), 'SCENE FLAGS')
     for key, name in [('exe', 'dh1/PrinceOfPersia2'), ('elf', 'PrinceOfPersia2.elf')]:
         require(hashlib.sha256((run/name).read_bytes()).hexdigest() == receipt[key], 'SCENE BUILD HASH')
     config = machine(run)
@@ -173,6 +180,12 @@ def check(run):
     require(len(clocks)==1 and 0<=int(clocks[0])<2048 and len(clock_data)==32*int(clocks[0]), 'SCENE CLOCK EXTENT')
     if start[0][0]=='6':require(int(records[0])==9 and int(clocks[0])>0,'SCENE THRONE COVERAGE')
     else:require(int(records[0])==0 and int(clocks[0])==0,'SCENE CARPET TIMER CONTRACT')
+    if not extra:
+        require(not (run/'scene-animation.bin').exists() and 'SCENE ANIMATION rows=' not in text, 'SCENE UNDECLARED DEADLINE OBSERVER')
+    if extra:
+        require(start[0][0]=='1', 'SCENE DEADLINE TARGET')
+        from carpet_deadlines import native
+        native(run)
     print('SCENE RUN PASS: natural NIS return, bounded timer records and normal restoration')
 
 
@@ -206,7 +219,10 @@ def pair(name, reference):
     out = ROOT/'tmp/aprof'/name
     state = read(name)
     prefix=str(reference.resolve().relative_to(ROOT))+'/'
-    recorded={name:digest for name,digest in pins(ROOT/'manifest/scenes-reference.sha256').items() if name.startswith(prefix)}
+    reference_pins=pins(ROOT/'manifest/scenes-reference.sha256')
+    deadline_manifest=ROOT/'manifest/cinematic-deadlines-reference.sha256'
+    if deadline_manifest.exists():reference_pins.update(pins(deadline_manifest))
+    recorded={name:digest for name,digest in reference_pins.items() if name.startswith(prefix)}
     assert recorded, 'SCENE / UNPINNED ORIGINAL'
     for artifact,digest in recorded.items():
         assert hashlib.sha256((ROOT/artifact).read_bytes()).hexdigest()==digest, 'SCENE / ORIGINAL PIN '+artifact
@@ -252,7 +268,8 @@ def pair(name, reference):
     print(f'SCENE ORIGINAL PAIR PASS: selector {selector}, visible return, actor/RNG state, {len(native)} timer requests; original copy/text={copies}/{texts}')
 
 
-def run(name, scene, state, cycles):
+def run(name, scene, state, cycles, deadlines=False):
+    assert not deadlines or scene=='carpet', 'SCENE / DEADLINE OBSERVER REQUIRES CARPET'
     assert re.fullmatch('[a-z0-9][a-z0-9_-]*', name), 'SCENE / NAME'
     selector, refname, manifestname = SCENES[scene]
     reference, manifest = ROOT/'ref/mame/runs'/refname, ROOT/'manifest'/manifestname
@@ -262,8 +279,8 @@ def run(name, scene, state, cycles):
     env = os.environ.copy()
     subprocess.run(['python3', 'tools/gameplay_route_inputs.py', '--level', '0', '--reference', str(reference), '--manifest', str(manifest)], cwd=ROOT, check=True)
     with (out/'build.log').open('w') as log:
-        subprocess.run(['make', '-C', 'amiga', '-j4', 'PROFILE=1', 'VERIFY=0', 'GAMEPLAY_LEVEL=0', 'GAMEPLAY_REFERENCE='+str(reference), 'GAMEPLAY_MANIFEST='+str(manifest), 'EXTRA_DEFINES='+FLAGS+' -DPOP2_SCENE_SELECTOR='+str(selector)], cwd=ROOT, stdout=log, stderr=subprocess.STDOUT, check=True)
-    script=out/'observer.gdb';script.write_text(observer(selector))
+        subprocess.run(['make', '-C', 'amiga', '-j4', 'PROFILE=1', 'VERIFY=0', 'GAMEPLAY_LEVEL=0', 'GAMEPLAY_REFERENCE='+str(reference), 'GAMEPLAY_MANIFEST='+str(manifest), 'EXTRA_DEFINES='+FLAGS+(' -DPOP2_SCENE_DEADLINES' if deadlines else '')+' -DPOP2_SCENE_SELECTOR='+str(selector)], cwd=ROOT, stdout=log, stderr=subprocess.STDOUT, check=True)
+    script=out/'observer.gdb';script.write_text(observer(selector,deadlines))
     env.update(SCENE_SELECTOR=str(selector), AMIGA_SETUP='a1200-030', CORE='1', CPU_PROFILE=str(cycles), PROFILE_NO_MMU='1', SCENE_PROFILE='1', SCENE_CACHE=state, GDBSCRIPT=str(script), DEADLINE='3600')
     with (out/'run.log').open('w') as log:
         result=subprocess.run(['bash','amiga/run.sh'],cwd=ROOT,env=env,stdout=log,stderr=subprocess.STDOUT)
@@ -281,9 +298,10 @@ def run(name, scene, state, cycles):
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__);sub=p.add_subparsers(dest='cmd',required=True)
     r=sub.add_parser('run');r.add_argument('name');r.add_argument('scene',choices=SCENES);r.add_argument('--cache',choices=['clean','generated'],default='clean');r.add_argument('--cycles',type=int,choices=[0,1],default=1)
+    r.add_argument('--deadlines',action='store_true')
     c=sub.add_parser('check');c.add_argument('run',type=Path)
     q=sub.add_parser('pair');q.add_argument('name');q.add_argument('reference',type=Path)
     a=p.parse_args()
-    if a.cmd=='run':run(a.name,a.scene,a.cache,a.cycles)
+    if a.cmd=='run':run(a.name,a.scene,a.cache,a.cycles,a.deadlines)
     elif a.cmd=='pair':pair(a.name,a.reference)
     else:check(a.run)

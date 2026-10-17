@@ -5,6 +5,7 @@ local cpu=manager.machine.devices[':maincpu'];local mem=cpu.spaces.program
 local dbg=manager.machine.debugger;local run=assert(os.getenv('POP2_REFERENCE_RUN'))
 local frame=dofile('tools/mame_mac_frame.lua')
 local timers=os.getenv('POP2_SCENE_TIMERS')=='1'
+local deadlines=os.getenv('POP2_SCENE_DEADLINES')=='1'
 local points={};local calls={};local serial=0;local returned=0
 local selected={[1]=true,[2]=true,[4]=true,[8]=true,[32]=true,[128]=true,[512]=true}
 local function capture(call,kind,count)
@@ -17,6 +18,16 @@ local function capture(call,kind,count)
  print(string.format('CUTSCENE_FRAME ordinal=%d selector=%d kind=%s count=%d prefix=%s',call.ordinal,call.selector,kind,count,prefix))
 end
 function M.map(seg,base,guard,condition)
+ if deadlines and seg==16 then
+  -- Observe only eligible updates, not the potentially unbounded polling loop.
+  -- At +0392 the first-poll flag has already initialized the target.
+  for _,offset in ipairs({0x0392,0x0454})do
+   guard(seg,base,offset,4);points[base+offset]='deadline-'..string.format('%04X',offset)
+   local when=condition
+   if offset==0x0392 then when='('..condition..') && (d@(a6+0xc) >= d@(a2+0xe))' end
+   cpu.debug:bpset(base+offset,when,'logerror "SCENE_DEADLINE_STOP\\n"')
+  end
+ end
  if timers and seg==16 then
   guard(seg,base,0x159a,4);points[base+0x159a]='animation-return'
   cpu.debug:bpset(base+0x159a,condition,'logerror "SCENE_ANIMATION_STOP\\n"')
@@ -49,7 +60,16 @@ function M.poll()
  if dbg.execution_state~='stop' then return false end
  local kind=points[cpu.state.PC.value]
  if not kind then return false end
- if kind=='animation-return' then
+ if kind:match('^deadline%-') then
+  if #calls>0 then
+   local call=calls[#calls];local a6=cpu.state.A6.value&0xffffff
+   local object=mem:readv_u32(a6+8)&0xffffff
+   local delay=mem:readv_u16(object+0xc);if delay>=0x8000 then delay=delay-0x10000 end
+   print(string.format('SCENE_DEADLINE ordinal=%d selector=%d site=%s tick=%d target=%d delay=%d frame=%d active=%d',
+    call.ordinal,call.selector,kind:sub(10),mem:readv_u32(a6+0xc),mem:readv_u32(object+0xe),delay,
+    mem:readv_u32(object+4),mem:readv_u16(object+8)))
+  end
+ elseif kind=='animation-return' then
   if #calls>0 then
    local call=calls[#calls]
    print(string.format('SCENE_ANIMATION ordinal=%d selector=%d frames=%d result=%d',call.ordinal,call.selector,cpu.state.D5.value,cpu.state.D0.value&0xffff))

@@ -10,7 +10,8 @@ Under owner decision D14, item 15 (68020 support) and shared-tooling item
 19.9 are deferred beyond 0.90. The owner separately authorized
 19.4, 19.5, 19.7 and 19.8 ahead of release; those items are complete.
 The deferred items’ future acceptance gates remain intact.
-Under D15, items 19.10 and 21 must both be completed before 0.90.
+Under D15, cinematic deadline item 19.10 is complete; diagnostic return-wrapper
+item 21 still must be completed before 0.90.
 The refreshed 040 timing gates pass. Hardware and interactive installer
 validation remain required before this candidate can be qualified.
 

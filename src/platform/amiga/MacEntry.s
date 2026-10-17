@@ -137,6 +137,19 @@ pop2QuickNativeGuard:
 	cmpi.l #0x3b72,d0
 	beq.w .quick_miss
 	move.l 62(sp),d0
+	.ifdef POP2_SCENE_DEADLINES
+	move.l g_coreA5,a1
+	cmpi.l #pop2_scene_animation,-0x226c(a1)
+	beq.s .scene_animation_ready
+	move.l g_coreSegments+128,d1
+	sub.l d1,d0
+	cmpi.l #0x128c,d0
+	beq.w .quick_miss
+	cmpi.l #0x1358,d0
+	beq.w .quick_miss
+.scene_animation_ready:
+	move.l 62(sp),d0
+	.endif
 	.endif
 .quick_probe_done:
 	.endif
@@ -1122,6 +1135,37 @@ pop2_integration_room:
 	move.l g_integrationRoomReturn,-(sp)
 	rts
 	.ifdef POP2_SCENE_PROFILE
+	.ifdef POP2_SCENE_DEADLINES
+	.globl pop2_scene_animation
+pop2_scene_animation:
+	lea -4(sp),sp
+	movem.l d0-d7/a0-a6,-(sp)
+	move.w ccr,-(sp)
+	pea 66(sp)
+	jsr pop2SceneAnimationEnter
+	addq.l #4,sp
+	tst.l d0
+	bne.s .scene_animation_valid
+	jmp pop2_mac_exit
+.scene_animation_valid:
+	move.l g_sceneAnimationMethod,62(sp)
+	move.w (sp)+,ccr
+	movem.l (sp)+,d0-d7/a0-a6
+	rts
+	.globl pop2_scene_animation_return
+pop2_scene_animation_return:
+	lea -4(sp),sp
+	movem.l d0-d7/a0-a6,-(sp)
+	move.w ccr,-(sp)
+	move.l d0,-(sp)
+	jsr pop2SceneAnimationReturned
+	addq.l #4,sp
+	move.l g_sceneAnimationReturn,62(sp)
+	clr.l g_sceneAnimationReturn
+	move.w (sp)+,ccr
+	movem.l (sp)+,d0-d7/a0-a6
+	rts
+	.endif
 	.globl pop2_scene_return
 pop2_scene_return:
 	| Reserve the return word without changing CCR. Fill it before restoring

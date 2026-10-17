@@ -43,10 +43,11 @@ def read(name):
             over_request=sum(a>b for a,b,_ in values),total_fields=sum(v[2] for v in values)))
     # Curated original state, excluding platform addresses and clocks. Retain
     # full capture hashes separately; no claim of equivalence from a hash alone.
-    states=[]
+    states=[];method_slots=[]
     for label in ('start','end'):
         a5=(d/f'scene-{label}-a5.bin').read_bytes()
         require(len(a5)==22266,'SCENE STATE EXTENT')
+        method_slots.append(a5[-0x226c:-0x2268])
         states.append(b''.join(a5[-off:-off+n] for off,n in ((0x18fc,4),(0x4fd2,2),(0x4fc2,2),(0x349a,2),(0x5208,372))).hex())
     clocks=[];draws=[];calibrations=[];pending=None
     clockfile=d/'scene-clocks.bin'
@@ -76,14 +77,21 @@ def read(name):
     if config['scene']=='throne':
         require([d['duration'] for d in draws]==[240,180,20,20,20,180] and len(calibrations)==6,'SCENE DISSOLVE COVERAGE')
     receipt=json.loads((d/'build-receipt.json').read_text())
-    return dict(name=name,config=config,build_identity=receipt,clock_signature=[[r[0],r[3],r[4]] for r in clocks],calibrations=calibrations,draws=draws,fields=int(stop[0][1])-int(start[0][1]),
+    animation_signature=[]
+    if '-DPOP2_SCENE_DEADLINES' not in receipt['flags'].split():
+        require(not (d/'scene-animation.bin').exists() and 'SCENE ANIMATION rows=' not in log, 'SCENE UNDECLARED DEADLINE OBSERVER')
+    if '-DPOP2_SCENE_DEADLINES' in receipt['flags'].split():
+        from carpet_deadlines import native
+        require(method_slots[0]==method_slots[1] and any(method_slots[0]), 'SCENE METHOD TABLE RESTORATION')
+        animation_signature=[[(r['before_frame'],r['frame'],r['delay']) for r in group] for group in native(d)]
+    return dict(name=name,config=config,build_identity=receipt,animation_signature=animation_signature,clock_signature=[[r[0],r[3],r[4]] for r in clocks],calibrations=calibrations,draws=draws,fields=int(stop[0][1])-int(start[0][1]),
         ticks=int(stop[0][2])-int(start[0][2]),selector=int(start[0][0]),route_start=list(map(int,start[0][3:])),
         timer_requests=len(rows),loops=loops,boundary_intervals=len(boundaries),states=states,
         request_signature=[[r[0],r[2],r[3],r[5],r[6]] for r in rows])
 
 
 def compare(a,b):
-    for key in ('config','selector','route_start','timer_requests','states','request_signature','build_identity','clock_signature'):
+    for key in ('config','selector','route_start','timer_requests','states','request_signature','build_identity','clock_signature','animation_signature'):
         require(a[key]==b[key], 'SCENE MATCHED WORKLOAD '+key)
     require(abs(a['fields']-b['fields'])<=max(1,a['fields']*.02),'SCENE FIELD REPEATABILITY')
 
@@ -110,6 +118,14 @@ def report(name, other=None):
         # profiler cannot pair reliably. Flat PC counters remain usable; do
         # not publish an invented active-work denominator from its call tree.
         out['call_tree_usable']=False
+        if out['animation_signature']:
+            observer=collections.Counter()
+            for pc,row in p.pcs.items():
+                region,fn=ctx.classify(pc)
+                if 'SceneAnimation' in fn or 'scene_animation' in fn:observer[fn]+=row[0]/upm
+            out['deadline_observer_self_ms']=dict(observer)
+            # Flat self costs exclude called helpers; they are not an inclusive
+            # overhead estimate and are not subtracted from measured cadence.
         base15=next(b for b,e,seg in ctx.segs if seg==15)
         out['nis_copies']=p.pcs.get(base15+0x32f4,(0,0))[1]
         out['nis_texts']=p.pcs.get(base15+0x170,(0,0))[1]

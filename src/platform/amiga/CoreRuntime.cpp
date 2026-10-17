@@ -172,6 +172,9 @@ volatile uint32_t g_timingSetCount=0,g_timingSetRows[512][5]={};
 __attribute__((noinline)) void pop2TimingWindowComplete(){__asm__ volatile("nop" ::: "memory");}
 volatile uint32_t g_timingPhase=0x1000,g_timingSamples[0x1005]={};
 #endif
+#if defined(POP2_SCENE_DEADLINES) && !defined(POP2_SCENE_PROFILE)
+#error Cinematic deadlines require the scene profiling harness
+#endif
 #ifdef POP2_SCENE_PROFILE
 #if defined(POP2_VERIFY) || !defined(POP2_TIMING_PROBE) || !defined(POP2_GAMEPLAY_ROUTE_PROBE)
 #error Scene measurement requires the explicit release timing and assisted-route probes
@@ -185,11 +188,22 @@ uint32_t g_sceneReturn=0;
 volatile uint32_t g_sceneActive=0,g_sceneFinished=0,g_sceneCount=0,g_sceneResult=0;
 void pop2_scene_return();
 __attribute__((noinline)) void pop2SceneBoundary(){__asm__ volatile("nop" ::: "memory");}
+#ifdef POP2_SCENE_DEADLINES
+void pop2SceneAnimationRestore();
+#endif
 void pop2SceneReturned(uint32_t result){
+#ifdef POP2_SCENE_DEADLINES
+    pop2SceneAnimationRestore();
+#endif
     g_sceneResult=result&65535;g_sceneActive=0;g_sceneFinished=1;pop2SceneBoundary();
 }
 volatile uint32_t g_sceneRows[4096][8]={};
 volatile uint32_t g_sceneClockCount=0,g_sceneClocks[2048][8]={};
+#ifdef POP2_SCENE_DEADLINES
+uint32_t g_sceneAnimationMethod=0,g_sceneAnimationReturn=0;
+volatile uint32_t g_sceneAnimationCount=0,g_sceneAnimations[512][10]={};
+void pop2_scene_animation();void pop2_scene_animation_return();
+#endif
 #endif
 #ifdef POP2_OPENING_PROFILE
 #if !defined(POP2_TIMING_PROBE) || !defined(POP2_INTEGRATION_NO_RIGHT) || defined(POP2_VERIFY)
@@ -323,6 +337,42 @@ bool validMemory(uint32_t at,uint32_t n) {
         (at>=(uint32_t)arena && at-(uint32_t)arena<=g_coreZoneBytes && n<=g_coreZoneBytes-(at-(uint32_t)arena));
 }
 bool fail(const char* why);
+#if defined(POP2_SCENE_PROFILE) && defined(POP2_SCENE_DEADLINES)
+extern "C" void pop2SceneAnimationRestore() {
+    if(g_sceneAnimationMethod)sl(a5-0x2288+0x1c,g_sceneAnimationMethod);
+}
+uint8_t* sceneAnimationObject=0;
+volatile uint32_t* sceneAnimationRow=0;
+extern "C" uint32_t pop2SceneAnimationEnter(uint8_t* entry) {
+    // This wrapper retains the original RTD ABI and records eligible calls only.
+    // No clock calls, debugger stops or changes to the object's scheduling state.
+    if(g_sceneAnimationReturn || !validMemory((uint32_t)entry,12)) {
+        didStop=true;fail("SCENE DEADLINE / NESTED CALL OR STACK");return 0;
+    }
+    g_sceneAnimationReturn=l(entry);sl(entry,(uint32_t)pop2_scene_animation_return);
+    sceneAnimationRow=0;sceneAnimationObject=(uint8_t*)l(entry+4);
+    if(!validMemory((uint32_t)sceneAnimationObject,0x12)) {
+        didStop=true;fail("SCENE DEADLINE / OBJECT");return 0;
+    }
+    uint8_t* object=sceneAnimationObject;uint32_t tick=l(entry+8);
+    if(!g_sceneActive || !w(object+8) || (!w(object+10) && tick<l(object+14)))return 1;
+    if(g_sceneAnimationCount==512) {didStop=true;fail("SCENE DEADLINE / CAPACITY");return 0;}
+    sceneAnimationRow=g_sceneAnimations[g_sceneAnimationCount++];
+    sceneAnimationRow[0]=tick;sceneAnimationRow[1]=w(object+10)?tick:l(object+14);
+    sceneAnimationRow[2]=(int32_t)(int16_t)w(object+12);sceneAnimationRow[3]=l(object+4);
+    sceneAnimationRow[4]=w(object+10);return 1;
+}
+extern "C" void pop2SceneAnimationReturned(uint32_t result) {
+    if(sceneAnimationRow) {
+        sceneAnimationRow[5]=l(sceneAnimationObject+14);
+        sceneAnimationRow[6]=(int32_t)(int16_t)w(sceneAnimationObject+12);
+        sceneAnimationRow[7]=l(sceneAnimationObject+4);
+        sceneAnimationRow[8]=result&65535;sceneAnimationRow[9]=g_scaffoldFields;
+    }
+    sceneAnimationRow=0;
+}
+#endif
+
 // Time Manager deadlines use PAL fields and beam position; callbacks run only
 // from the user-mode service return, with A1 pointing at the original TMTask.
 struct TimerStamp { uint32_t field,micro; };
@@ -1341,6 +1391,9 @@ __attribute__((optimize("O3"))) static uint32_t quickTrap(uint32_t* regs,uint8_t
     if(trap==0xa975 && seg==17 && off==0x313e)return 0;
 #ifdef POP2_SCENE_PROFILE
     if(trap==0xa975 && seg==15 && (off==0x3152 || off==0x321a || off==0x3984 || off==0x3b72))return 0;
+#ifdef POP2_SCENE_DEADLINES
+    if(trap==0xa975 && seg==16 && l(a5-0x2288+0x1c)!=(uint32_t)pop2_scene_animation && (off==0x128c || off==0x1358))return 0;
+#endif
 #endif
 #endif
     if(!quickServicesReady<trap==0xa975>())return 0;
@@ -2298,6 +2351,16 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
 #ifdef POP2_INPUT
     case 0xa975: trap_0xa975: {
         uint32_t ticks=callbackTicks();sl(usp,ticks);regs[0]=0;
+#if defined(POP2_SCENE_PROFILE) && defined(POP2_SCENE_DEADLINES)
+        if(g_sceneActive && seg==16 && l(a5-0x2288+0x1c)!=(uint32_t)pop2_scene_animation && (off==0x128c || off==0x1358)) {
+            uint8_t* slot=a5-0x2288+0x1c;uint32_t method=l(slot),methodSeg,methodOff;
+            if(!validMemory(method,6) || w((uint8_t*)method)!=0x4ef9 ||
+               !location(l((uint8_t*)method+2),methodSeg,methodOff) || methodSeg!=16 || methodOff!=0xb80)
+                return stop(frame,usp,"SCENE DEADLINE / METHOD IDENTITY",trap,seg,off);
+            g_sceneAnimationMethod=method;sl(slot,(uint32_t)pop2_scene_animation);
+        }
+#endif
+
 #if defined(POP2_TIMING_PROBE) && defined(POP2_INTEGRATION_PROBE)
         if(g_integrationStage==3 && seg==17 && off==0x313e && g_timingSetCount<512){
             if(!validMemory(regs[14],14))return stop(frame,usp,"TIMING / SETTIMER FRAME",trap,seg,off);

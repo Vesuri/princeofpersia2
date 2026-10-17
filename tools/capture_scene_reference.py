@@ -15,7 +15,7 @@ from replay_gameplay_route import compare, status, wait
 from extract_original_data import ROOT
 
 
-def capture(name, scene, cache):
+def capture(name, scene, cache, deadlines=False):
     assert name and all(c in 'abcdefghijklmnopqrstuvwxyz0123456789-_' for c in name)
     refname, pin = ('scenes-carpet-full','scenes-carpet-reference.sha256') if scene=='carpet' else ('gameplay-assisted-level8-clean-2','gameplay-assisted-level8-clean.sha256')
     reference=ROOT/'ref/mame/runs'/refname
@@ -24,6 +24,7 @@ def capture(name, scene, cache):
     assert not destination.exists(), 'SCENE REFERENCE / NAME EXISTS'
     env={k:v for k,v in os.environ.items() if not k.startswith('POP2_')}
     env.update(POP2_DISPLAY_ROUTE='1',POP2_GAMEPLAY='route',POP2_ROUTE_DISCOVERY='1',POP2_ROUTE_ASSIST='1',POP2_CUTSCENE_OBSERVER='1',POP2_SCENE_TIMERS='1')
+    if deadlines:env['POP2_SCENE_DEADLINES']='1'
     env['POP2_SCENE_SELECTOR']='1' if scene=='carpet' else '6'
     if cache=='generated':env['POP2_SCENE_CACHE']='generated'
     with (ROOT/'tmp'/f'{name}.log').open('w') as log:
@@ -51,4 +52,4 @@ def capture(name, scene, cache):
 
 
 if __name__=='__main__':
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('name');p.add_argument('scene',choices=['carpet','throne']);p.add_argument('--cache',choices=['clean','generated'],default='clean');a=p.parse_args();capture(a.name,a.scene,a.cache)
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('name');p.add_argument('scene',choices=['carpet','throne']);p.add_argument('--cache',choices=['clean','generated'],default='clean');p.add_argument('--deadlines',action='store_true');a=p.parse_args();capture(a.name,a.scene,a.cache,a.deadlines)

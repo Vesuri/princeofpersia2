@@ -1000,3 +1000,121 @@ large service-contract captures are pinned through their directory-local
 indexes to check every captured file. Captures,
 profiles, binaries and reference disks remain ignored. No ordinary game-service
 implementation or original game decision changes in this item.
+
+
+### Cinematic deadline investigation (19.10)
+
+DERIVED from CODE 15+$3222–$3248: the dissolve adjusts its per-word busy-loop
+count by one after each quantum. Being ahead increases that count, being late
+reduces it unless it is already zero, and an exact tick leaves it unchanged.
+The target is the initial TickCount plus the quantum index. These are feedback
+targets, not presentation timestamps. The initialization at +$309C–$30B4
+clamps the initial count to 0–100; subsequent feedback can exceed 100.
+
+MEASURED in the pinned 19.8 records: all 670 consecutive feedback transitions
+per native run agree with that rule in `throne-clean-c/d` and `throne-warm-c/d`.
+Both pinned Macintosh references agree too. The native first draw starts with
+count 100, runs 15–16 ticks ahead, increases its count above 230, then runs
+15–16 ticks behind while reducing it again. The Macintosh starts with counts
+46/48 and stays within one/two ticks of target. This establishes feedback
+oscillation in the observations; it does not establish how an altered algorithm
+would perform, or authorize changing the original game algorithm.
+
+`tools/cinematic_deadlines.py NATIVE REFERENCE` verifies the relevant input
+pins and checks every feedback transition, reporting signed lag rather than
+only late quanta. Its controls reject broken transitions, missing progress and
+empty observations. The other five draws are often far ahead of their targets
+on both systems; zero late quanta must not be described as exact cadence.
+
+DERIVED for carpet: CODE 16+$0366 tests an unsigned caller TickCount against
+object+$0E. Its initial-poll flag first sets that target to the caller's tick.
+After an eligible update, +$0454 rearms it from that same caller tick plus the
+signed delay at object+$0C, which the decoded animation step can change.
+Thus the schedule advances from the eligible poll, not from a global SetTimer
+or a fixed whole-scene frame rate. Two completed original observations (`deadlines-carpet-original-b/c`)
+record identical workloads and timing summaries: 119, 81 and 90 eligible updates for the three animations, including
+updates that do not draw a frame. Each rearms with a six-tick delay after decoding;
+the initial stored delay is three ticks. The original itself sometimes reaches
+an eligible update much later (up to 242 ticks). This is an earliest-update
+threshold, not evidence that every displayed frame must meet a six-tick upper
+bound. The existing Alone in the Dark and Vette! profile tools were inspected first;
+the object fields and feedback rules here belong to this game, while the existing
+profile parser remains reused.
+
+MEASURED: final native repeats `deadlines-carpet-native-c/d` execute the same
+119/81/90 eligible updates, three animation returns and 282 drawn frames as both
+original captures. All requested delays and object-frame transitions match.
+Both native runs positively return from the scene, restore hardware, and match
+the original return viewport, palette and curated actor/RNG state. The repeated
+scene scopes span 2,926/2,927 PAL fields (58.52/58.54 seconds).
+
+| Carpet animation | Original lag p50 / p95 / max (ticks) | Native repeat C | Native repeat D |
+|---|---:|---:|---:|
+| First, 119 eligible updates | 0 / 0 / 242 | 8 / 9 / 224 | 8 / 9 / 226 |
+| Second, 81 eligible updates | 3 / 5 / 33 | 0 / 1 / 32 | 0 / 1 / 30 |
+| Third, 90 eligible updates | 0 / 0 / 202 | 0 / 0 / 308 | 0 / 0 / 312 |
+
+Lag is sampled at the eligible poll against the object's requested threshold;
+it is not the time at which pixels become visible. The first animation is a
+particularly heavy scene on the measured 68030 and is not cadence-equivalent
+to the Macintosh. The other two do not erase that difference. Large outliers
+remain in the table; the report does not remove them or label the whole scene a
+passing six-tick frame loop. The original algorithm and ordinary game services
+are unchanged by this investigation.
+
+The explicit `POP2_SCENE_DEADLINES` observer wraps the existing Mohawk due-check
+method, preserves registers/CCR and its RTD stack cleanup, buffers eligible
+updates, and restores the original method-table slot at scene return. It does
+not change object clocks or request extra TickCount calls. Native profiling has
+no debugger stop inside the scene. Flat self time in its wrappers and recorders
+is 1,924/1,888 ms across the complete scene, excluding called helpers; this is
+not an inclusive overhead estimate and is not subtracted from cadence. These
+are instrumented observations, not an uninstrumented-release performance claim.
+The ordinary release executable remains byte-identical to the existing release
+in the completed audit.
+
+Reproduce original captures with `tools/capture_scene_reference.py NAME carpet
+--deadlines`; `manifest/cinematic-deadlines-reference.sha256` pins both completed
+references. Use `tools/aprof_scenes.py run NAME carpet --deadlines`, then the
+existing scene report/repeat and visible/state pair checks. Finally run
+`tools/carpet_deadlines.py REFERENCE --native tmp/aprof/NAME` to check the
+original delay/rearm rule and exact eligible-update workload. Controls reject
+missing completion, damaged records, changed delays, broken rearming, missing
+progress, altered result counts and changed workloads.
+
+The earlier `deadlines-carpet-native-a` trial also completed and paired; the
+final pair adds immediate named stops on invalid observer state. Attempt B
+failed conversion before emulator launch because its diagnostic error branch
+used an unsupported PC-relative relocation; the final wrapper uses a supported
+absolute jump. The sandbox-blocked original attempt A never booted and is not
+an accepted capture.
+
+The two opening baselines (`deadlines-before-a/b`) and two post-change runs
+(`deadlines-after-a/b`) each meet all 81 original timer intervals and span 375
+PAL fields. Both repeat pairs preserve all 81 Kid records and phase/stall
+boundaries. Each run has opening, report and work output for phases 0–4.
+The host suite passes. Fresh fixed-point, font, GWorld and title-copy references
+(`20261017-125932-c2d2ea8b`, `20261017-130029-b17bc6bb`,
+`20261017-130119-ab70f857`, `20261017-130249-0a1ccca7`) pass their contracts
+and ten rejection controls. VBL `.run-MtGfLo` passes the paired stable-sample
+contract, user-mode ABI, restoration and thirteen rejection controls.
+Time Manager `.run-wKb7gk` passes its original-paired delay, rearm, cancellation,
+user-mode ABI and restoration checks, including twelve rejection controls.
+Cadence `.run-FK7h5v` passes all 59 original five-tick intervals and six rejection
+controls. Its five-update window spans 18 PAL fields (72 ms/update including
+pacing); all 59 conversions occur at frame end.
+The full integration gate `tmp/integration-gate-vw1mveqn` passes the title-state
+comparison, two natural gameplay routes, and the no-Right control (same first
+room, zero Right reads, different completed outcome), with 45 altered-evidence
+controls. Every native route completes and restores hardware. `make release`
+restores the ordinary build with SHA-256
+`c913cb3947c50d1cfe99297bec4636953ce9a7b93b7236101cdd62f8c6641247`,
+byte-identical to the pre-change release; its audit excludes runtime hashing
+and tracing. Build controls reject the deadline observer outside its explicit
+scene harness.
+
+`manifest/cinematic-deadlines-evidence.sha256` pins completed captures and
+reports. The four fresh service-contract references have directory-local
+`contract-evidence.sha256` indexes: verify those files as well as the tracked
+index to check every captured input. Captures and original-derived material
+remain ignored.

@@ -5,7 +5,7 @@ and performance work 19.9 remain deferred beyond 0.90, retaining
 their acceptance gates. This does not waive item 14’s
 68040 cadence, real-hardware or installer validation. Gameplay coverage (12)
 remains accepted under D10–D12 on `a1200-030`.
-Under D15, complete 19.10 and then 21 before qualifying 0.90.
+Under D15, cinematic deadline item 19.10 is complete; finish 21 before qualifying 0.90.
 Items remain open until their acceptance gates pass.
 
 15. **68020 support.** Measure and optimize
@@ -166,16 +166,6 @@ Items remain open until their acceptance gates pass.
       compatibility in `8ecd85f` and stopped-DMA state in `7759f0f`). This port
       pins these helpers; integrate the branch when the main working tree is clean.
 
-    - **19.10 Cinematic deadline follow-up.** The first level-eight throne
-      dissolve misses its original adaptive quantum deadlines by up to 15–16
-      ticks on the exact no-MMU 68030, with clean and generated cache; the paired
-      Macintosh has smaller misses too. Investigate that measured scene before
-      changing its original adaptive algorithm. Carpet uses the Mohawk animation
-      player's clock rather than SetTimer; establish its per-frame requested
-      deadlines before making a cadence claim from whole-scene profiles.
-      Acceptance: original-paired deadline interpretation and matched repeated
-      measurements; retain visible/state equivalence and ordinary release.
-
     Acceptance: each step's gates and measured targets; finally the opening
     profile meets every requested interval on the exact 68030 model, with
     reproducible matched-workload results for the further scenes. Emulator
@@ -186,7 +176,10 @@ Items remain open until their acceptance gates pass.
     return address with MOVE.L, which changes N/Z/V/C. These are opt-in harness
     paths, not ordinary release. Compare original/native continuation flags and
     fix the wrappers while preserving registers, stack and original return
-    values. The scene profiler reserves its return slot with LEA and fills it
-    before restoring CCR. Keep this harness investigation separate from 19.8.
+    values. The ten affected wrappers cover title/death entry, opening/room/death
+    return, route frame/hall/ending and save/load return. Alone in the Dark's
+    user-mode VBL trampoline already reserves its return slot with LEA and fills
+    it before restoring CCR; this port's scene profiler uses that safe ordering
+    too. Keep this harness investigation separate from 19.8.
     Acceptance: paired continuation and register/CCR controls, followed by the
     affected gameplay fixtures; inspect the other ports before sharing a fix.
