@@ -11,9 +11,10 @@ Items remain open until their acceptance gates pass.
     the fixed 68020 configuration without changing original game decisions.
     The byte-guarded SaveRect inner-loop replacement passes 672 paired original
     Macintosh/native cases, full memory/register/CCR comparisons, rejection
-    controls and two matched opening runs. The current runs take 639 PAL fields
-    each (baseline 660), with 61/62 of 82 requested intervals late. Landing takes
-    303.84–304.40 ms/frame against the 83.3 ms request. Both retain all baseline
+    controls and two matched opening runs. Inactive copper palette reuse also
+    passes original-table checks across 82 publications and a palette-only change probe. The current runs take 624/622
+    PAL fields (baseline 660), with 60 of 82 requested intervals late. Landing takes
+    300.03–300.04 ms/frame against the 83.3 ms request. Both retain all baseline
     player records and first-room/death pixels, but still have an extra death-phase
     frame relative to the original. Cadence acceptance is not met.
     VBL and Time Manager service fixtures pass with 13 and 12 rejection controls.

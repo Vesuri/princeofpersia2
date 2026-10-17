@@ -2,6 +2,7 @@
 #define POP2_PRINCE_SCREEN_H
 #include "Planar8.h"
 #include "AgaPalette.h"
+#include "mac/CopperPaletteCache.h"
 // Owns one 512x384 indexed viewport; every field's copper list is immutable
 // while active. No original game bytes or colour tables live in this class.
 class PrinceScreen {
@@ -19,6 +20,8 @@ public:
 private:
     uint8_t* pixels_[2]={};
     uint32_t* copper_=nullptr;
+    CopperPaletteCache::State<256,2> paletteCache_;
+    bool listInitialized_[2]={};
     volatile uint16_t front_=0,pending_=0;
     bool started_=false,valid_=false;
     uint32_t lastFrameField_=0;

@@ -9,6 +9,7 @@ extern "C" {
 #ifdef POP2_TIMING_PROBE
 extern volatile uint32_t g_timingPhase;
 volatile uint32_t g_c2pPasses=0,g_c2pRects=0,g_c2pPixels=0,g_c2pUnbatched=0;
+__attribute__((noinline)) void pop2CopperReady() { __asm__ volatile("" ::: "memory"); }
 #endif
 void pop2KalmsC2PRect(const uint8_t*,uint8_t*,uint32_t,uint32_t);
 volatile uint32_t g_displayPlanes=0,g_displayCopper=0,g_displayFields=0,g_displayFrames=0;
@@ -35,16 +36,25 @@ bool PrinceScreen::allocate() {
     uint32_t black[256]={};lists(0,black);lists(1,black);return true;
 }
 void PrinceScreen::lists(uint16_t buffer,const uint32_t* rgb) {
+    paletteCache_.update(rgb);
+    const bool palette=paletteCache_.needs(buffer);
     for(unsigned parity=0;parity<2;++parity) {
-        uint32_t* c=copper_+(buffer*2+parity)*copperMoves;unsigned at=0;
-        for(unsigned plane=0;plane<8;++plane) {
-            uint32_t address=(uint32_t)pixels_[buffer]+parity*Planar8::rowBytes+plane*Planar8::planeRow;
-            c[at++]=AgaPalette::move(0xe0+4*plane,address>>16);
-            c[at++]=AgaPalette::move(0xe2+4*plane,address);
+        uint32_t* c=copper_+(buffer*2+parity)*copperMoves;
+        // Plane allocations and display mode are fixed for this list's lifetime.
+        // Refresh only the inactive buffer's palette, as in Alone in the Dark.
+        if(!listInitialized_[buffer]) {
+            unsigned at=0;
+            for(unsigned plane=0;plane<8;++plane) {
+                uint32_t address=(uint32_t)pixels_[buffer]+parity*Planar8::rowBytes+plane*Planar8::planeRow;
+                c[at++]=AgaPalette::move(0xe0+4*plane,address>>16);
+                c[at++]=AgaPalette::move(0xe2+4*plane,address);
+            }
+            for(unsigned i=0;i<13;++i)c[at++]=AgaPalette::move(mode[i][0],mode[i][1]);
+            c[copperMoves-1]=0xfffffffe;
         }
-        for(unsigned i=0;i<13;++i)c[at++]=AgaPalette::move(mode[i][0],mode[i][1]);
-        AgaPalette::build(c+at,rgb);at+=AgaPalette::moves;c[at]=0xfffffffe;
+        if(palette)AgaPalette::build(c+16+13,paletteCache_.colors());
     }
+    paletteCache_.mark(buffer);listInitialized_[buffer]=true;
 }
 void PrinceScreen::start() {
     if(!copper_)return;
@@ -105,6 +115,9 @@ bool PrinceScreen::publish(const uint8_t* chunky,const Planar8::Rect& viewport,
         sync_[i]=r;
     }
     syncCount_=n;viewport_=viewport;valid_=true;lists(back,rgb);
+#ifdef POP2_TIMING_PROBE
+    pop2CopperReady();
+#endif
     __asm__ volatile("" ::: "memory");pending_=1;
     uint32_t changedPixels=0;
     for(unsigned i=0;i<n;++i)changedPixels+=uint32_t(work[i].right-work[i].left)*(work[i].bottom-work[i].top);
@@ -143,6 +156,7 @@ void PrinceScreen::paceFrame() {
 }
 void PrinceScreen::release() {
     started_=false;
+    paletteCache_.reset();listInitialized_[0]=listInitialized_[1]=false;
     if(copper_)FreeMem(copper_,4*copperMoves*4);copper_=nullptr;
     for(unsigned i=0;i<2;++i) {if(pixels_[i])FreeMem(pixels_[i],Planar8::bytes);pixels_[i]=nullptr;}
 }

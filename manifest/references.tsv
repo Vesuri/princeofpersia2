@@ -60,3 +60,4 @@ Vette	b3074ba6784a834864c222db9b4f0ccabd38de03	WHDLoad/debugger harness inspecte
 AmigaXDev	8d71bf1aeda406e02b4d087858f8b07b10076104	canonical integrated helpers, shared profile parser, current debugger SR fixture, fixed converter setup and binary-stable dirty planner; item 19.9
 Alone in the Dark	81b13ef55c26afbbd7255ef18c8e2297e0d78534	shared parser and planner adoption with identical ordinary executable, native conversion and book gates; item 19.9
 AmigaXDev	f2367f43adb6d64f3cfe67fc7b774dbb9c50a563	ordered longword copy macro; SaveRect original/native ABI fixture covers alignment, overlap, maximum width and CCR
+AmigaXDev	716b6b8df699bbf9d33bc330785c32d153740362	inactive copper palette cache with per-list invalidation; randomized and original/native display gates

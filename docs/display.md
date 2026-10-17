@@ -104,7 +104,10 @@ returning the blitter vector to the OS; both VERTB and BLIT vectors are checked 
 final restoration. The batch is bounded below the framework queue capacity.
 Moving the viewport forces a full conversion. Palette-only publication preserves
 all indices while replacing both field palettes. Fades use the measured transfer
-and AGA high/low colour-bank writes at publication.
+and AGA high/low colour-bank writes at publication. Fixed copper instructions
+and bitplane pointers are initialized once per list. Each inactive buffer
+retains its palette until the RGB24 content changes; invalidation tracks both
+field lists and never writes the active buffer.
 
 The independent host decoder checks all 196,608 pixels of each title/room client,
 all eight planes, all 256 copper colours, field pointers, row modulos, mode words
