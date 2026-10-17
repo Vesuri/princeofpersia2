@@ -250,6 +250,44 @@ correctness captures, controls and rejected prototype. The native observer is
 `amiga/copper_palette.gdb`; `tools/check_copper_palette.py` requires pinned
 captures and positive route completion. Timing runs never enable its stops.
 
+### Zone services inside callbacks (item 15)
+
+Alone in the Dark's specialized GetZone/SetZone entries were inspected first.
+The port's existing user-mode callback shortcut now handles these two services
+as well as its existing timer/fixed-point calls. It shares the zone bodies with
+the full dispatcher, including the single-zone ownership check, MemError and
+OS condition-code policy. Pending audio, an inactive callback or an invalid
+caller retains the full path. Ordinary zone calls still use the full dispatcher;
+there are no added native quick-table entries.
+
+MEASURED: identical-build calibrated 68020 runs
+`item15-zones-callback-020-c/d` complete the opening in 614/613 PAL fields,
+against 624/622 before this change. Landing takes 295.06/295.36 ms per recorded
+frame, against 300.03/300.04 ms. All 82 player records, first-room/death pixels
+and palette match the prior build. The repeat phase-state and field-variation
+check passes. These are exclusive-PC and completed-route measurements;
+unverified inclusive call costs are not used.
+
+MEASURED: final fixture `.run-QWccH0` passes both callback zone services with all
+32 CCR inputs, preserved registers and untouched stack bytes: 64 positive cases
+and 128 inactive/pending-audio rejections. It also passes the six ordinary quick
+bodies, 78 guard rejections, six due-deadline rejections and the unsupported-zone
+control. The route completes with 3,266 live guard checks, zero faults, CODE/heap
+audits and hardware restoration. First-room pixels, colours, RNG, context,
+AGA planes and copper palette/mode match the pinned Macintosh reference.
+All thirteen altered reports are rejected. Synthetic cases explicitly
+control the audio-readiness input without advancing or discarding the real
+audio clock, engine or queues; the live route requires the override to be off.
+This isolation is compiled only with `POP2_QUICK_TRAP_PROBE` and is absent from
+release and profiling builds. The checker supports the selected CPU preset.
+The host suite and final release/link audits pass; the release symbol audit
+also confirms that the audio-readiness override and fixture counters are absent.
+
+Cadence still fails: 60/61 of 82 requested intervals are late, and the extra
+death-phase frame still fails the strict original timer-request comparison.
+Item 15 remains open. `manifest/performance-68020-zones.sha256` records the
+measurement and validation artifacts, including rejected experiments.
+
 ## Frame-end conversion
 
 The renderer uses Mikael Kalms's `c2p1x1_8_c5_gen` adapter on normalized dirty

@@ -109,7 +109,7 @@ cat "$RUN/gdb-out.log"
 for ((i=0;i<20;i++)); do [ -f "$DH1/Shell.done" ] && break; sleep 1; done
 if [ "${CORE:-0}" = 1 ]; then
   if [ "${QUICK_TRAPS:-0}" = 1 ]; then
-    python3 ../tools/check_quick_traps.py "$RUN"
+    python3 ../tools/check_quick_traps.py "$RUN" --setup "$AMIGA_SETUP"
   elif [ "${RELEASE_STARTUP:-0}" = 1 ]; then
     python3 ../tools/check_release_startup.py "$RUN" "$RELEASE_REFERENCE"
   elif [ -n "${GAMEPLAY_ATTRACT_REFERENCE:-}" ]; then

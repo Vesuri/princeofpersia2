@@ -1320,6 +1320,13 @@ extern "C" int32_t pop2PureRect(uint8_t* args,uint32_t* saved,uint32_t trap){
 // Errors leave the existing named-stop path in charge.
 template<uint16_t trap>
 static inline bool trivialService(uint32_t* regs) {
+    // As in Alone in the Dark, zone services can use a specialized entry.
+    // This port has one supported zone; retain the existing unknown-zone stop.
+    if(trap==0xa11a){regs[8]=(uint32_t)arena;regs[0]=0;}
+    if(trap==0xa01b){
+        if(regs[8]!=(uint32_t)arena)return fail("HEAP / UNKNOWN ZONE");
+        regs[0]=0;
+    }
     if(trap==0xa9b4)regs[0]=(uint32_t)a5;
     if(trap==0xa055)regs[0]&=0x00ffffff;
     if(trap==0xa05d) {
@@ -1347,6 +1354,19 @@ static void invalidateQuickOwner() {g_quickCodeBase=0xffffffffUL;g_quickCodeEnd=
 #define quickServicesValid g_quickServicesValid
 #define quickServicesTick g_quickServicesTick
 #define quickServicesField g_quickServicesField
+#ifdef POP2_QUICK_TRAP_PROBE
+// Isolate only the synthetic fixtures' audio readiness. The real audio clock,
+// queues and engine remain untouched and resume normal service afterward.
+static int quickFixtureAudioPending=-1;
+#endif
+#ifdef POP2_AUDIO
+__attribute__((always_inline)) static inline bool quickAudioPending() {
+#ifdef POP2_QUICK_TRAP_PROBE
+    if(quickFixtureAudioPending>=0)return quickFixtureAudioPending!=0;
+#endif
+    return NativeAudio::servicePending();
+}
+#endif
 template<bool exact>
 __attribute__((always_inline)) static inline bool quickServicesReady() {
 #if defined(POP2_INPUT) && defined(POP2_UI) && defined(POP2_AUDIO)
@@ -1355,7 +1375,7 @@ __attribute__((always_inline)) static inline bool quickServicesReady() {
     if(quickServicesValid && quickServicesTick==tick && quickServicesField==field)
         return g_quickServicesMicro==0xffffffffUL || !timerDueNow({field,g_quickServicesMicro});
     quickServicesValid=false;
-    if(NativeInput::error() || NativeAudio::servicePending() ||
+    if(NativeInput::error() || quickAudioPending() ||
        (vblCount && vblPass.needed(tick)))return false;
     // A future field cannot have a due microsecond timer. A timer in the
     // current field takes the exact existing timerNow path, even if early.
@@ -1512,6 +1532,7 @@ extern "C" uint32_t pop2QuickVerify(uint32_t* regs,uint8_t* frame,uint8_t* usp) 
     (void)regs;return !g_quickGuardFault;
 }
 #endif
+static uint32_t callbackService(uint32_t* parked);
 #include "QuickTrapProbe.inc"
 extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
     uint32_t pc=l(frame+2),seg=0,off=0;
@@ -2317,8 +2338,8 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
         error=heap.setState(h,trap==0xa049?heap.state(h)|0x40:heap.state(h)&~0x40);regs[0]=(int32_t)error;break;
     }
     case 0xa128: trap_0xa128:regs[8]=(uint32_t)heap.recoverHandle((uint8_t*)regs[8]);error=heap.error();regs[0]=(int32_t)error;break;
-    case 0xa11a: trap_0xa11a:regs[8]=(uint32_t)arena;regs[0]=0;break;
-    case 0xa01b: trap_0xa01b:if(regs[8]!=(uint32_t)arena){fail("HEAP / UNKNOWN ZONE");goto failed;}regs[0]=0;break;
+    case 0xa11a: trap_0xa11a:if(!trivialService<0xa11a>(regs))goto failed;break;
+    case 0xa01b: trap_0xa01b:if(!trivialService<0xa01b>(regs))goto failed;break;
     case 0xa055: trap_0xa055:if(!trivialService<0xa055>(regs))goto failed;break;
     case 0xa01c: trap_0xa01c:regs[0]=heap.freeBytes();break;
     case 0xa11d: trap_0xa11d:regs[0]=heap.compact();regs[8]=0;break;
@@ -2522,11 +2543,11 @@ failed:return stop(frame,usp,g_coreReason,trap,seg,off);
 // takes the ordinary route; timer/VBL callbacks cannot nest in either route.
 static uint32_t callbackService(uint32_t* parked) {
 #if defined(POP2_AUDIO) && defined(POP2_INPUT)
-    if(!g_timerCallbackActive || NativeAudio::servicePending())return 0;
+    if(!g_timerCallbackActive || quickAudioPending())return 0;
     uint32_t pc=g_coreServicePC;
     if(!validMemory(pc,2))return 0;
     uint16_t trap=w((uint8_t*)pc);
-    if(trap!=0xa058 && trap!=0xa059 && trap!=0xa05a && trap!=0xa868 && trap!=0xa84d && trap!=0xa975)return 0;
+    if(trap!=0xa058 && trap!=0xa059 && trap!=0xa05a && trap!=0xa868 && trap!=0xa84d && trap!=0xa975 && trap!=0xa11a && trap!=0xa01b)return 0;
     uint32_t seg=0,off=0;if(!location(pc,seg,off))return 0;
     uint8_t* usp=(uint8_t*)parked+66;
     if(usp<stack || usp>stack+65536-4)return 0;
@@ -2544,11 +2565,13 @@ static uint32_t callbackService(uint32_t* parked) {
     case 0xa058:case 0xa059:case 0xa05a:ok=timerService(trap,parked);break;
     case 0xa868:case 0xa84d:ok=fixedService(trap,usp);consumed=ok?8:0;break;
     case 0xa975:sl(usp,callbackTicks());parked[0]=0;break;
+    case 0xa11a:ok=trivialService<0xa11a>(parked);sw(low+0x220,heap.error());break;
+    case 0xa01b:ok=trivialService<0xa01b>(parked);sw(low+0x220,heap.error());break;
     }
     g_coreServiceActive=0;
     if(!(trap&0x0800)) {
-        // The selected OS services here are Time Manager calls, not heap calls.
-        // Preserve MemError across callbacks, including a preceding HPurge error.
+        // Timer calls preserve MemError, including a preceding HPurge error.
+        // Zone calls publish the same heap status as the full dispatcher.
         uint16_t sr=w(frame)&~15,result=parked[0];
         if(!result)sr|=4;if(result&0x8000)sr|=8;sw(frame,sr);
     }

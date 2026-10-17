@@ -7,26 +7,33 @@ from check_core_result import restored
 
 
 def evidence(log):
-    assert log.count('QUICK CONTROLS calls=78 rejected=72 failures=0\n') == 1, 'QUICK / FIXTURE'
+    assert log.count('QUICK CONTROLS calls=84 rejected=78 failures=0\n') == 1, 'QUICK / FIXTURE'
     assert log.count('QUICK DEADLINES rejected=6\n') == 1, 'QUICK / DEADLINE'
+    assert log.count('QUICK ZONE rejected=1\n') == 1, 'QUICK / ZONE'
+    assert log.count('QUICK CALLBACK checks=64 rejected=128\n') == 1, 'QUICK / CALLBACK'
     guards = re.findall(r'^QUICK GUARD checks=(\d+) faults=(\d+)$', log, re.M)
     assert len(guards) == 1 and int(guards[0][0]) > 0 and guards[0][1] == '0', 'QUICK / NATIVE GUARD'
+    assert log.count('QUICK AUDIO MODE -1\n') == 1, 'QUICK / LIVE AUDIO'
     assert log.count('CLOCK FAULT 0\n') == 1, 'QUICK / CLOCK'
     assert log.count('CORE REASON INTEGRATION / ROUTE COMPLETE\n') == 1, 'QUICK / ROUTE'
     assert log.count('INTEGRATION RESTORED\n') == 1, 'QUICK / RESTORE'
 
 
-def check(run):
+def check(run, setup):
     flags = json.loads((run/'build-receipt.json').read_text())['flags'].split()
     assert {'-DPOP2_VERIFY', '-DPOP2_QUICK_TRAP_PROBE', '-DPOP2_INTEGRATION_PROBE'} <= set(flags), 'QUICK / BUILD'
     log = (run/'gdb-out.log').read_text()
-    restored(run, log, 'a1200-030')
+    restored(run, log, setup)
     evidence(log)
     changes = [
-        ('calls=78', 'calls=77'), ('rejected=72', 'rejected=71'),
+        ('calls=84', 'calls=83'), ('rejected=78', 'rejected=77'),
         ('QUICK DEADLINES rejected=6', 'QUICK DEADLINES rejected=5'),
+        ('QUICK ZONE rejected=1', 'QUICK ZONE rejected=0'),
+        ('QUICK CALLBACK checks=64', 'QUICK CALLBACK checks=63'),
+        ('checks=64 rejected=128', 'checks=64 rejected=127'),
         ('failures=0', 'failures=1'), ('faults=0', 'faults=1'),
         ('CLOCK FAULT 0', 'CLOCK FAULT 1'),
+        ('QUICK AUDIO MODE -1', 'QUICK AUDIO MODE 0'),
         ('INTEGRATION / ROUTE COMPLETE', 'INTEGRATION / WRONG STOP'),
         ('INTEGRATION RESTORED', 'INTEGRATION UNRESTORED'),
     ]
@@ -40,10 +47,12 @@ def check(run):
             continue
         raise AssertionError('QUICK / ACCEPTED ALTERATION')
     evidence(log)
-    print('QUICK TRAPS PASS: six positive bodies, 72 rejected guard cases, six due-deadline rejections, live native guard audit, restored route; nine alterations rejected')
+    print('QUICK TRAPS PASS: six positive bodies, 78 rejected guard cases, six due-deadline rejections, invalid zone rejection, 64 callback CCR cases and 128 inactive/pending-audio callback rejections, live native guard audit, restored route; thirteen alterations rejected')
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('run', type=Path)
-    check(parser.parse_args().run)
+    parser.add_argument('--setup', choices=('a1200-030','a1200-fast'), default='a1200-030')
+    args = parser.parse_args()
+    check(args.run, args.setup)

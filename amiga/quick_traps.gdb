@@ -3,6 +3,8 @@ commands
  silent
  printf "QUICK CONTROLS calls=%lu rejected=%lu failures=%lu\n",g_quickProbeCalls,g_quickProbeRejected,g_quickProbeFailures
  printf "QUICK DEADLINES rejected=%lu\n",g_quickDeadlineRejected
+ printf "QUICK ZONE rejected=%lu\n",g_quickZoneRejected
+ printf "QUICK CALLBACK checks=%lu rejected=%lu\n",g_quickCallbackChecks,g_quickCallbackRejected
  continue
 end
 break pop2UIOverlayShown
@@ -18,6 +20,7 @@ commands
  printf "CORE STOP trap=%04lx segment=%lu offset=%04lx count=%lu\n",g_coreStopTrap,g_coreStopSegment,g_coreStopOffset,g_coreCount
  printf "CORE REASON %s\n",g_coreReason
  printf "QUICK GUARD checks=%lu faults=%lu\n",g_quickGuardChecks,g_quickGuardFault
+ printf "QUICK AUDIO MODE %ld\n",quickFixtureAudioPending
  printf "CLOCK FAULT %lu\n",g_clockFault
  printf "CORE RESTORE stage=%lu error=%lu vector=%lu heap=%lu zone=%lu dma=%u/%u irq=%u/%u view=%u vbi=%u\n",g_scaffoldStage,g_scaffoldError,g_coreVectorRestored,g_coreHeapOK,g_coreZoneBytes,g_savedDMA,g_actualDMA,g_savedIRQ,g_actualIRQ,g_viewRestored,g_vectorRestored
  printf "CORE EXCEPTION vector=%lu pc=%08lx\n",g_coreException,g_coreFaultPC
