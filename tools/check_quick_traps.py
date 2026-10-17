@@ -7,9 +7,10 @@ from check_core_result import restored
 
 
 def evidence(log):
+    assert log.count('HUNLOCK checks=256 rejected=96 freed=32\n') == 1, 'QUICK / HUNLOCK'
     assert log.count('BLOCK MOVE checks=28388\n') == 1, 'QUICK / BLOCK MOVE'
-    assert log.count('QUICK CONTROLS calls=84 rejected=78 failures=0\n') == 1, 'QUICK / FIXTURE'
-    assert log.count('QUICK DEADLINES rejected=6\n') == 1, 'QUICK / DEADLINE'
+    assert log.count('QUICK CONTROLS calls=98 rejected=91 failures=0\n') == 1, 'QUICK / FIXTURE'
+    assert log.count('QUICK DEADLINES rejected=7\n') == 1, 'QUICK / DEADLINE'
     assert log.count('QUICK ZONE rejected=1\n') == 1, 'QUICK / ZONE'
     assert log.count('QUICK CALLBACK checks=64 rejected=128\n') == 1, 'QUICK / CALLBACK'
     guards = re.findall(r'^QUICK GUARD checks=(\d+) faults=(\d+)$', log, re.M)
@@ -27,9 +28,12 @@ def check(run, setup):
     restored(run, log, setup)
     evidence(log)
     changes = [
+        ('HUNLOCK checks=256', 'HUNLOCK checks=255'),
+        ('rejected=96 freed=32', 'rejected=95 freed=32'),
+        ('freed=32', 'freed=31'),
         ('BLOCK MOVE checks=28388', 'BLOCK MOVE checks=28387'),
-        ('calls=84', 'calls=83'), ('rejected=78', 'rejected=77'),
-        ('QUICK DEADLINES rejected=6', 'QUICK DEADLINES rejected=5'),
+        ('calls=98', 'calls=83'), ('rejected=91', 'rejected=77'),
+        ('QUICK DEADLINES rejected=7', 'QUICK DEADLINES rejected=5'),
         ('QUICK ZONE rejected=1', 'QUICK ZONE rejected=0'),
         ('QUICK CALLBACK checks=64', 'QUICK CALLBACK checks=63'),
         ('checks=64 rejected=128', 'checks=64 rejected=127'),
@@ -49,7 +53,7 @@ def check(run, setup):
             continue
         raise AssertionError('QUICK / ACCEPTED ALTERATION')
     evidence(log)
-    print('QUICK TRAPS PASS: 28,388 native copy cases, six positive bodies, 78 rejected guard cases, six due-deadline rejections, invalid zone rejection, 64 callback CCR cases and 128 inactive/pending-audio callback rejections, live native guard audit, restored route; fourteen alterations rejected')
+    print('QUICK TRAPS PASS: 28,388 native copy cases, seven positive bodies, 91 rejected guard cases, seven due-deadline rejections, invalid zone rejection, 64 callback CCR cases and 128 inactive/pending-audio callback rejections, live native guard audit, restored route; seventeen alterations rejected')
 
 
 if __name__ == '__main__':

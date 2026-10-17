@@ -106,6 +106,11 @@ pop2QuickHLock:
 pop2QuickHGetState:
 	lea pop2QuickHGetStateWarm,a4
 	moveq #5,d2
+	bra.s pop2QuickNativeGuard
+	.globl pop2QuickHUnlock
+pop2QuickHUnlock:
+	lea pop2QuickHUnlockWarm,a4
+	moveq #6,d2
 	.globl pop2QuickNativeGuard
 pop2QuickNativeGuard:
 	| Validate ownership before reusing or refreshing a no-due certificate.

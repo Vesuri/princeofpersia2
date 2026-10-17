@@ -6,13 +6,15 @@
 #endif
 extern "C" {
 uint32_t g_blockMoveChecks=0;
+uint32_t g_hunlockChecks=0,g_hunlockRejected=0,g_hunlockFreed=0;
 uint32_t g_quickProbeCalls=0,g_quickProbeRejected=0,g_quickProbeFailures=0;
 uint32_t g_quickDeadlineRejected=0,g_quickZoneRejected=0;
 uint32_t g_quickCallbackChecks=0,g_quickCallbackRejected=0;
 __attribute__((noinline)) void pop2QuickProbeDone(){__asm__ volatile("nop" ::: "memory");}
 }
 static void quickTrapFixture() {
-    const uint16_t traps[]={0xa9b4,0xa975,0xa055,0xa05d,0xa029,0xa069};
+    uint32_t unlockPC=0;
+    const uint16_t traps[]={0xa9b4,0xa975,0xa055,0xa05d,0xa029,0xa069,0xa02a};
     uint32_t owner=displayBatchFrame,parent=displayBatchParent,returned=displayBatchReturn;
     unsigned tasks=timerCount,vbls=vblCount;TimerTask first=timers[0];VBLPasses passes=vblPass;
     const char* reason=g_coreReason;uint8_t mode=addressMode;bool exitState=normalExit;
@@ -25,6 +27,7 @@ static void quickTrapFixture() {
             for(uint32_t off=0;off+2<=g_coreSegments[seg][1];off+=2)
                 if(w((uint8_t*)g_coreSegments[seg][0]+off)==trap){pc=g_coreSegments[seg][0]+off;break;}
         if(!pc){++g_quickProbeFailures;continue;}
+        if(trap==0xa02a)unlockPC=pc;
         for(unsigned fault=0;fault<14;++fault) {
             uint32_t regs[15]={};regs[0]=0;regs[8]=(uint32_t)handle;
             uint8_t frame[8]={},args[32]={};sl(frame+2,pc);
@@ -57,7 +60,8 @@ static void quickTrapFixture() {
                 trap==0xa9b4 ? pop2QuickSystemTaskBody :
                 trap==0xa055 ? pop2QuickStripAddressBody :
                 trap==0xa05d ? pop2QuickSwapMMUModeBody :
-                trap==0xa029 ? pop2QuickHLockBody : pop2QuickHGetStateBody;
+                trap==0xa029 ? pop2QuickHLockBody :
+                trap==0xa02a ? pop2QuickHUnlockBody : pop2QuickHGetStateBody;
             uint32_t result=entry(regs,frame,usp);
             ++g_quickProbeCalls;
             if(!fault){
@@ -76,7 +80,8 @@ static void quickTrapFixture() {
                     sw(warmFrame,0);addressMode=oldMode;low[0xcb2]=oldMode;
                     auto body=trap==0xa055 ? pop2QuickStripAddressWarm :
                         trap==0xa05d ? pop2QuickSwapMMUModeWarm :
-                        trap==0xa029 ? pop2QuickHLockWarm : pop2QuickHGetStateWarm;
+                        trap==0xa029 ? pop2QuickHLockWarm :
+                        trap==0xa02a ? pop2QuickHUnlockWarm : pop2QuickHGetStateWarm;
                     bool same=body(warm,warmFrame)!=0;
                     for(unsigned i=0;i<15;++i)if(warm[i]!=regs[i])same=false;
                     for(unsigned i=0;i<8;++i)if(warmFrame[i]!=frame[i])same=false;
@@ -101,6 +106,60 @@ static void quickTrapFixture() {
         }
     }
     quickFixtureAudioPending=0;
+    // Compare the native service body with the full service across every
+    // flag combination and CCR. The trap trampoline advances the fast PC.
+    displayBatchFrame=displayBatchParent=displayBatchReturn=0;
+    timerCount=vblCount=0;vblPass.pending=false;vblPass.active=false;
+    if(unlockPC)for(unsigned state=0;state<256;state+=32)for(unsigned cc=0;cc<32;++cc) {
+        uint32_t fast[15],full[15];uint8_t ff[8]={},sf[8]={},args[16]={};
+        for(unsigned i=0;i<15;++i)fast[i]=full[i]=0x12340000+i;
+        fast[8]=full[8]=(uint32_t)handle;
+        sw(ff,cc);sw(sf,cc);sl(ff+2,unlockPC);sl(sf+2,unlockPC);
+        heap.setState(handle,state);quickServicesValid=false;
+        bool ok=pop2QuickHUnlockWarm(fast,ff)==1;
+        ok=ok && heap.state(handle)==(state&0x7f) && w(low+0x220)==0;
+        sl(ff+2,l(ff+2)+2);
+        heap.setState(handle,state);
+        ok=ok && pop2Dispatch(full,sf,args)==(uint32_t)args && !didStop;
+        ok=ok && heap.state(handle)==(state&0x7f) && w(low+0x220)==0;
+        for(unsigned i=0;i<15;++i)if(fast[i]!=full[i])ok=false;
+        for(unsigned i=0;i<8;++i)if(ff[i]!=sf[i])ok=false;
+        if(fast[0] || w(ff)!=((cc&16)|4))ok=false;
+        if(ok)++g_hunlockChecks;else ++g_quickProbeFailures;
+    }
+    auto freed=heap.newHandle(16,true);
+    if(!freed || heap.disposeHandle(freed))++g_quickProbeFailures;
+    else if(unlockPC) {
+        const uint32_t master=l((uint8_t*)freed);
+        MacHeap::Handle bad[]={nullptr,freed,(MacHeap::Handle)((uint8_t*)handle+1)};
+        for(auto h:bad)for(unsigned cc=0;cc<32;++cc) {
+            uint32_t regs[15]={},before[15];uint8_t frame[8]={},saved[8],args[16]={};
+            regs[0]=0x12345678;regs[8]=(uint32_t)h;sw(frame,cc);sl(frame+2,unlockPC);
+            __builtin_memcpy(before,regs,sizeof(regs));__builtin_memcpy(saved,frame,8);
+            const auto error=heap.error();const auto memerror=w(low+0x220);
+            quickServicesValid=false;
+            bool ok=pop2QuickHUnlockBody(regs,frame,args)==0;
+            ok=ok && pop2QuickHUnlockWarm(regs,frame)==0;
+            for(unsigned i=0;i<15;++i)if(regs[i]!=before[i])ok=false;
+            for(unsigned i=0;i<8;++i)if(frame[i]!=saved[i])ok=false;
+            if(heap.error()!=error || w(low+0x220)!=memerror || l((uint8_t*)freed)!=master)ok=false;
+            if(ok)++g_hunlockRejected;else ++g_quickProbeFailures;
+        }
+        // Original-paired ending alias stays on its existing full-dispatch path.
+        uint32_t pc=g_coreSegments[15][0]+0x29aa;
+        if(!g_coreSegments[15][0] || !validMemory(pc,2) || w((uint8_t*)pc)!=0xa02a)++g_quickProbeFailures;
+        else for(unsigned cc=0;cc<32;++cc) {
+            uint32_t regs[15]={};uint8_t frame[8]={},args[16]={};
+            regs[8]=(uint32_t)freed;sw(frame,cc);sl(frame+2,pc);
+            quickServicesValid=false;
+            bool ok=pop2QuickHUnlockBody(regs,frame,args)==0;
+            ok=ok && pop2Dispatch(regs,frame,args)==(uint32_t)args && !didStop;
+            ok=ok && regs[0]==uint32_t(int32_t(MacHeap::memWZErr)) && regs[8]==(uint32_t)freed;
+            ok=ok && w(low+0x220)==uint16_t(MacHeap::memWZErr) && w(frame)==((cc&16)|8);
+            ok=ok && l(frame+2)==pc+2 && l((uint8_t*)freed)==master;
+            if(ok)++g_hunlockFreed;else ++g_quickProbeFailures;
+        }
+    }
     // Exercise the actual callback shortcut with all CCR inputs. No timer or
     // audio queues are changed: these two services only query/check the zone.
     uint32_t servicePC=g_coreServicePC,serviceSR=g_coreServiceSR,serviceActive=g_coreServiceActive;

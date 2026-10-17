@@ -272,6 +272,43 @@ planning path. The prototype is removed from both the port and AmigaXDev;
 ignored sources and measurements are pinned in
 `manifest/performance-68020-row-trim.sha256`. The accepted baseline is unchanged.
 
+### Guarded HUnlock entry (item 15)
+
+The native quick-entry table now handles valid HUnlock calls using the existing
+owner, stack, frame, callback and deadline guards. A rejected handle leaves guest
+state untouched and returns to the full dispatcher, preserving the original-paired
+freed-handle caller policy and unknown-handle loud stop. The full and quick paths
+share the same heap-state operation. Vette and Alone in the Dark were inspected;
+the latter uses the same shared MacHeap state/setState operation. No independent
+heap implementation is introduced.
+
+MEASURED: frozen-build `item15-hunlock-native-020-b/c` take **284.51/284.01 ms**
+per stored landing row and **589/589 PAL fields** for the opening route. Both
+retain all 82 baseline player records and first-room/death images. Their repeat
+comparison passes. The preceding native A run measured 281.53 ms, but A/B fails
+the phase-zero field tolerance (71 versus 73); that failed comparison is retained
+and the lower figure is not the qualified result. The earlier C-bridge pilot
+measured 284.18 ms. The accepted register-copy baseline was 286.39/287.43 ms.
+
+Both final runs still have **60/82 late requested intervals**, and the strict
+original comparison rejects their extra death-phase frame/request sequence.
+Item 15 remains open against the unchanged 83.3 ms request. Flat exclusive costs
+in C include 78.21 ms original code, 65.60 ms trap entry/dispatch and 54.77 ms C2P;
+unmatched returns preclude treating the printed call-tree costs as verified.
+
+The final native fixture `.run-CxlaPu` passes 256 flag/CCR cases comparing the
+actual native HUnlock body with the full service, 96 untouched-state invalid
+handle rejections, and 32 original-paired freed-handle cases. The existing
+`gameplay-hunlock-contract-1` Macintosh contract passes. Seven quick bodies pass
+91 guard rejections and seven due-deadline rejections; 3,793 live guard checks
+report zero faults. The callback and 28,388-copy fixtures also pass, and all
+17 altered-evidence controls are rejected. The completed gameplay route restores
+hardware and matches pinned original first-room pixels, palette, RNG and curated
+context; native planes and copper match too. This is not a new exact-title-phase
+comparison. Host tests and the restored ordinary release/link audits pass.
+`manifest/performance-68020-hunlock.sha256` pins captures and reports, including
+the rejected repeat and strict original-cadence comparison. Captures stay ignored.
+
 ### Shared saved-register copy (item 15)
 
 The dispatcher uses Alone in the Dark’s `BlockMoveBytes` helper, published

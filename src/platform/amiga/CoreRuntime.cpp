@@ -1339,6 +1339,12 @@ static inline bool trivialService(uint32_t* regs) {
         uint8_t requested=regs[0];regs[0]=addressMode;
         addressMode=requested;low[0xcb2]=requested;
     }
+    if(trap==0xa02a) {
+        auto h=(MacHeap::Handle)regs[8];
+        // A miss leaves all guest state untouched for the full caller policy.
+        if(!heap.isHandle(h))return false;
+        regs[0]=(int32_t)heap.setState(h,heap.state(h)&~0x80);
+    }
     if(trap==0xa029 || trap==0xa069) {
         auto h=(MacHeap::Handle)regs[8];
         if(trap==0xa029)regs[0]=(int32_t)heap.lockHandle(h);
@@ -1352,7 +1358,7 @@ uint32_t g_quickServicesValid=0,g_quickServicesTick=0,g_quickServicesField=0;
 uint32_t g_quickServicesMicro=0xffffffffUL;
 uint32_t g_quickCodeBase=0,g_quickCodeEnd=0,g_quickStackLow=0,g_quickStackHigh=0;
 const uint32_t* g_quickCodeIndexes=nullptr;
-const uint32_t* g_quickOwnerRows[6]={};
+const uint32_t* g_quickOwnerRows[7]={};
 uint8_t** g_quickA5=&a5;
 }
 static void invalidateQuickOwner() {g_quickCodeBase=0xffffffffUL;g_quickCodeEnd=0;}
@@ -1446,7 +1452,8 @@ __attribute__((optimize("O3"))) static uint32_t quickTrap(uint32_t* regs,uint8_t
 extern "C" {
 void pop2QuickSystemTask();void pop2QuickTickCount();
 void pop2QuickStripAddress();void pop2QuickSwapMMUMode();
-void pop2QuickHLock();void pop2QuickHGetState();
+void pop2QuickHLock();void pop2QuickHGetState();void pop2QuickHUnlock();
+uint32_t pop2QuickHUnlockBody(uint32_t*,uint8_t*,uint8_t*);
 }
 static void prepareQuickTraps() {
 #ifdef POP2_QUICK_TRAP_PROBE
@@ -1465,11 +1472,13 @@ static void prepareQuickTraps() {
     g_pop2QuickTraps[0x05d]=(QuickTrap)((uint32_t)pop2QuickSwapMMUMode|1);
     g_pop2QuickTraps[0x029]=(QuickTrap)((uint32_t)pop2QuickHLock|1);
     g_pop2QuickTraps[0x069]=(QuickTrap)((uint32_t)pop2QuickHGetState|1);
+    g_pop2QuickTraps[0x02a]=(QuickTrap)((uint32_t)pop2QuickHUnlock|1);
 #endif
 }
 extern "C" uint32_t pop2QuickStripAddressBody(uint32_t* r,uint8_t* f,uint8_t* u){return quickTrap<0xa055>(r,f,u);}
 extern "C" uint32_t pop2QuickSwapMMUModeBody(uint32_t* r,uint8_t* f,uint8_t* u){return quickTrap<0xa05d>(r,f,u);}
 extern "C" uint32_t pop2QuickHLockBody(uint32_t* r,uint8_t* f,uint8_t* u){return quickTrap<0xa029>(r,f,u);}
+extern "C" uint32_t pop2QuickHUnlockBody(uint32_t* r,uint8_t* f,uint8_t* u){return quickTrap<0xa02a>(r,f,u);}
 extern "C" uint32_t pop2QuickHGetStateBody(uint32_t* r,uint8_t* f,uint8_t* u){return quickTrap<0xa069>(r,f,u);}
 // Reuse the shared current-range validator on a native owner candidate miss;
 // changing CODE owners need not repeat the other guard checks in a C wrapper.
@@ -1503,6 +1512,7 @@ __attribute__((always_inline)) static inline uint32_t quickTrivialBody(uint32_t*
 }
 extern "C" __attribute__((optimize("O3"))) uint32_t pop2QuickStripAddressWarm(uint32_t* r,uint8_t* f){return quickTrivialBody<0xa055>(r,f);}
 extern "C" __attribute__((optimize("O3"))) uint32_t pop2QuickSwapMMUModeWarm(uint32_t* r,uint8_t* f){return quickTrivialBody<0xa05d>(r,f);}
+extern "C" __attribute__((optimize("O3"))) uint32_t pop2QuickHUnlockWarm(uint32_t* r,uint8_t* f){return quickTrivialBody<0xa02a>(r,f);}
 extern "C" __attribute__((optimize("O3"))) uint32_t pop2QuickHLockWarm(uint32_t* r,uint8_t* f){return quickTrivialBody<0xa029>(r,f);}
 extern "C" __attribute__((optimize("O3"))) uint32_t pop2QuickHGetStateWarm(uint32_t* r,uint8_t* f){return quickTrivialBody<0xa069>(r,f);}
 extern "C" uint32_t pop2QuickTickCountBody(uint32_t* r,uint8_t* f,uint8_t* u){return quickTrap<0xa975>(r,f,u);}
@@ -1542,6 +1552,7 @@ extern "C" uint32_t pop2QuickVerify(uint32_t* regs,uint8_t* frame,uint8_t* usp) 
 }
 #endif
 static uint32_t callbackService(uint32_t* parked);
+extern "C" uint32_t pop2Dispatch(uint32_t*,uint8_t*,uint8_t*);
 #include "QuickTrapProbe.inc"
 extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
     uint32_t pc=l(frame+2),seg=0,off=0;
@@ -2382,9 +2393,14 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
             regs[0]=int32_t(MacHeap::memWZErr);sw(low+0x220,MacHeap::memWZErr);
             sw(frame,(w(frame)&~15)|8);return (uint32_t)usp;
         }
-        if(!heap.isHandle(h)){fail("HEAP / UNKNOWN HANDLE");goto failed;}
-        error=trap==0xa02a?heap.setState(h,heap.state(h)&~0x80):heap.setHandleSize(h,regs[0]);
-        regs[0]=(int32_t)error;break;
+        if(trap==0xa02a) {
+            if(!trivialService<0xa02a>(regs)){fail("HEAP / UNKNOWN HANDLE");goto failed;}
+            error=(int16_t)regs[0];
+        } else {
+            if(!heap.isHandle(h)){fail("HEAP / UNKNOWN HANDLE");goto failed;}
+            error=heap.setHandleSize(h,regs[0]);regs[0]=(int32_t)error;
+        }
+        break;
     }
 #ifdef POP2_INPUT
     case 0xa975: trap_0xa975: {
