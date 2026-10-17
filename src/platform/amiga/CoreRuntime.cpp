@@ -6,6 +6,7 @@ extern "C" volatile unsigned long pop2WHDLoadBinding[4];
 #include <proto/dos.h>
 #include <exec/memory.h>
 #include "CoreRuntime.h"
+#include "SaveRectPatch.h"
 #include "mac/VideoTicks.h"
 #include "mac/BigEndianMemory.h"
 #include "mac/CodeRangeCache.h"
@@ -57,6 +58,7 @@ extern DosLibrary* DOSBase;
 extern "C" {
 // Shared directly with the native guard; there is only one owner record.
 uint32_t displayBatchFrame=0,displayBatchParent=0,displayBatchReturn=0;
+void pop2SaveRectRow();
 void pop2_call_mac(void*,void*,void*);
 void pop2_timer_callback();
 uint32_t pop2WallTicks();
@@ -523,6 +525,8 @@ bool relocate(int16_t segment,uint8_t* code,uint32_t size) {
         copy(code+at,p+20,n);
     }
 #endif
+    if(segment==17 && !SaveRectPatch::install(code,size,(uint32_t)pop2SaveRectRow))
+        return fail("RENDER / SAVERECT ORIGINAL BYTE MISMATCH");
     flushCode();return true;
 }
 Resource* byHandle(MacHeap::Handle h) {

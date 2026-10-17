@@ -44,7 +44,7 @@ ASM_NAMES = AmigaHardwareAssembler BitmapAssembler CopperListAssembler UtilAssem
 OBJS = $(addprefix obj/,$(notdir $(CXX_SRC:.cpp=.o))) $(addprefix obj/,$(addsuffix .o,$(ASM_NAMES))) obj/Startup.o obj/version.o obj/DisplayC2P.o obj/gcc8_c_support.o obj/gcc8_a_support.o
 PROBES = g_inputVectorRestored g_scaffoldStage g_scaffoldFields g_scaffoldError g_savedDMA g_actualDMA g_savedIRQ g_actualIRQ g_viewRestored g_vectorRestored
 ifneq (,$(findstring -DPOP2_CORE,$(EXTRA_DEFINES)))
-OBJS += obj/MacEntry.o
+OBJS += obj/MacEntry.o obj/SaveRect.o
 .PHONY: verify-core
 verify: verify-core
 verify-core:
@@ -101,6 +101,8 @@ endif
 endif
 obj/DisplayC2P.o: ../src/platform/amiga/DisplayC2P.s ../src/platform/amiga/kalms/c2p1x1_8_c5_gen.s
 	$(VASM) -m68020 -Felf -quiet -x -no-opt -nowarn=62 "$<" -o "$@"
+obj/SaveRect.o: ../src/platform/amiga/SaveRect.s ../src/mac/ForwardLongCopy.inc
+	cd .. && $(AS) -mcpu=68020 -g --register-prefix-optional src/platform/amiga/SaveRect.s -o amiga/$@
 obj/MacEntry.o: ../src/platform/amiga/MacEntry.s ../src/platform/amiga/RectProbe.inc Makefile
 	$(AS) $(if $(filter -DPOP2_SCENE_DEADLINES,$(EXTRA_DEFINES)),--defsym POP2_SCENE_DEADLINES=1) $(if $(filter -DPOP2_SCENE_PROFILE,$(EXTRA_DEFINES)),--defsym POP2_SCENE_PROFILE=1) $(if $(filter -DPOP2_INPUT,$(EXTRA_DEFINES)),--defsym POP2_INPUT=1) $(if $(filter 1,$(VERIFY)),--defsym POP2_VERIFY=1) $(if $(filter -DPOP2_TIMING_PROBE,$(EXTRA_DEFINES)),--defsym POP2_TIMING_PROBE=1) -mcpu=68020 -g --register-prefix-optional $(if $(filter -DPOP2_RECTANGLE_PROBE,$(EXTRA_DEFINES)),--defsym POP2_RECTANGLE_PROBE=1) $(if $(filter -DPOP2_AUDIO_ORDER_PROBE,$(EXTRA_DEFINES)),--defsym POP2_AUDIO_ORDER_PROBE=1) $(if $(filter -DPOP2_GAMEPLAY_ROUTE_PROBE,$(EXTRA_DEFINES)),--defsym POP2_GAMEPLAY_ROUTE_PROBE=1) $(if $(filter -DPOP2_GAMEPLAY_SAVE_PROBE,$(EXTRA_DEFINES)),--defsym POP2_GAMEPLAY_SAVE_PROBE=1) $(if $(filter -DPOP2_TIMING_TM_PROBE,$(EXTRA_DEFINES)),--defsym POP2_TIMING_TM_PROBE=1) $(if $(filter -DPOP2_TIMING_VBL_PROBE,$(EXTRA_DEFINES)),--defsym POP2_TIMING_VBL_PROBE=1) $(if $(filter -DPOP2_INTEGRATION_PROBE,$(EXTRA_DEFINES)),--defsym POP2_INTEGRATION_PROBE=1) "$<" -o "$@"
 ifneq (,$(filter -DPOP2_TIMING_PROBE,$(EXTRA_DEFINES)))

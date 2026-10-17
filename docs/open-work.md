@@ -9,18 +9,18 @@ Items remain open until their acceptance gates pass.
 
 15. **68020 support.** Measure and optimize
     the fixed 68020 configuration without changing original game decisions.
-    Two clock-corrected runs after item 19 complete the opening route in 660
-    PAL fields each, with 61 of 82 requested intervals late. Landing takes
-    328.92–329.19 ms/frame, including 104.96–105.04 ms in original game code,
-    against the 83.3 ms request. These are exclusive PC costs, not call-tree
-    estimates. Both repeats have identical player records, but take one extra
-    death-phase frame relative to the original and fail the original-request
-    comparison. VBL and Time Manager service fixtures pass with 13 and 12
-    rejection controls respectively; gameplay timing acceptance is not met.
-    See `docs/performance.md` for captures and the corrected emulator clock;
-    previous explicit-frequency baselines ran too fast. D16 authorizes equivalent,
-    byte-guarded original-rendering replacements with original-paired validation;
-    the cadence gate remains unchanged.
+    The byte-guarded SaveRect inner-loop replacement passes 672 paired original
+    Macintosh/native cases, full memory/register/CCR comparisons, rejection
+    controls and two matched opening runs. The current runs take 639 PAL fields
+    each (baseline 660), with 61/62 of 82 requested intervals late. Landing takes
+    303.84–304.40 ms/frame against the 83.3 ms request. Both retain all baseline
+    player records and first-room/death pixels, but still have an extra death-phase
+    frame relative to the original. Cadence acceptance is not met.
+    VBL and Time Manager service fixtures pass with 13 and 12 rejection controls.
+    See `docs/performance.md` for calibrated captures and the guarded replacement;
+    previous explicit-frequency baselines ran too fast. D16 authorizes further
+    equivalent, byte-guarded original-rendering replacements with original-paired
+    validation; the cadence gate remains unchanged.
     Acceptance: original timing-service contracts and game-step cadence pass on
     `a1200-fast`, matched gameplay regressions pass, and the release hardware and
     installer requirements accurately include the validated configuration.

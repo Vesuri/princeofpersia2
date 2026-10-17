@@ -1156,3 +1156,5 @@ segment,offset,name,evidence,notes
 15,0x29B0,PaletteAlias0HPurge,MEASURED,Original palette cleanup HPurge immediately follows HUnlock on A5 minus 2454 alias
 15,0x29C8,PaletteAlias1HPurge,MEASURED,Original palette cleanup HPurge immediately follows HUnlock on A5 minus 2450 alias
 15,0x29E0,PaletteAlias2HPurge,MEASURED,Original palette cleanup HPurge immediately follows HUnlock on A5 minus 244C alias
+17,0x520A,SaveRect,DERIVED,LINK entry preceding measured SaveRect MacsBug name
+17,0x53A4,SaveRect_CopyLongwordLoop,DERIVED,Positive padded-width ordered longword copy ending at 0x53C6
