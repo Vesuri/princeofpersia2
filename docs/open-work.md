@@ -1,8 +1,8 @@
 # Open work
 
 Version 0.90 release work (14) takes priority. Under D14, 68020 support (15)
-remains deferred beyond 0.90, retaining its acceptance gate. This does not waive
-item 14’s 68040 cadence, real-hardware or installer validation. Gameplay coverage (12)
+is no longer deferred beyond 0.90 and retains its acceptance gate.
+Item 14’s 68040 cadence, real-hardware and installer validation remain required. Gameplay coverage (12)
 remains accepted under D10–D12 on `a1200-030`.
 Under D15, cinematic deadline item 19.10 and diagnostic wrapper item 21 are complete.
 Items remain open until their acceptance gates pass.
