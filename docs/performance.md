@@ -82,12 +82,24 @@ this evidence does not justify implementing a large cache as the next step.
 The capture, observer, analysis and executable identities are pinned in
 `manifest/performance-68020-rle-census.sha256`.
 
-The next dispatch experiment can reuse Alone in the Dark's quick Toolbox
-return convention (consumed Pascal argument bytes plus one; zero means fallback).
-Its `StateQuick` entry routes QDExtensions through the guarded C bridge, and
-its GetPixBaseAddr body uses the same shared `GWorld8::pixelAddress` helper
-already used here. This identifies a reuse path; it does not establish a
-performance gain or qualify a new entry in this port.
+### Rejected pixel-address quick-entry pilot
+
+MEASURED: `item15-pixel-query-020-a` completes the calibrated opening route in
+573 PAL fields, with 60/82 late intervals. Landing costs 272.86 ms per stored
+frame, versus the retained final Kalms pair's 275.91–275.99 ms. The single pilot
+does not establish a repeatable gain. All 82 Kid records and first-room screen,
+palette and death screen match the retained final Kalms C baseline. The strict
+original comparison still rejects the requested delays.
+
+The pilot reused Alone in the Dark's quick Toolbox return convention (consumed
+Pascal argument bytes plus one; zero means fallback), its guarded C-bridge
+approach and this port's existing GetPixBaseAddr service body. Only selector
+`$0004000F` inside an owned display frame with no due services was eligible.
+The roughly 3 ms difference is too small to justify qualifying this isolated
+shortcut against the remaining gap. The pilot is removed and release restored;
+no new fast-entry ABI or complete display-correctness claim is made. Source
+patch, frozen executable, capture, reports and endpoint comparison are retained
+under `tmp/` and pinned in `manifest/performance-68020-pixel-query.sha256`.
 
 Item 15 remains open. The fixed target is `a1200-fast`: 68EC020 at
 14,187,580 Hz, instruction cache enabled, no data cache, 2 MB Chip and 8 MB

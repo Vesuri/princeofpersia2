@@ -41,6 +41,9 @@ Items remain open until their acceptance gates pass.
     The bounded landing sprite census finds only 32% pixel reuse with an
     unbounded encoded-row cache, before validation and maintenance costs; no
     sprite cache is installed. See the pinned census in `docs/performance.md`.
+    The isolated GetPixBaseAddr quick-entry pilot is also removed: its single
+    landing result is 272.86 ms, still failing cadence and only about 3 ms below
+    the retained baseline. Broader changes remain necessary.
     Acceptance: original timing-service contracts and game-step cadence pass on
     `a1200-fast`, matched gameplay regressions pass, and the release hardware and
     installer requirements accurately include the validated configuration.
