@@ -16,7 +16,7 @@ functions are CODEn+$offset (offsets include the CODE header, as in symbols.csv)
 LINK A6 prologues and observed call targets; MacsBug names are added where the
 original's name record follows the function. Adapted from Alone in the Dark's report.
 """
-import argparse, bisect, collections, csv, json, re, struct, subprocess, sys
+import argparse, bisect, collections, csv, hashlib, json, re, struct, subprocess, sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -258,48 +258,19 @@ def opening(name, compare, original):
 
 # ---- cycle profiles -------------------------------------------------------
 
+from amigaxdev import aprof as shared_aprof
+# Verify the canonical implementation before parsing any capture.
+_helper_pin=(ROOT/'manifest/profile-helpers.sha256').read_text().split()[0]
+require(hashlib.sha256(Path(shared_aprof.__file__).read_bytes()).hexdigest()==_helper_pin,
+        'SHARED PROFILE READER PIN')
+call_tree = shared_aprof.call_tree
+
 def parse_profile(text):
-    """(header, pcs, nodes): pcs[pc]=(units, executions, chip_units, chip_accesses),
-    nodes[id]=(parent, target, kind, self_units, calls); kind 0 is JSR/BSR, otherwise
-    the exception vector; Line-A targets are 0xA0000000 | trap word."""
-    header, pcs, nodes = {}, {}, {}
-    lines = text.splitlines()
-    require(lines and lines[0] == 'AITDPROF 1', 'not an AITDPROF 1 profile')
-    for line in lines[1:]:
-        f = line.split()
-        if f[0] == 'P':
-            chip = (int(f[4]), int(f[5])) if len(f) > 5 else (0, 0)
-            pcs[int(f[1], 16)] = (int(f[2]), int(f[3])) + chip
-        elif f[0] == 'N':
-            nodes[int(f[1])] = (int(f[2]), int(f[3], 16), int(f[4]), int(f[5]), int(f[6]))
-        elif len(f) == 2:
-            header[f[0]] = int(f[1], 16) if f[0] == 'cacr' else (int(f[1]) if f[1].lstrip('-').isdigit() else f[1])
-    require(0 in nodes and 'units' in header, 'incomplete profile')
-    require(header.get('overflow', 0) == 0, 'PROFILE OVERFLOW')
-    accounted = sum(v[3] for v in nodes.values())
-    require(sum(v[0] for v in pcs.values()) + header['gap'] + header.get('high', 0) == accounted, 'PC/TREE ACCOUNTING')
-    # aprof_stop prints the current clock without flushing aprof_last. Keep
-    # that final sub-clock remainder explicit, never charge it to a function.
-    tail = header['units'] - accounted
-    require(0 <= tail <= header['CYCLE_UNIT'] and tail % header['cycleunit'] == 0, 'UNBOUNDED PROFILE TAIL')
-    header['tail'] = tail
-    return header, pcs, nodes
-
-
-def call_tree(nodes):
-    children = collections.defaultdict(list)
-    for n, (parent, *_rest) in nodes.items():
-        if n:
-            children[parent].append(n)
-    order, stack = [], [0]
-    while stack:
-        n = stack.pop()
-        order.append(n)
-        stack.extend(children[n])
-    inclusive = {}
-    for n in reversed(order):
-        inclusive[n] = nodes[n][3] + sum(inclusive[c] for c in children[n])
-    return children, order, inclusive
+    # Retain this CLI's established failure contract for gate callers.
+    try:
+        return shared_aprof.parse_profile(text)
+    except ValueError as error:
+        raise SystemExit(str(error)) from error
 
 
 def trap_names():

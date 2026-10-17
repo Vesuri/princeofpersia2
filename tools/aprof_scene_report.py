@@ -1,6 +1,6 @@
 """Report cinematic cycles and timer intervals without conflating transitions.
 
-Uses the existing shared-derived exact-cycle parser and call tree. Timer-to-timer
+Uses the pinned AmigaXDev exact-cycle parser. Timer-to-timer
 intervals are comparable only within a consecutive run of the same original
 caller and selector. A boundary/one-off is reported separately, never as a frame.
 """
@@ -10,7 +10,7 @@ import json
 import re
 import struct
 
-from aprof_report import OUT, Context, Phase, bucket, require
+from aprof_report import OUT, Context, Phase, bucket, require, shared_aprof
 
 
 def read(name):
@@ -118,6 +118,13 @@ def report(name, other=None):
         # profiler cannot pair reliably. Flat PC counters remain usable; do
         # not publish an invented active-work denominator from its call tree.
         out['call_tree_usable']=False
+        try:
+            shared_aprof.require_return_pairing(p.header)
+        except ValueError as error:
+            out['call_tree_rejection']=str(error)
+        else:
+            out['call_tree_rejection']='Cinematic workload return pairing has not been independently validated'
+
         if out['animation_signature']:
             observer=collections.Counter()
             for pc,row in p.pcs.items():

@@ -1118,3 +1118,110 @@ reports. The four fresh service-contract references have directory-local
 `contract-evidence.sha256` indexes: verify those files as well as the tracked
 index to check every captured input. Captures and original-derived material
 remain ignored.
+
+## Shared profiling and debugger observations (item 19.9)
+
+The published rectangle, dispatch/clock, audio-reuse, installer/converter,
+blitter-completion, dirty-band, heap-search and physical-cache-observer helpers
+are integrated into AmigaXDev main. Consumers still need their own behavioral
+and workload gates before adopting runtime changes. The cache observer remains
+an opt-in **68040 physical data-cache overlay**, separate from logical MMU
+translation. Shared setup now installs `elf2hunk-fixed` separately; rebuilding
+it reproduces this port's pinned converter hash and preserves the bundled tool.
+
+Both ports import the canonical `amigaxdev.aprof` parser and call-tree traversal,
+with per-port SHA-256 verification before capture use. Symbols, bucket names
+and workload denominators remain local. Shared controls cover accounting,
+overflow, missing/disconnected parents and aligned stop tails from zero through
+one colour clock, rejecting negative, misaligned and oversized tails. The
+unassigned stop tail remains separate from every function cost. Relocating an
+identical reader passes; changing its source fails before a capture is used.
+The existing scoped-capture gate still rejects seven incomplete captures and
+two accounting faults.
+
+MEASURED: the debugger's cached `regs.sr` can disagree with the CPU's separately
+maintained condition flags. The canonical register-observer patch materializes
+SR for both all-register and single-register replies. Two authored repeats on
+each of 68030 and 68040 reproduce stale baseline values and then match all ten
+CPU-saved CCR cases with the correction. All five flags are exercised, both
+packet forms agree, the CPU's own assertions pass, and every fixture returns
+normally. Twelve corrupted-evidence controls fail. This validates the debugger
+read correction; it does not reinterpret earlier raw `$sr` samples as valid.
+GDB's host register cache still needs flushing after monitor-driven execution.
+
+The cinematic reporter remains flat-only. It now reports the shared pairing
+rejection explicitly; unmatched returns cannot establish inclusive or active
+costs. Source inspection and the bounded opening diagnostic identify deliberate
+Line-A-to-user-mode bridges among these returns. That observation is not proof
+that every return is paired. The legacy opening `work` output remains explicitly
+approximate, distinct from D13's separately captured active scopes. The shared reader reproduces the matched `carpet-e/f` and `throne-clean-c/d`
+flat reports; the earlier reports are retained unchanged. No new
+cinematic inclusive or active-work result is claimed. Establishing workload-specific
+return pairing remains a prerequisite for any future such result, rather than
+an assumption made by the shared parser.
+
+MEASURED: the correctness-only C2P breakpoint is installed at gameplay entry,
+not conditionally evaluated throughout startup. `.run-b8X0WU` retains all 81
+publications and passes full-plane equality and minimum dirty coverage. Phase
+publication counts remain **7, 28, 9, 9, 28**, while stored row counts remain
+**6, 28, 9, 9, 29**. Existing comparisons retain their row denominator; a cost
+per actual publication must use the publication counts explicitly.
+
+Alone in the Dark uses the canonical planner bodies through its existing
+namespace adapter. Its clean ordinary executable is byte-identical before and
+after sharing. The 400-frame host oracle and 4,096 minimum-row cases pass; the
+native fight gate checks 40 publications (38 multi-rectangle), with 187 verified
+frames and zero pixel failures. Its ordinary opening gate passes all 106 logo
+and 840 book steps. These are correctness checks, not transferred performance
+claims. The other shared runtime optimizations have not been silently adopted
+by that port.
+
+### Matched opening reports
+
+`item19-final-before-1/2` and `item19-final-after-1/2` use the same profiling ELF
+(SHA-256 `d188d671d157e9c23617546b6e10e88fe925c4c79f84578d153300d7b717c16b`)
+and the unchanged pinned exact no-MMU 68030 profiler. Each has `opening`,
+`report` and `work` output for phases 0–4. All four meet **81/81** original
+SetTimer intervals from `opening-noright-1`; repeat comparisons retain all 81
+Kid records and phase/stall boundaries. Both pairs span 375–376 PAL fields.
+This sharing change makes no game-speed improvement claim.
+
+Values below are ms per stored row; paired values are the two repetitions.
+`work` is the legacy approximate tree estimate, not a new scoped D13 result.
+
+| Phase | Rows / publications | Profile before | Profile after | `work` before | `work` after |
+|---|---:|---:|---:|---:|---:|
+| Landing | 6 / 7 | 94.01 / 93.89 | 94.01 / 93.31 | 76.95 / 77.65 | 76.66 / 77.27 |
+| Health 3 | 28 / 28 | 82.81 / 82.73 | 82.84 / 82.73 | 39.33 / 39.21 | 39.35 / 39.37 |
+| Health 2 | 9 / 9 | 98.30 / 97.81 | 98.11 / 97.82 | 38.02 / 37.96 | 37.84 / 37.74 |
+| Health 1 | 9 / 9 | 98.84 / 99.56 | 98.95 / 99.55 | 38.96 / 39.58 | 38.67 / 39.39 |
+| Death | 29 / 28 | 98.56 / 98.49 | 98.56 / 98.50 | 24.10 / 24.53 | 23.95 / 24.48 |
+
+### Common regression evidence
+
+The fresh `integration-gate-iajogfz3` passes the original title/first-room
+comparisons, repeated route output and restoration. Its no-Right control starts
+in the same room and reaches a different completed outcome. It rejects 20
+altered title-native captures, six title-reference alterations and 19 altered
+route captures. The four original service contracts also pass with ten rejected
+alterations. The host suite, scoped-profile controls, cinematic controls and
+shared-reader source-pin controls pass.
+
+The fresh 68030 VBL fixture (`.run-BdAxI1`) passes the original countdown/removal
+contract, user-mode ABI and six-field deferred dispatch, with 13 rejected
+alterations. The Time Manager fixture (`.run-6zuiDb`) passes original delay
+units, active prime, cancellation, zero delay and rearm, ABI and restoration,
+with 12 rejected alterations. These service fixtures are separate from gameplay
+cadence evidence.
+
+The fresh cadence run (`.run-Ur7Fe5`) passes **59 consecutive original five-tick
+intervals**, with six rejected alterations. It records exactly 59 conversions
+for 59 updates, all at frame end. The ordinary `make release` rebuild passes
+the link/release audits with no runtime hashing, trap trace or hash counters.
+Its executable remains byte-identical: SHA-256
+`957389f5595be880ae57e7c5ab45755140705809672ac28a726651f58731b179`.
+
+`manifest/profile-sharing-evidence.sha256` pins the retained captures and reports;
+`manifest/profile-helpers.sha256` pins the installed shared reader, and
+`manifest/references.tsv` identifies the canonical shared and Alone in the Dark
+commits. Captures remain ignored. These emulator checks make no hardware claim.

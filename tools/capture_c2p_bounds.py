@@ -29,7 +29,11 @@ def main():
         with (out/'build.log').open('w') as log:
             subprocess.run(['make','-C','amiga','-j4','PROFILE=1','VERIFY=0','EXTRA_DEFINES='+flags],stdout=log,stderr=subprocess.STDOUT,check=True)
     observer=out/'observer.gdb'
-    observer.write_text((ROOT/'amiga/c2p_bounds.gdb').read_text()+(ROOT/'amiga/aprof_opening.gdb').read_text())
+    opening=(ROOT/'amiga/aprof_opening.gdb').read_text()
+    entry=' if g_integrationStage==3\n'
+    assert opening.count(entry)==1, 'C2P / UNIQUE GAMEPLAY ENTRY'
+    opening=opening.replace(entry,entry+'  install-c2p-bounds\n')
+    observer.write_text((ROOT/'amiga/c2p_bounds.gdb').read_text()+opening)
     env=dict(os.environ,CORE='1',OPENING_PROFILE='1',CPU_PROFILE='0',APROF_ACTIVE='0',AMIGA_SETUP='a1200-030',GDBSCRIPT=str(observer),DEADLINE='1800')
     with (out/'run.log').open('w') as log:
         result=subprocess.run(['bash','amiga/run.sh'],env=env,stdout=log,stderr=subprocess.STDOUT)

@@ -1,6 +1,7 @@
 # Correctness-only observer. Never combine these stops with CPU timings.
+define install-c2p-bounds
 set $boundsCount=0
-break PrinceScreen::lists if g_integrationStage==3
+break PrinceScreen::lists
 commands
  silent
  set $boundsCount=$boundsCount+1
@@ -23,4 +24,5 @@ commands
  set $bpixels=display.pixels_[display.front_^1]
  eval "dump binary memory @RUN@/bounds-%d-planes.bin $bpixels $bpixels+196608",$boundsCount
  continue
+end
 end
