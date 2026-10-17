@@ -424,21 +424,51 @@ reads. This observed ADB delay must be preserved in a native replay.
 
 ### Discovery save states
 
-At a paused gameplay boundary, `N save SLOT` saves an emulator checkpoint and
-`N load SLOT` restores it; `N` is the next command sequence number. Slots use
-letters, digits and hyphens, up to 48 characters. Existing slots are never
-overwritten. States stay in the ignored run folder under `states/maciici/`.
-Loading requires a slot created in the same running controller session, outside
-an active cutscene. Sequence numbers continue increasing after a restore, so
-captures and command history are retained.
+At a paused gameplay boundary, `N save SLOT` saves an emulator checkpoint.
+`N load SLOT` is explicitly **unsupported**: the controller reports
+`GAMEPLAY_STATE_LOAD_UNSUPPORTED`, records the saved/current key names in
+`route-state-rejections.txt`, and publishes a `state-load-rejected` checkpoint.
+It consumes the command sequence number but does not load the state, change
+input, or advance the game. The current route remains usable. This applies to
+all loads, including neutral-to-neutral and identical held-key cases; there is
+no verified safe subset. Use a fresh route or ordinary in-game save/load instead.
 
-The controller uses immediate debugger save/load operations at the stopped CPU
-boundary, verifies restored CPU registers and full A5/context bytes, and restores
-its frame counters and held keys. This is a discovery shortcut for movement and
-combat retries. Do not cross game-save or other disk writes when restoring:
-emulator state does not roll back the disk image. Ordinary game saves remain
-level checkpoints. Successful routes still require fresh fixed-seed original
-replay and paired native execution for acceptance.
+Slots use letters, digits and hyphens, up to 48 characters. Existing slots are
+never overwritten. States stay in the ignored run folder under `states/maciici/`.
+A load request still requires a slot created in the same controller session,
+outside an active cutscene. Sequence numbers continue increasing so captures and
+command history are retained. Saved emulator states are diagnostic artifacts,
+not supported retry points. Ordinary game saves remain level checkpoints.
+Successful routes require fresh fixed-seed original replay without emulator
+restores and paired native execution for acceptance.
+
+DERIVED: the old restore check covered CPU registers and full A5/context bytes,
+but did not verify host input overrides or pending ADB transitions. Reapplying
+key names cannot establish that the next original input poll sees the same
+state. INFERRED: this gap can explain the observed dependence on preceding held
+keys; the specific emulator mechanism is not established. Neutral keys do not
+prove that an earlier transition has been consumed. Vette! and Alone in the
+Dark both use ioport `set_value` for held input and provide no state-restore
+continuity contract. Their helpers and the shared input helper are unchanged.
+
+MEASURED: `restore-guard-1` exercises five rejected load requests: neutral to
+neutral, held Left to held Left, neutral to held Left, held Left to neutral,
+and neutral after a held-key transition. Every rejection preserves full A5,
+context, indexed screen and palette bytes from the immediately preceding
+checkpoint. The original then completes three requested gameplay frames and
+explicitly finishes discovery. Two saves also preserve their checkpoints.
+`tools/check_discovery_restore.py --controls ref/mame/runs/restore-guard-1`
+checks this evidence and rejects five mutations covering key reports, command
+coverage, completion, context and frame count. The names and hashes are pinned
+in `manifest/discovery-restore.sha256`.
+
+To reproduce, start an isolated reference with `POP2_DISPLAY_ROUTE=1`,
+`POP2_NATURAL_OPENING=1`, `POP2_GAMEPLAY=route` and `POP2_ROUTE_DISCOVERY=1`
+using `tools/run_reference.py --name NAME --deadline 900`. In another shell run
+`python3 tools/check_discovery_restore.py ref/mame/runs/NAME --drive`.
+Both commands must finish successfully. This tests the unsupported-condition
+fallback, not repaired keyboard continuity; fresh-original route gates remain
+mandatory.
 
 MEASURED: `gameplay-checkpoints-1` saved the initial room, ran 30 completed Left
 steps, restored the initial checkpoint, and repeated those steps. Saving and
@@ -562,7 +592,7 @@ as described below. Its native pair remains unverified.
 MEASURED: the continuing discovery run completes the level-two stone puzzle
 and reaches level 3, room 1, at game step 1360 (`route-144`). It uses only
 original gameplay inputs and the existing D6 protection seam; checkpoint
-restores support retries. `tools/gameplay_routes/level2.tsv` records the
+restores were used for retries; new restore requests are now rejected. `tools/gameplay_routes/level2.tsv` records the
 successful 19-action path. The level-three first frame is saved as
 `level3-start` in that session. This is discovery evidence, separate
 from the fresh repeats below. The native pair remains required for level-two
@@ -778,9 +808,8 @@ and door crossing. The video provides navigation guidance, not exact input
 records or fixed-seed acceptance evidence.
 
 Restored discovery attempts have sometimes diverged after identical short
-commands when preceding held input differed. The input-continuity investigation
-remains deferred in item 17. Discovery states are navigation aids; only fresh
-repeat runs can establish route acceptance.
+commands when preceding held input differed. The discovery controller now
+explicitly rejects emulator-state loads, as described above. Only fresh repeat runs can establish route acceptance.
 
 ### Level-three original repeatability
 

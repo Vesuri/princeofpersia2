@@ -70,16 +70,6 @@ Items remain open until their acceptance gates pass.
     evidence, including any effects on gameplay decisions. Check the other
     ports before service changes; keep diagnostics opt-in and release ordinary.
 
-17. **Deferred discovery-state input continuity.** Investigate why restored
-    Macintosh discovery attempts can consume different input after identical
-    short commands when the preceding held keys differ. Keep this separate
-    from the remaining level routes; preserve the existing requirement for
-    fresh original repeats without emulator restores.
-    Acceptance: controlled held-key and neutral-key restore cases establish
-    input continuity, or the discovery tool explicitly detects and reports
-    unsupported restore conditions. Consult the other ports before changing
-    shared Macintosh input helpers.
-
 19. **Scene profiling and reductions.** The opening sequence (window entry,
     guard attack, fall; `docs/performance.md#opening-sequence-profile-item-19`) is
     profiled with `amiga/aprof.sh`. It meets the original's requested cadence on

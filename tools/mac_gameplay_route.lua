@@ -267,9 +267,17 @@ local function command()
    checkpoints[slot]=saved
   else
    local saved=assert(checkpoints[slot],'GAMEPLAY STATE UNKNOWN CHECKPOINT')
-   dbg:command('stateload '..slot)
-   assert(signature()==saved.signature,'GAMEPLAY STATE RESTORE MISMATCH')
-   frames=saved.frames;rooms=saved.rooms;lastLevel=saved.lastLevel;remaining=0;apply_keys(saved.keys)
+   -- CPU/game-memory equality does not establish pending ADB/host-input
+   -- continuity. Even neutral keys can follow an undelivered transition.
+   -- Reject before stateload or any input change; keep the live route usable.
+   local message=string.format('GAMEPLAY_STATE_LOAD_UNSUPPORTED slot=%s saved_keys=%s current_keys=%s reason=input-continuity-unverified',slot,saved.keys,heldKeys)
+   local report=assert(io.open(run..'/route-state-rejections.txt','a'))
+   report:write('sequence='..stateId..' '..message..'\n');report:close()
+   sequence=stateId
+   local log=assert(io.open(run..'/route-actions.txt','a'));log:write(text);log:close()
+   print(message)
+   capture('state-load-rejected')
+   return
   end
   sequence=stateId
   local log=assert(io.open(run..'/route-actions.txt','a'));log:write(text);log:close()
