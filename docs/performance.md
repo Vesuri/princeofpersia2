@@ -139,12 +139,24 @@ cases (14 captured calls × 32 initial CCR values) in
 15 registers, CCR and stack output agree. The candidate changes scratch D5 high
 bits and transient flags inside the loop; the original enclosing block restores
 D5 and overwrites the flags before its exit. This is evidence at the full-block
-boundary, not a claim that intermediate register states are identical. Additional
-run-length/clipping boundary fixtures, an actual Macintosh pairing, guarded
-installation and matched game timing remain required. No game patch is installed
-and no candidate speedup is claimed. Curated names are in `disasm/symbols.csv`;
+boundary, not a claim that intermediate register states are identical. An actual
+Macintosh pairing, guarded installation and matched game timing remain required.
+No game patch is installed and no candidate speedup is claimed. Curated names are in `disasm/symbols.csv`;
 `manifest/performance-68020-dispatch-render-candidates.sha256` pins the captures,
 prototype and input identities. The verified ordinary release is restored.
+
+MEASURED: the extended fixture in `tmp/bank-boundaries-native-fpknsgwa`
+passes 1,468 native original-instruction/candidate comparisons: the same 448
+captured-call/CCR cases plus 1,020 authored boundary cases. These cover every
+run length 1–128, full and one-pixel widths, left and right clipping, repeated
+rows and literal/transparent/opaque transitions with bank-colour wrap. Each
+comparison checks the complete 307,200-byte framebuffer, 56 frame/argument
+bytes and all returned registers, CCR and SP. The positive shell and fixture
+completion signals and calibrated machine metadata pass. Inputs, sources,
+binaries and evidence are pinned in
+`manifest/performance-68020-bank-boundaries.sha256`. These positive-width
+cases do not establish behavior for malformed streams or invalid dimensions,
+and they do not replace actual Macintosh pairing. Production is unchanged.
 
 ### Bounded sprite-cache feasibility
 
