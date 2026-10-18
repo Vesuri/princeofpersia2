@@ -22,6 +22,17 @@ Dark's ordinary-input session routes. Any supplied checkpoint must be identified
 separately from uninterrupted play. Diagnostic input and observations are excluded
 from ordinary release builds.
 
+The recorded `context.bin` captures cover exactly the first 0x2200 bytes of the
+level-state allocation whose pointer is stored at A5−5014. CODE 6+3642 locates persistent
+opponent records in a separate per-room table: 32 records of 192 bytes starting
+at context+0x21A6, each containing a count and five 38-byte opponent records.
+Most of this table falls outside the older captures. In particular, CODE 4's
+skeleton decisions read words +28/+30/+34 from these persistent records for
+timing and shaking state. Equality of the six active actor records and the 0x2200-byte context
+therefore does not establish equality of all AI state. Item 16's opt-in
+`POP2_ROUTE_OPPONENT_STATE` / `--opponents` observations capture that bounded
+table separately; its comparison remains in progress.
+
 ## Closure audit
 
 MEASURED: the closure audit rechecked 22 cinematic, route and session checks
@@ -122,9 +133,9 @@ underlying clock cause or accept the failed route.
 
 MEASURED: current verification replay `.run-NeChbT` retains the two level-one
 RNG differences at checkpoints 64 and 90. All 95 preceding checkpoints match
-pixels, displayed palette, full context and all six actor records; the strict
+pixels, displayed palette, captured context and all six actor records; the strict
 gate rejects level-two entry at frame 1000 / 1001 key reads versus original
-1001 / 1002. The captured rejected entry matches pixels, palette, full context,
+1001 / 1002. The captured rejected entry matches pixels, palette, captured context,
 actors and RNG. This is a failed strict route, not a newly accepted timing
 exception. `manifest/gameplay-item16-level1-baseline.sha256` pins the evidence.
 It uses the retained emulator for correctness only; no calibrated performance
@@ -209,7 +220,7 @@ writes. `manifest/gameplay-princess-reference.sha256` and
 
 MEASURED: native `.run-UvXvud` matches both cinematic copies and the normal
 return, then the completed gameplay frame. All 11 route checkpoints pass,
-including full context, actors, RNG, pixels and displayed colours, with no
+including captured context, actors, RNG, pixels and displayed colours, with no
 deferred differences. Restoration and the native launcher pass.
 `manifest/gameplay-princess-native.sha256` pins the pair. The shared cinematic
 checker requires both copy checkpoints for selector 5; its test rejects a
@@ -341,7 +352,7 @@ completion reason; the dedicated checker passes on its frozen evidence.
 ### Transition survey cutscene observations
 
 MEASURED: `gameplay-survey-cutscenes-2` repeats every checkpoint of the pinned
-assisted entry survey in full context, actor/RNG state, counters, pixels and
+assisted entry survey in captured context, actor/RNG state, counters, pixels and
 palette, and positively completes all six observed CODE 15 calls. Actual
 selectors are 7, 4, 10, 12, 2 and 3. Discovery (10) returns 0 after 7 copy and
 15 text callbacks; TreeCheck index 1 (12) returns 0 after 1 copy and 4 text
@@ -769,7 +780,7 @@ attempts are excluded. Fresh replay is verified below; native pairing remains pe
 
 MEASURED: `gameplay-level4-fresh-1` and `gameplay-level4-fresh-2` replay all
 265 authored input intervals from fresh Macintosh startup without emulator
-restores. All 266 gameplay checkpoints match full context, six actor records,
+restores. All 266 gameplay checkpoints match captured context, six actor records,
 RNG, counters, indexed pixels and palette. Both consume 4660 matching keyboard
 records and naturally enter level 5, room 1, at step 4656. Story selectors 7,
 4, 9, 100, 10 and 20 have ordered entry and return records. These records prove
@@ -888,7 +899,7 @@ explicitly rejects emulator-state loads, as described above. Only fresh repeat r
 
 MEASURED: `gameplay-level3-fresh-1` and `gameplay-level3-fresh-2` execute the
 authored route from fresh Macintosh startup without emulator restores. All 181
-gameplay checkpoints match in full context, six actor records, RNG, counters,
+gameplay checkpoints match in captured context, six actor records, RNG, counters,
 indexed pixels and palette. Both consume the same 2770 keyboard records and
 reach level 4, room 1, at step 2767. Story selectors 7, 4, 9, 100 and 10 each
 have ordered entry and return records. This establishes scene completion on
@@ -913,7 +924,7 @@ Original-code, input, heap and hardware restoration pass, and the ordinary
 release build is restored afterward.
 
 MEASURED: `.run-Vz4heJ` reproduces all 180 retained native captures in screen,
-full context and curated actor/RNG/counter spans, then captures the rejected
+captured context and curated actor/RNG/counter spans, then captures the rejected
 level-four entry in room 1. Counts remain 2766 frames/2769 key reads versus
 original 2767/2770. The endpoint palette matches; pixels, actors, RNG and full
 context differ. Context differences are at 0x07D9 and 0x07F1; 326 viewport pixels
@@ -926,7 +937,7 @@ yet established. Visual comparison places the pixel differences in the two
 wall torches. These observations do not extend the owner-approved exception.
 
 The first additional level-three mismatch occurs at checkpoint 121. Checkpoints
-114–120 match full context, actors and RNG; the frame verifier passes their
+114–120 match captured context, actors and RNG; the frame verifier passes their
 pixels, planes and palette. At checkpoint 121 all six actor records still match,
 but RNG, three context bytes and torch pixels differ. Later checkpoints retain
 pixel/RNG differences. The prior level-one RNG failures at 64 and 90 also
@@ -959,7 +970,7 @@ MEASURED causal control: `item16-rng-rollback-1` repeats the unchanged original
 through checkpoint 120. At the guarded `PlayAmbient` draw at step 1515, the
 opt-in fixture preserves its returned choice and restores only the preceding
 RNG seed. At checkpoint 121 (step 1542), the original then matches native
-`.run-845iXe` in viewport pixels, all eight planes, palette, complete context,
+`.run-845iXe` in viewport pixels, all eight planes, palette, captured context,
 all six actor records, RNG and route counters. The unchanged original at the
 same checkpoint differs in RNG and context. This isolates the extra ambient
 draw as the cause of the first torch divergence; it does not accept the rest
@@ -996,7 +1007,7 @@ returns normally after an explicit discovery finish. These are assisted entry
 and short gameplay observations, not natural exits or full-game acceptance.
 `manifest/gameplay-assisted-survey.sha256` pins the private evidence by hash.
 The independent `gameplay-assisted-survey-repeat-1` repeats every checkpoint
-in full context, actor records, RNG, counters, pixels and palette. A second repeat
+in captured context, actor records, RNG, counters, pixels and palette. A second repeat
 with the handle observer also matches. Native run `.run-lgnTYZ` reaches 27
 checkpoints, then stops while entering level 5 at CODE 15+29C2, HUnlock, with
 `HEAP / UNKNOWN HANDLE`. Restoration passes. The measured disposed-palette HUnlock is now handled
@@ -1180,7 +1191,7 @@ The host test exercises every supported width for the 16-byte layout and rejects
 the first stride overflow.
 
 Native `.run-NplQMc` passes the ending GWorld allocation and retains matching
-pixels/full context at all 80 pre-ending checkpoints. It then stops at HUnlock
+pixels/captured context at all 80 pre-ending checkpoints. It then stops at HUnlock
 (CODE 15+29AA) during cleanup. The original `gameplay-assisted-ending-handles-1` returns `memWZErr`
 without changing the alias and completes the ending with all pinned checkpoints
 matching. The existing free-master-slot handling now includes this measured
@@ -1208,7 +1219,7 @@ of the pinned assisted level-four route, including its natural level-five entry.
 The native replay is prepared but has not yet run.
 
 Native `.run-Of8g4k` positively reaches the original ending return: 385 frames,
-387 key reads and all 81 checkpoints match pixels and full context. The next
+387 key reads and all 81 checkpoints match pixels and captured context. The next
 Hall drawing call stops at FrameRect (CODE 2+0D20), so the combined Hall gate
 still fails. D8 assigns that Macintosh dialog rendering to the port-owned UI;
 the pending replacement draws the score table with the existing overlay and
@@ -1258,7 +1269,7 @@ route is pinned in `manifest/gameplay-assisted-level6.sha256`. Fresh
 original level-seven entry. Native pairing remains pending.
 
 Native level-five discovery replay `.run-wHktzN` matches all 37 captured
-checkpoints (pixels, palette, actor/RNG state and full context) before stopping
+checkpoints (pixels, palette, actor/RNG state and captured context) before stopping
 at the key-step guard after frame 523. The original failed carpet attempt
 restarts at step 522; the native run has not reached that restart at the
 recorded boundary. This is a failed replay, not level-five completion.
@@ -1280,7 +1291,7 @@ matches every recorded checkpoint. Native replay is in progress.
 Native level-six replay `.run-uJ8sbp` completes all 280 frames and naturally
 enters level seven. The final checkpoint matches, and code/input/heap/hardware
 restoration passes. Intermediate comparisons fail: checkpoint 16 pixels and
-actor state, checkpoints 17–23 actor state, and checkpoints 24–40 full context.
+actor state, checkpoints 17–23 actor state, and checkpoints 24–40 captured context.
 These failures remain unresolved and are not accepted under the existing D11
 exception without evidence identifying their cause. This is endpoint coverage,
 not a passing paired route.
@@ -1324,7 +1335,7 @@ Fresh `gameplay-assisted-level6-clean-repeat-1` matches every checkpoint of
 the clean level-six route. Native comparison remains pending.
 
 A separate partial check of level-four `.run-rHrTgJ` compares its 82 captured
-checkpoints with the original. It finds RNG, pixel and full-context differences
+checkpoints with the original. It finds RNG, pixel and captured-context differences
 before the audio stop; these are retained as failures, not claimed as exact
 matches or automatically covered by D11. The original audio trace is the next
 step toward resolving the loud stop.
@@ -1433,7 +1444,7 @@ native seed makes checkpoint 134 (step 1877) match all six native actor records,
 RNG and route counters. The unchanged original fails the actor comparison.
 This includes slot 0's position and animation decision: the effect is gameplay
 state, not merely rendering scratch. Earlier torch context remains different,
-so full context and frame comparisons still fail. The diagnostic does not
+so captured context and frame comparisons still fail. The diagnostic does not
 accept the route or change release gameplay.
 `manifest/gameplay-item16-actor3-seed.sha256` pins the completed original run;
 `tools/replay_gameplay_rng_fixture.py --check-only` rechecks its unchanged prefix,
@@ -1448,6 +1459,41 @@ native final seed occurs one RNG call before the fixture's final seed; this
 does not identify which intervening call first diverged. No actor equivalence
 is inferred from this test. `manifest/gameplay-item16-actor4-seed.sha256` pins
 the failed control, and its check-only replay deliberately rejects it.
+
+The completed control `item16-actor4-context-1` also aligns the five differing
+context bytes at step 1613, in addition to the RNG seed. Its post-write dumps
+verify exactly those changes and no actor-record writes. It reaches the next
+checkpoint, but produces the same actor and RNG mismatch as the seed-only
+control; two context bytes still differ. Matching that preceding seed and
+context is therefore insufficient to explain the older native result.
+`manifest/gameplay-item16-actor4-context.sha256` retains this failed control.
+
+MEASURED: `item16-level4-opponents-1` repeats the canonical original route;
+native `.run-KkYYZ2` repeats the older actor/RNG/context endpoints and retains
+the strict 1888-versus-1889 entry failure. Both observers capture the additional
+32-room opponent table. Its first difference is at step 1319: room 27, slot 0,
+timer word +30 is 8 on the original and 23 on native. At step 1613, the only
+five differing table words are timers: room 27 slot 0 (1/0), and room 28 slots
+0 (5/7), 1 (14/27), 2 (34/12), and 4 (23/29), original/native respectively.
+The first non-timer record differences appear at step 1673. These observations
+explain why the earlier snapshots were insufficient; they do not yet prove
+that the timer differences cause the later actor result.
+`tools/check_gameplay_opponent_state.py` verifies the pinned captures, unchanged
+original replay, strict native failure and two malformed-capture controls.
+The two `manifest/gameplay-item16-opponents-*.sha256` files pin this evidence.
+
+MEASURED causal control: `item16-actor4-timers-2` repeats the original through
+step 1613, including all newly captured opponent records, then aligns the seed,
+the five context bytes and exactly the five differing timer words. It never
+writes the active actor records. At step 1673, all six actor records, RNG,
+level/room/step, pixels, planes, palette, captured context and the entire
+persistent opponent table match native. The seed/context-only control above
+fails at this same endpoint. This establishes the missing timers' role in the
+late actor difference; it does not establish the upstream audio scheduling
+cause or accept the whole route. The fixture audits its exact write extent and
+positive endpoint; `manifest/gameplay-item16-actor4-timers.sha256` pins it.
+The initial `item16-actor4-timers-1` preparation failed at host HFS permissions
+before launching the game and provides no gameplay evidence.
 
 DERIVED: the active-character working record is A5−5056. `AnimChar`
 (CODE 4+2C0C) reads its word +36 as the sequence cursor and +38 as the
@@ -1512,8 +1558,8 @@ this does not establish a passing paired route.
 
 MEASURED: `.run-CeIpbt` repeats that strict rejection and captures the
 level-eleven entry before teardown. All 23 preceding checkpoints pass
-`paired_frame` and complete-context comparison. The rejected entry matches
-viewport pixels, displayed palette, full context, actors, RNG, level and room;
+`paired_frame` and captured-context comparison. The rejected entry matches
+viewport pixels, displayed palette, captured context, actors, RNG, level and room;
 its step count is 290 rather than 292. The strict completion gate remains
 failed. `manifest/gameplay-level10-rejected-entry.sha256` pins this evidence.
 
@@ -1533,13 +1579,13 @@ Native level-eleven `.run-GYU6Ag` reaches level twelve, room 19, at step
 290 with 292 key reads, versus original step 292. The strict first-frame
 guard rejects the run; code/input and hardware/heap restoration pass.
 A diagnostic comparison of the 23 captured pre-stop checkpoints in each of
-`.run-OZOTgb` and `.run-GYU6Ag` passes `paired_frame` and full context
+`.run-OZOTgb` and `.run-GYU6Ag` passes `paired_frame` and captured context
 comparison. The missing final checkpoint and early boundary remain failures;
 this diagnostic is not route acceptance.
 
 MEASURED: level-eleven diagnostic `.run-sm9wiN` matches all 23 preceding
 checkpoints and the rejected level-twelve entry in viewport pixels, displayed
-palette, full context, actors and RNG. The destination is room 19; the native
+palette, captured context, actors and RNG. The destination is room 19; the native
 counts remain 290 frames/292 key reads versus the original 292/294.
 `tools/inspect_gameplay_rejected_entry.py` confirms those comparisons while
 recording `route_accepted: false`. The strict completion gate remains failed.
@@ -1548,12 +1594,12 @@ recording `route_accepted: false`. The strict completion gate remains failed.
 Native level-twelve `.run-bAamYp` reaches level thirteen, room 3, at
 step 290 with 292 key reads, versus original step 292. The strict first-frame
 guard rejects the run. All 23 captured pre-stop checkpoints pass the diagnostic
-`paired_frame` and full-context comparison. Code/input and hardware/heap
+`paired_frame` and captured-context comparison. Code/input and hardware/heap
 restoration pass.
 
 MEASURED: level-twelve diagnostic `.run-XYaGwq` also captures the rejected
 level-thirteen entry. All 23 preceding checkpoints and the endpoint match in
-viewport pixels, displayed palette, full context, actors and RNG. The destination
+viewport pixels, displayed palette, captured context, actors and RNG. The destination
 is room 3; native counts are 290 frames/292 key reads versus original 292/294.
 `tools/inspect_gameplay_rejected_entry.py` records `route_accepted: false`; the
 strict completion gate remains failed.
@@ -1627,13 +1673,13 @@ native acceptance remains incomplete.
 
 Fresh `gameplay-assisted-level13-repeat-1` completes the same level-thirteen
 route and passes the reference launcher. All 37 checkpoints, including
-pre-assistance captures, match pixels, palette, full context and the curated
+pre-assistance captures, match pixels, palette, captured context and the curated
 A5 actor/RNG/counter spans.
 
 Native `.run-t1THYa` traverses the altar/flame/exit route and enters level
 fourteen, room 1, at step 1515 with 1517 key reads, two steps earlier than the
 original. The strict first-frame guard rejects that boundary. Of 36 retained
-captures, checkpoints 0..13 pass the paired-frame and full-context comparisons;
+captures, checkpoints 0..13 pass the paired-frame and captured-context comparisons;
 pixel/context differences start at checkpoint 14, and checkpoint 25 also
 differs in RNG. These differences have not been classified as the D11 exception.
 The final expected checkpoint is absent. Code/input and hardware/heap restoration
@@ -1641,16 +1687,37 @@ pass. `manifest/gameplay-level13-native.sha256` pins this partial evidence,
 not full route acceptance.
 
 MEASURED: closer comparison of those 36 retained captures finds identical
-actor records throughout. The only differing full-context byte is 0x0915
+actor records throughout. The only differing captured-context byte is 0x0915
 at checkpoints 14–35. Pixel differences occur at checkpoints 14–24; the first
 is confined to viewport x44–85/y134–205, visually the blue altar flame.
 Later checkpoints 25–35 have identical viewport pixels. This localizes the
 remaining state/pixel difference but does not establish its cause or extend
 the D11 exception; the containing route remains rejected.
 
+MEASURED: fresh original `item16-flame-1` repeats the complete canonical route.
+Its read-only CODE 10+2CC2/+2D48 observations pair 613 consecutive updates at
+steps 28–640. The original update increments a twelve-state cycle or decrements
+the bit-7 shrinking state; the only intervening reset changes state 9 to 133
+at step 229. Current native `.run-7TG1jl` executes the same 613 updates and
+recurrence, but resets state 8 to 133 at step 228. The subsequent animation
+phase differs. CODE 10+29F8 and +2AB4 contain the original writes of 133 to
+context word 0x0914; the cause of the changed reset timing is still unresolved.
+
+`tools/check_gameplay_flame_window.py` checks these pinned observations,
+the original repeat, native build/restoration audits and two corruption
+controls. All 36 preceding native actor records, RNG values and route counters
+match the original in this fresh run. Context differs only at byte 0x0915 in
+ordinals 14–35; viewport pixels differ in ordinals 14–24, with matching palettes.
+This run does not reproduce the older preceding RNG difference, and its flame
+phase differs in the opposite direction. The rejected entry still occurs at
+1515 rather than 1517 and has a different RNG seed. Both historical failures
+remain retained; no full-route equivalence is claimed. Evidence is pinned in
+`manifest/gameplay-item16-flame-original.sha256` and
+`manifest/gameplay-item16-flame-native.sha256`.
+
 MEASURED: `.run-jXfO5v` reproduces the altar differences and captures the
 rejected level-fourteen entry in room 1. Endpoint viewport pixels, displayed
-palette, full context and actor records match; RNG does not. Native counts are
+palette, captured context and actor records match; RNG does not. Native counts are
 1515 frames/1517 key reads versus original 1517/1519. Code/input audits and
 hardware/heap restoration pass. `manifest/gameplay-level13-rejected-entry.sha256`
 pins the final capture and diagnostic report, which explicitly retains
@@ -1842,7 +1909,7 @@ used as the accepted reference; the fresh run and repeat above pass the correcte
 checks without changing original game execution.
 
 MEASURED: `gameplay-level6-context-2` repeats every checkpoint of the clean
-level-six reference with a read-only write tap. The complete context allocation
+level-six reference with a read-only write tap. The captured context allocation
 is checked against its physical alias before arming the tap. The differing
 0x2008–0x2027 bytes are written by original `AddOppToRoom`, CODE 6+3602 and
 its structure-copy loop at +3616/+361C (the tap reports the following PC).
@@ -1862,7 +1929,7 @@ MEASURED: native `.run-mdtypS` reproduces that same step-6 copy with room/index
 -1 and destination context+0x2002. On both systems the captured 38-byte source
 exactly equals the destination in the next route checkpoint. The native route
 positively completes all 28 checkpoints and enters level seven at step 177,
-with clean restoration and code/input audits. Its full-context checker still
+with clean restoration and code/input audits. Its captured-context checker still
 rejects ordinals 10–26. This localizes the mismatch to the source record rather
 than a differing copy implementation; it is not a full-route pass.
 `manifest/gameplay-level6-context-native.sha256` pins the diagnostic evidence.
@@ -1885,10 +1952,10 @@ The discarded `gameplay-level6-direct-1` and `gameplay-level6-plate-1` attempts
 missed the door trigger and do not establish exit coverage. A neutral frame
 following the old room teleport (`gameplay-level6-refresh-1`) did not prevent
 its invalid-index copy. These controls do not replace or relax the failed
-full-context comparisons recorded above.
+captured-context comparisons recorded above.
 
 MEASURED: native `.run-q5NbV0` matches all 24 captured checkpoints of the
-alternate door route: counters, full context, actors, RNG, viewport pixels,
+alternate door route: counters, captured context, actors, RNG, viewport pixels,
 palette and copper output. It then reaches level seven, room 32, at step 332
 instead of 333. The strict `GAMEPLAY ROUTE / FIRST FRAME` guard stops before
 the final checkpoint, so this is not a completed paired route. The earlier
@@ -1897,10 +1964,10 @@ remains unresolved. Native evidence is pinned in
 `manifest/gameplay-level6-door-native.sha256`.
 
 MEASURED: `.run-7yMRHs` repeats that rejection and captures the level-seven
-entry before teardown. Its viewport, displayed palette, complete context,
+entry before teardown. Its viewport, displayed palette, captured context,
 actors, RNG, level and room match the original final checkpoint. The step
 counter remains 332 instead of 333 (334 instead of 335 key reads); all 24
-preceding captures pass `paired_frame` and complete-context comparison.
+preceding captures pass `paired_frame` and captured-context comparison.
 `manifest/gameplay-level6-rejected-entry.sha256` pins this diagnostic evidence.
 The verification-only rejected-boundary callback observes the failure without
 accepting it or applying further assistance. The strict route checker still
@@ -1938,7 +2005,7 @@ it does not establish a fix or native acceptance. The first repeat preparation
 failed before emulator launch and is not reference evidence.
 
 MEASURED: native `.run-R8yRkz` replays that alternate level-eight route.
-All 48 captured pre-entry checkpoints pass `paired_frame`; full context matches
+All 48 captured pre-entry checkpoints pass `paired_frame`; captured context matches
 through ordinal 27, then differs at 0x2008–0x2027 for ordinals 28–47 after
 the room-24 crossing. Native reaches level nine, room 10, at step 478 with
 480 key reads, versus original 479/481, and the strict first-frame guard rejects
@@ -1956,7 +2023,7 @@ original route. Fresh `gameplay-level8-direct-stairs-repeat-1` matches all 78
 checkpoints and passes the reference launcher;
 `manifest/gameplay-assisted-level8-direct-stairs-repeat.sha256` pins that repeat.
 MEASURED: native `.run-EhJVft` matches all 77 preceding checkpoints and the
-rejected level-nine entry in viewport pixels, displayed palette, full context,
+rejected level-nine entry in viewport pixels, displayed palette, captured context,
 actors and RNG. The entry is room 10 at native step 1191/1193 key reads, versus
 original 1193/1195. The invalid-copy context mismatch is absent on this assisted
 route, but the strict timing gate remains failed.

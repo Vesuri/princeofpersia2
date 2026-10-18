@@ -53,6 +53,11 @@ Items remain open until their acceptance gates pass.
     seed-only fixture fails and remains a control. Level-six observers identify
     the music-completion gate, but its clock/scheduling cause remains unresolved.
     These findings do not close the other routes or waive strict comparisons.
+    The 0x2200-byte context snapshot omits most persistent per-room opponent
+    records. Aligning five persistent skeleton timers as well as seed/context
+    reproduces the level-four actor, RNG and frame endpoint on the original;
+    the upstream scheduling cause remains open. New flame observations match the update rule but reset
+    one step apart; the cause of that event timing remains open.
     Acceptance: explain and resolve the differences with original-paired
     evidence, including any effects on gameplay decisions. Check the other
     ports before service changes; keep diagnostics opt-in and release ordinary.

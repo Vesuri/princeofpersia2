@@ -437,6 +437,7 @@ segment,offset,name,evidence,notes
 6,0x24AE,OppToFight_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 6,0x2586,OnAlert_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 6,0x2638,SelectSwordTurnSequence,DERIVED,Selects original turn animation by character type; called by backward-plus-Shift input branch at CODE 6+2332
+6,0x3642,GetRoomOpponentRecord,DERIVED,Jump-table A5+0682 resolves here; uses context+21A6 plus 192 bytes per room and 38 bytes per opponent; returned records include persistent skeleton timers
 6,0x281E,DoStrike_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 6,0x29EC,CrushChar_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 6,0x2AB8,CrushOppInfo_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
@@ -605,6 +606,7 @@ segment,offset,name,evidence,notes
 10,0x26D6,TriggerTrapDoor_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 10,0x2792,DrawObjTrapDoor_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 10,0x2CAA,IsAltarShadowActive_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
+10,0x2CC2,AdvanceSacredFlameFrame,DERIVED,Updates A5-4818 with a twelve-state cycle or bit-7 shrinking sequence; observed per-frame CODE 10+2D48 publication
 10,0x2DF8,DrawTempSacredFlame_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 10,0x2E56,GetFlameImgHnd_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 10,0x2EC8,GetFlameImgSize_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point

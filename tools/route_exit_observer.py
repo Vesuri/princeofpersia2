@@ -7,10 +7,24 @@ import trap_census
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def generate(audio=False):
+def generate(audio=False, random=False, opponents=False):
     verify_output(DESTINATION)
     trap_census.load(DESTINATION/'Prince of Persia 2.rsrc')
     script = (ROOT/'amiga/gameplay_route.gdb').read_text()
+    if opponents:
+        marker = ' eval "dump binary memory @RUN@/route-%u-context.bin $context $context+0x2200",g_routeCheckpoint\n'
+        assert script.count(marker) == 1
+        script = script.replace(marker, marker+''' set $room_index=0
+ while $room_index<32
+  if *(unsigned short*)($context+0x21a6+$room_index*0xc0)>5
+   echo OPPONENT STATE / ROOM COUNT\\n
+   quit 1
+  end
+  set $room_index=$room_index+1
+ end
+ eval "dump binary memory @RUN@/route-%u-opponents.bin $context+0x21a6 $context+0x39a6",g_routeCheckpoint
+ printf "ROUTE_RANDOM_MAP segment=8 base=%08X\\n",g_coreSegments[8][0]
+''')
     # Reuse its initial checkpoint capture verbatim. Stop once before installing
     # original-code breakpoints, after CODE 2 has been loaded and byte-verified.
     marker = 'break pop2GameplayRouteCheckpoint\ncommands\n'
@@ -43,6 +57,25 @@ commands
  continue
 end
 '''
+    if random:
+        setup += 'set $route_random_base=g_coreSegments[17][0]\n'
+        for offset in (0x1c4e, 0x6e1e):
+            word = int.from_bytes(trap_census.CODE[17][offset:offset+2], 'big')
+            setup += f'''if *(unsigned short*)($route_random_base+0x{offset:x})!=0x{word:x}
+ echo RANDOM OBSERVER / ORIGINAL BYTES\\n
+ quit 1
+end
+break *($route_random_base+0x{offset:x})
+commands
+ silent
+ if *(unsigned short*)(g_coreA5-0x4fd2)==4
+  printf "ROUTE_RANDOM step=%u seed=%08X result=%04X site={offset:04X} caller=%08X\\n",*(unsigned short*)(g_coreA5-0x349a),*(unsigned long*)(g_coreA5-0x18fc),*(unsigned short*)$sp,*(unsigned long*)($a6+4)
+ end
+ continue
+end
+'''
+        for segment in (4, 5, 8, 17):
+            setup += f'printf "ROUTE_RANDOM_MAP segment={segment} base=%08X\\n",g_coreSegments[{segment}][0]\n'
     if audio:
         setup += '''set $route_audio=*(unsigned long*)(g_coreA5-0xf24)
 if *(unsigned long*)$route_audio != 0xaffc4e75
@@ -72,5 +105,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('output', type=Path)
     parser.add_argument('--audio', action='store_true', help='Observe the owned audio veneer return without guest instrumentation')
+    parser.add_argument('--random', action='store_true', help='Observe original RNG returns during level four without guest instrumentation')
+    parser.add_argument('--opponents', action='store_true', help='Capture the persistent per-room opponent records at checkpoints')
     args = parser.parse_args()
-    args.output.write_text(generate(args.audio))
+    args.output.write_text(generate(args.audio, args.random, args.opponents))

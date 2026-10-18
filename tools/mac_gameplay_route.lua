@@ -59,12 +59,42 @@ local function capture(reason)
  local prefix='route-'..sequence..(reason=='assist-before' and '-before' or '')
  dump(prefix..'-a5.bin',a5-22266,22266)
  dump(prefix..'-context.bin',mem:readv_u32(a5-0x5014)&0xffffff,0x2200)
+ if os.getenv('POP2_ROUTE_OPPONENT_STATE')=='1' then
+  local context=mem:readv_u32(a5-0x5014)&0xffffff
+  -- DERIVED CODE 6+3642: 32 room records, each a count and five
+  -- 38-byte persistent opponent records. These extend past the old capture.
+  for room=0,31 do assert(mem:readv_u16(context+0x21a6+room*0xc0)<=5,'OPPONENT STATE / ROOM COUNT')end
+  dump(prefix..'-opponents.bin',context+0x21a6,0x1800)
+ end
  frame.indexed(run..'/'..prefix..'.indices');frame.palette(run..'/'..prefix..'.rgb')
  if rngFixture and rngFixture.mode and sequence==rngFixture.inject_checkpoint then
   assert(not rngFixtureApplied and reason=='completed-frames' and mem:readv_u16(a5-0x349a)==rngFixture.step,'RNG FIXTURE / CHECKPOINT GUARD')
   assert(mem:readv_u32(a5-0x18fc)==rngFixture.before,'RNG FIXTURE / CHECKPOINT SEED')
   mem:writev_u32(a5-0x18fc,rngFixture.after);rngFixtureApplied=true
   dump('rng-checkpoint-after-a5.bin',a5-22266,22266)
+  if rngFixture.mode==4 or rngFixture.mode==5 then
+   local context=mem:readv_u32(a5-0x5014)&0xffffff
+   assert(rngFixture.context_count==5,'RNG FIXTURE / CONTEXT COUNT')
+   for i=0,rngFixture.context_count-1 do
+    local offset=rngFixture['context_offset_'..i]
+    assert(offset>=0 and offset<0x2200 and mem:readv_u8(context+offset)==rngFixture['context_before_'..i],'RNG FIXTURE / CONTEXT GUARD')
+    mem:writev_u8(context+offset,rngFixture['context_after_'..i])
+   end
+   dump('rng-checkpoint-after-context.bin',context,0x2200)
+   print('RNG_FIXTURE_CONTEXT bytes='..rngFixture.context_count)
+  end
+  if rngFixture.mode==5 then
+   assert(os.getenv('POP2_ROUTE_OPPONENT_STATE')=='1' and rngFixture.opponent_count==5,'RNG FIXTURE / OPPONENT CAPTURE REQUIRED')
+   local records=(mem:readv_u32(a5-0x5014)&0xffffff)+0x21a6
+   for i=0,rngFixture.opponent_count-1 do
+    local offset=rngFixture['opponent_offset_'..i]
+    assert(offset>=0 and offset<0x1800 and ((offset%192)-2)%38==30,'RNG FIXTURE / TIMER OFFSET')
+    assert(mem:readv_u16(records+offset)==rngFixture['opponent_before_'..i],'RNG FIXTURE / TIMER BEFORE')
+    mem:writev_u16(records+offset,rngFixture['opponent_after_'..i])
+   end
+   dump('rng-checkpoint-after-opponents.bin',records,0x1800)
+   print('RNG_FIXTURE_OPPONENTS words=5')
+  end
   print(string.format('RNG_FIXTURE_SEED checkpoint=%d before=%08X after=%08X',sequence,rngFixture.before,rngFixture.after))
  end
  local status=string.format('sequence=%d frames=%d step=%d level=%d room=%d player4=%d player6=%d reason=%s prefix=%s\n',sequence,frames,mem:readv_u16(a5-0x349a),mem:readv_u16(a5-0x4fd2),mem:readv_u16(a5-0x4fc2),mem:readv_u16(a5-0x50ce),mem:readv_u16(a5-0x50cc),reason,prefix)
@@ -74,6 +104,13 @@ local function capture(reason)
 end
 function M.map(seg,base,guard,condition)
  bases[seg]=base
+ if seg==10 and os.getenv('POP2_ROUTE_FLAME_TRACE')=='1' then
+  for _,offset in ipairs({0x2cc2,0x2d48})do
+   guard(seg,base,offset,4)
+   cpu.debug:bpset(base+offset,condition..' && w@(a5-0x4fd2)==0xd && w@(a5-0x349a)<=0x280',
+    string.format('logerror "ROUTE_FLAME site=%04X step=%%04X state=%%04X next=%%04X shape=%%08X tile=%%04X\\n",w@(a5-0x349a),w@(a5-0x4818),d4&0xffff,d@(a5-0x4c9e),w@(d@(a5-0x5014)+0x914);g',offset))
+  end
+ end
  if seg==2 and os.getenv('POP2_ROUTE_EXIT_TRACE')=='1' then
   for _,offset in ipairs({0x6134,0x6144,0x6152,0x61ce})do
    guard(seg,base,offset,4)
@@ -511,7 +548,7 @@ function M.poll()
    print(string.format('RNG_FIXTURE_ROLLBACK step=%d before=%08X after=%08X restored=%08X',step,rngPrevious,seed,rngFixture.before))
   end
   rngPrevious=mem:readv_u32(a5-0x18fc)
-  if (step>=523 and step<=551) or (step>=819 and step<=865) or (step>=1490 and step<=1545) or (rngFixture and rngFixture.mode and step>=rngFixture.step and step<=rngFixture.final_step) then
+  if (step>=523 and step<=551) or (step>=819 and step<=865) or (step>=1490 and step<=1545) or (rngFixture and rngFixture.mode and step>=rngFixture.step and step<=rngFixture.final_step) or (os.getenv('POP2_ROUTE_RANDOM_LEVEL4')=='1' and mem:readv_u16(a5-0x4fd2)==4) then
    print(string.format('ROUTE_RANDOM step=%d seed=%08X result=%04X site=%04X caller=%08X',step,mem:readv_u32(a5-0x18fc),mem:readv_u16(cpu.state.SP.value),cpu.state.PC.value-(cpu.state.PC.value>=bases[17] and cpu.state.PC.value<bases[17]+28830 and bases[17] or bases[15]),caller))
   end
  elseif label=='keys' then
