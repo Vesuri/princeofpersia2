@@ -44,6 +44,11 @@ Items remain open until their acceptance gates pass.
     The isolated GetPixBaseAddr quick-entry pilot is also removed: its single
     landing result is 272.86 ms, still failing cadence and only about 3 ms below
     the retained baseline. Broader changes remain necessary.
+    A broader drawing-service C-bridge candidate is retained in ignored scratch:
+    two frozen runs reach 259.89/259.86 ms and 546/546 fields with matching player
+    records and endpoints. It is not installed or qualified: new Pascal cleanup,
+    guard/error behavior and complete original-paired display tests remain.
+    See `docs/performance.md`; the production baseline above is unchanged.
     Acceptance: original timing-service contracts and game-step cadence pass on
     `a1200-fast`, matched gameplay regressions pass, and the release hardware and
     installer requirements accurately include the validated configuration.

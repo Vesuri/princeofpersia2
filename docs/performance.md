@@ -101,6 +101,37 @@ no new fast-entry ABI or complete display-correctness claim is made. Source
 patch, frozen executable, capture, reports and endpoint comparison are retained
 under `tmp/` and pinned in `manifest/performance-68020-pixel-query.sha256`.
 
+### Drawing-service family candidate (not installed)
+
+MEASURED: frozen-build `item15-display-family-020-a/b` complete the opening
+route in 546/546 PAL fields. Landing costs 259.89/259.86 ms per stored frame,
+against the retained final Kalms pair's 275.99/275.91 ms. Exclusive dispatch
+cost falls from 64.26 ms in final Kalms C to 50.40/50.37 ms. The repeats pass
+the existing repeat checker with identical executable identities, all 82 Kid
+records and endpoint screens/palette; pilot A also matches the retained baseline
+records and endpoints. There are still 59/57 late requested intervals, and the
+strict original comparison fails. This is not a cadence pass.
+
+The temporary candidate applies the donor's guarded C-bridge/Pascal convention
+to OffsetRect, InsetRect, SetRect, SectRect, UnionRect, EmptyRect, RGBForeColor,
+RGBBackColor, CopyBits and GetPixBaseAddr. It reuses the existing service bodies,
+requires an owned unfinished display frame and no due services, and keeps
+ClipRect on the full path. The source patch and frozen build are retained in
+ignored `tmp/item15-display-family-pilot/`; production source and release are
+restored. Before adoption, qualify the new exception-return stack cleanup,
+registers/CCR, every positive entry and guard rejection, failed-service behavior,
+and complete original-paired display output. Endpoint matches do not establish
+those contracts. Evidence is pinned in
+`manifest/performance-68020-display-family.sha256`.
+
+The pinned upstream Kalms tree also supplies `normal/c2p1x1_8_c3b1_030.s`, a
+CPU-plus-blitter converter. Source inspection establishes that it calls graphics
+library QBlit and assumes a different buffer layout. It is not a drop-in kernel
+for this port's takeover, row-interleaved planes and shared completion queue.
+Any experiment must adapt those interfaces, retain dirty conversion at frame end,
+and include intermediate Chip-memory traffic and completion in its measurement.
+No speed or correctness claim is made for that unimplemented alternative.
+
 Item 15 remains open. The fixed target is `a1200-fast`: 68EC020 at
 14,187,580 Hz, instruction cache enabled, no data cache, 2 MB Chip and 8 MB
 Fast RAM. The current candidate does not meet the original cadence.
