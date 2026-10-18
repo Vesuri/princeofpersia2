@@ -1406,6 +1406,11 @@ __attribute__((always_inline)) static inline bool quickServicesReady() {
     return false;
 #endif
 }
+// A service failure is terminal, not a guard miss. Preserve its identity for
+// the user-mode loud-stop path rather than executing a failed body twice.
+struct QuickDisplayFailure {const char* reason;uint32_t pc,usp;uint16_t trap;};
+static QuickDisplayFailure quickDisplayFailure={};
+static const char quickDisplayOwnerError[]="DISPATCH / QUICK FAILURE OWNER";
 using QuickTrap=uint32_t (*)(uint32_t*,uint8_t*,uint8_t*);
 extern "C" { QuickTrap g_pop2QuickTraps[4096]={}; }
 template<uint16_t trap>
@@ -1417,6 +1422,11 @@ __attribute__((optimize("O3"))) static uint32_t quickTrap(uint32_t* regs,uint8_t
     // Any miss retains the complete ordinary path, before changing game state.
     if((w(frame)&0x2000) || didStop || g_timerCallbackActive)return 0;
     if(usp<stack+128 || usp>stack+65536-4)return 0;
+    constexpr bool displayQuick=trap==0xa8a8 || trap==0xa8a9 || trap==0xa8a7 ||
+        trap==0xa8aa || trap==0xa8ab || trap==0xa8ae || trap==0xaa14 ||
+        trap==0xaa15 || trap==0xab1d;
+    if(displayQuick && !displayBatchFrame)return 0;
+    if(trap==0xab1d && (regs[0]!=0x0004000f || usp>stack+65536-8))return 0;
     if(displayBatchFrame && ((uint32_t)usp>displayBatchFrame ||
        l((uint8_t*)displayBatchFrame)!=displayBatchParent ||
        l((uint8_t*)displayBatchFrame+4)!=displayBatchReturn))return 0;
@@ -1433,6 +1443,18 @@ __attribute__((optimize("O3"))) static uint32_t quickTrap(uint32_t* regs,uint8_t
 #endif
 #endif
     if(!quickServicesReady<trap==0xa975>())return 0;
+    if(displayQuick) {
+        uint32_t consumed=0;
+        if(trap==0xa8aa || trap==0xa8ab || trap==0xa8ae) {
+            int32_t cc=pureRect<trap,false>(usp,regs);
+            if(cc<0)return 0;
+            consumed=trap==0xa8ae?4:12;sw(frame,(w(frame)&~31)|cc);
+        } else if(!NativeDisplay::dispatch(trap,regs,usp,consumed)) {
+            quickDisplayFailure={NativeDisplay::error(),pc,(uint32_t)usp,trap};
+            return 0;
+        }
+        return consumed+1;
+    }
     if(!trivialService<trap>(regs))return 0;
     g_quickCodeBase=g_coreSegments[seg][0];g_quickCodeEnd=g_quickCodeBase+g_coreSegments[seg][1]-2;
     if(trap==0xa975){sl(usp,quickServicesTick);regs[0]=0;}
@@ -1473,6 +1495,15 @@ static void prepareQuickTraps() {
     g_pop2QuickTraps[0x029]=(QuickTrap)((uint32_t)pop2QuickHLock|1);
     g_pop2QuickTraps[0x069]=(QuickTrap)((uint32_t)pop2QuickHGetState|1);
     g_pop2QuickTraps[0x02a]=(QuickTrap)((uint32_t)pop2QuickHUnlock|1);
+    g_pop2QuickTraps[0x8a8]=quickTrap<0xa8a8>;
+    g_pop2QuickTraps[0x8a9]=quickTrap<0xa8a9>;
+    g_pop2QuickTraps[0x8a7]=quickTrap<0xa8a7>;
+    g_pop2QuickTraps[0x8aa]=quickTrap<0xa8aa>;
+    g_pop2QuickTraps[0x8ab]=quickTrap<0xa8ab>;
+    g_pop2QuickTraps[0x8ae]=quickTrap<0xa8ae>;
+    g_pop2QuickTraps[0xa14]=quickTrap<0xaa14>;
+    g_pop2QuickTraps[0xa15]=quickTrap<0xaa15>;
+    g_pop2QuickTraps[0xb1d]=quickTrap<0xab1d>;
 #endif
 }
 extern "C" uint32_t pop2QuickStripAddressBody(uint32_t* r,uint8_t* f,uint8_t* u){return quickTrap<0xa055>(r,f,u);}
@@ -1556,6 +1587,12 @@ extern "C" uint32_t pop2Dispatch(uint32_t*,uint8_t*,uint8_t*);
 #include "QuickTrapProbe.inc"
 extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
     uint32_t pc=l(frame+2),seg=0,off=0;
+    if(quickDisplayFailure.reason) {
+        QuickDisplayFailure failure=quickDisplayFailure;quickDisplayFailure={};
+        if(pc!=failure.pc || (uint32_t)usp!=failure.usp || !location(pc,seg,off))
+            return stop(frame,usp,quickDisplayOwnerError,failure.trap,seg,off);
+        return stop(frame,usp,failure.reason,failure.trap,seg,off);
+    }
 #ifdef POP2_VERIFY
     if(g_quickGuardFault)return stop(frame,usp,"DISPATCH / QUICK GUARD MISMATCH",0,seg,off);
 #endif

@@ -50,6 +50,11 @@ pop2_line_a:
 	lea 12(sp),sp
 	tst.l d0
 	beq.s .quick_miss
+	| Donor quick Toolbox convention: consumed Pascal bytes plus one.
+	subq.l #1,d0
+	move.l usp,a0
+	adda.l d0,a0
+	move.l a0,usp
 .quick_done:
 	addq.l #2,62(sp)
 	movem.l (sp)+,d0-d7/a0-a6

@@ -1,4 +1,4 @@
-"""Run a pinned wrapper, SaveRect or C2P fixture in an isolated native machine."""
+"""Run a pinned wrapper, SaveRect, C2P or Pascal return fixture in an isolated native machine."""
 import argparse
 import hashlib
 import json
@@ -13,13 +13,17 @@ from scaffold_inputs import verify
 
 
 def run(fixture, seconds, kind="wrapper"):
-    assert kind in ("wrapper", "save-rect", "c2p")
+    assert kind in ("wrapper", "save-rect", "c2p", "pascal")
+    pascal=kind=="pascal"
     c2p=kind=="c2p"
     raster=kind=="save-rect"
     fixture=fixture.resolve()
     for group in ('build','run'):verify(group)
     stub=ROOT/('tools/c2p_abi.s' if c2p else 'tools/wrapper_ccr_fixture.s')
-    if c2p:
+    if pascal:
+        verify('calibrated')
+        meta={'image_sha256':hashlib.sha256((ROOT/'src/platform/amiga/MacEntry.s').read_bytes()).hexdigest()}
+    elif c2p:
         verify('calibrated')
         for name,digest in pins(ROOT/'manifest/kalms-c2p.sha256').items():
             assert hashlib.sha256((ROOT/name).read_bytes()).hexdigest()==digest,name
@@ -38,8 +42,17 @@ def run(fixture, seconds, kind="wrapper"):
             assert key in recorded and hashlib.sha256(p.read_bytes()).hexdigest()==recorded[key],key
         meta=json.loads((fixture/'metadata.json').read_text())
         assert hashlib.sha256(stub.read_bytes()).hexdigest()==meta['stub_sha256']
-    source=ROOT/('tools/c2p_native.c' if c2p else 'tools/save_rect_native.c' if raster else 'tools/wrapper_ccr_native.c')
+    source=ROOT/('tools/pascal_return_native.c' if pascal else 'tools/c2p_native.c' if c2p else 'tools/save_rect_native.c' if raster else 'tools/wrapper_ccr_native.c')
     base=Path(tempfile.mkdtemp(prefix=kind+'-native-',dir=ROOT/'tmp'))
+    if pascal:
+        entry=(ROOT/'src/platform/amiga/MacEntry.s').read_text()
+        bridge=entry.split('.quick_c_bridge:\n')[1].split('.native_quick:\n')[0]
+        assert bridge.count('subq.l #1,d0')==1 and bridge.count('\trte\n')==1, 'PASCAL / RETURN SEQUENCE'
+        body=bridge[bridge.index('\tsubq.l #1,d0'):]
+        template=(ROOT/'tools/pascal_return_fixture.s').read_text()
+        assert template.count('@RETURN@')==1, 'PASCAL / TEMPLATE'
+        stub=base/'pascal-return.s'
+        stub.write_text(template.replace('@RETURN@',body))
     print(base.relative_to(ROOT),flush=True)
     for name in ('dh0/s','dh0/c','dh1','state','logs'):(base/name).mkdir(parents=True,exist_ok=True)
     shutil.copyfile(os.environ['SETPATCH'],base/'dh0/c/SetPatch')
@@ -64,6 +77,9 @@ def run(fixture, seconds, kind="wrapper"):
         receipt['sources']={name:hashlib.sha256((ROOT/name).read_bytes()).hexdigest() for name in ('tools/wrapper_ccr_fixture.s','src/platform/amiga/SaveRect.s','src/mac/ForwardLongCopy.inc')}
     if c2p:
         receipt['sources']={name:hashlib.sha256((ROOT/name).read_bytes()).hexdigest() for name in ('tools/c2p_abi.s','src/platform/amiga/DisplayC2P.s','src/platform/amiga/kalms/KalmsC2PRect.s','src/platform/amiga/kalms/c2p1x1_8_c5_030_2.s')}
+    if pascal:
+        receipt['sources']={name:hashlib.sha256((ROOT/name).read_bytes()).hexdigest() for name in ('src/platform/amiga/MacEntry.s','tools/pascal_return_fixture.s','tools/pascal_return_native.c')}
+        receipt['return_stub']=hashlib.sha256(stub.read_bytes()).hexdigest()
     (base/'receipt.json').write_text(json.dumps(receipt,indent=2)+'\n')
     (base/'dh0/s/startup-sequence').write_text('C:SetPatch QUIET\nFailAt 21\nStack 16384\ncd dh1:\nWrapperProbe\nIf WARN\nEcho "SHELL FAIL" >Shell.done\nElse\nEcho "SHELL PASS" >Shell.done\nEndIf\n')
     launcher=base/'launch.sh'
@@ -83,13 +99,17 @@ wait "$FSUAE_PID"
     process=None
     try:
         with (base/'emulator.log').open('w') as log:
-            process=subprocess.Popen(['/bin/bash',str(launcher),str(base),str(ROOT)],stdout=log,stderr=log,env=dict(os.environ,**({'FIXTURE_EMULATOR':os.environ['FSUAE_CALIBRATED'],'FIXTURE_SETUP':'a1200-fast'} if (raster or c2p) else {})))
+            process=subprocess.Popen(['/bin/bash',str(launcher),str(base),str(ROOT)],stdout=log,stderr=log,env=dict(os.environ,**({'FIXTURE_EMULATOR':os.environ['FSUAE_CALIBRATED'],'FIXTURE_SETUP':'a1200-fast'} if (raster or c2p or pascal) else {})))
             deadline=time.monotonic()+seconds
             while time.monotonic()<deadline and not (base/'dh1/Shell.done').exists():
                 if process.poll() is not None:raise RuntimeError('WRAPPER / EMULATOR EXIT')
                 time.sleep(.5)
         assert (base/'dh1/Shell.done').read_text()=='SHELL PASS\n','WRAPPER / SHELL COMPLETION'
-        if c2p:
+        if pascal:
+            from native_machine import check as check_machine
+            check_machine(base,'a1200-fast')
+            assert (base/'dh1/fixture.complete').read_text()=='PASCAL_COMPLETE cases=192\n','PASCAL / FIXTURE COMPLETION'
+        elif c2p:
             from native_machine import check as check_machine
             check_machine(base,'a1200-fast')
             assert (base/'dh1/fixture.complete').read_text()=='C2P_COMPLETE cases=193\n','C2P / FIXTURE COMPLETION'
@@ -108,7 +128,7 @@ wait "$FSUAE_PID"
 
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('fixture',type=Path)
-    p.add_argument('--kind',choices=['wrapper','save-rect','c2p'],default='wrapper')
+    p.add_argument('--kind',choices=['wrapper','save-rect','c2p','pascal'],default='wrapper')
     p.add_argument('--seconds',type=int,default=300);a=p.parse_args()
     if not 1<=a.seconds<=3600:p.error('--seconds must be between 1 and 3600')
     run(a.fixture,a.seconds,a.kind)

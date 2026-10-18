@@ -101,28 +101,59 @@ no new fast-entry ABI or complete display-correctness claim is made. Source
 patch, frozen executable, capture, reports and endpoint comparison are retained
 under `tmp/` and pinned in `manifest/performance-68020-pixel-query.sha256`.
 
-### Drawing-service family candidate (not installed)
+### Guarded drawing-service entries (item 15)
 
-MEASURED: frozen-build `item15-display-family-020-a/b` complete the opening
-route in 546/546 PAL fields. Landing costs 259.89/259.86 ms per stored frame,
-against the retained final Kalms pair's 275.99/275.91 ms. Exclusive dispatch
-cost falls from 64.26 ms in final Kalms C to 50.40/50.37 ms. The repeats pass
-the existing repeat checker with identical executable identities, all 82 Kid
-records and endpoint screens/palette; pilot A also matches the retained baseline
-records and endpoints. There are still 59/57 late requested intervals, and the
-strict original comparison fails. This is not a cadence pass.
+Nine drawing services now use Alone in the Dark's guarded C-bridge/Pascal
+return convention: OffsetRect, InsetRect, SetRect, SectRect, UnionRect,
+EmptyRect, RGBForeColor, RGBBackColor and GetPixBaseAddr. They reuse the
+existing service bodies and shared rectangle/GWorld helpers. Each requires
+an owned unfinished display frame and no due services. ClipRect and CopyBits
+stay on the full path; the latter's long body can cross a service deadline.
+A failed body preserves its error and caller identity for a user-mode loud stop,
+without retrying a potentially mutated operation. Unknown-owner failures stop.
 
-The temporary candidate applies the donor's guarded C-bridge/Pascal convention
-to OffsetRect, InsetRect, SetRect, SectRect, UnionRect, EmptyRect, RGBForeColor,
-RGBBackColor, CopyBits and GetPixBaseAddr. It reuses the existing service bodies,
-requires an owned unfinished display frame and no due services, and keeps
-ClipRect on the full path. The source patch and frozen build are retained in
-ignored `tmp/item15-display-family-pilot/`; production source and release are
-restored. Before adoption, qualify the new exception-return stack cleanup,
-registers/CCR, every positive entry and guard rejection, failed-service behavior,
-and complete original-paired display output. Endpoint matches do not establish
-those contracts. Evidence is pinned in
-`manifest/performance-68020-display-family.sha256`.
+MEASURED: frozen-build `item15-quick-display-020-a/b` take **263.27/262.52 ms**
+per stored landing frame, against the final Kalms pair's **275.99/275.91 ms**.
+The repeat passes with 552/551 PAL fields, identical executable identities,
+all 82 Kid records and endpoint screens/palette. Both match the retained
+baseline's player records and endpoints. Exclusive dispatch costs fall from
+64.26 ms in final Kalms C to 53.11/52.73 ms. These are flat-PC costs;
+unmatched returns preclude verified inclusive call-tree claims.
+Both runs still have **59/82 late requested intervals**, and the strict original
+comparison rejects the extra death-phase request/frame. The 83.3 ms landing
+request remains unmet; item 15 stays open.
+
+Native exception-return fixture `tmp/pascal-native-rensyfh1` passes 192 cases
+covering all 15 saved registers, all 32 CCR values, six Pascal cleanup sizes
+and unchanged stack guards. It executes the actual cleanup instructions
+extracted from MacEntry.s. Reproduce with
+`python3 tools/run_wrapper_fixture.py tools --kind pascal` after sourcing the
+shared toolchain environment. This checks the real RTE sequence and USP update
+using a supervisor-mode capture, separately from live user-mode gameplay.
+
+The final diagnostic run `.run-sb35Lg` passes 1,152 fast/full drawing comparisons,
+including colour-port state, 126 guard rejections and four terminal-error
+controls. Existing quick-entry fixtures, live guard audits and the restored
+route pass; 22 altered-log controls are rejected. Its first-room pixels, planes,
+palette, RNG and curated context match the pinned Macintosh reference.
+The separate `.run-SguQrY` capture verifies every one of 82 complete planar
+images against its chunky source, legal/minimal conversion coverage, and all
+82 viewports byte-for-byte against the retained `.run-xk0vlH` baseline.
+Host tests and the restored ordinary release/link audits pass.
+
+Earlier `.run-TX7UTg` and `.run-w95Let` each report one synthetic comparison
+failure; the latter identifies an EmptyRect rejection (result zero), not a wrong
+service result. Positive fixtures now permit bounded retries only across an
+observed clock-field change with unchanged guest state, and still require every
+case to complete through the fast entry. `.run-BALpUH` passes with two such
+fallbacks; final `.run-sb35Lg` needs none. Failure evidence remains retained.
+
+The earlier ten-service scratch pilot `item15-display-family-020-a/b` included
+CopyBits and measured 259.89/259.86 ms, but was not qualified. Its lower costs
+are not the production result. Its patch and evidence remain ignored and pinned
+in `manifest/performance-68020-display-family.sha256`.
+The accepted nine-service evidence, failed controls and per-phase reports are
+pinned in `manifest/performance-68020-quick-display.sha256`.
 
 The pinned upstream Kalms tree also supplies `normal/c2p1x1_8_c3b1_030.s`, a
 CPU-plus-blitter converter. Source inspection establishes that it calls graphics

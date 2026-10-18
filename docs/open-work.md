@@ -13,9 +13,9 @@ Items remain open until their acceptance gates pass.
     Macintosh/native cases, full memory/register/CCR comparisons, rejection
     controls and two matched opening runs. Inactive copper palette reuse also
     passes original-table checks across 82 publications and a palette-only change probe.
-    The callback/dispatch shortcuts, shared saved-register copy, guarded HUnlock entry and shared Kalms kernel bring
-    the current runs to 581/581 PAL fields (baseline 660), with 59 of 82 requested intervals late. Landing takes
-    275.91–275.99 ms/frame against the 83.3 ms request. Both retain all baseline
+    The callback/dispatch shortcuts, shared saved-register copy, guarded HUnlock entry, shared Kalms kernel and nine drawing quick entries bring
+    the current runs to 552/551 PAL fields (baseline 660), with 59 of 82 requested intervals late. Landing takes
+    262.52–263.27 ms/frame against the 83.3 ms request. Both retain all baseline
     player records and first-room/death pixels, but still have an extra death-phase
     frame relative to the original. Cadence acceptance is not met.
     The retained VBL and Time Manager fixtures pass with 13 and 12 rejection controls.
@@ -44,11 +44,11 @@ Items remain open until their acceptance gates pass.
     The isolated GetPixBaseAddr quick-entry pilot is also removed: its single
     landing result is 272.86 ms, still failing cadence and only about 3 ms below
     the retained baseline. Broader changes remain necessary.
-    A broader drawing-service C-bridge candidate is retained in ignored scratch:
-    two frozen runs reach 259.89/259.86 ms and 546/546 fields with matching player
-    records and endpoints. It is not installed or qualified: new Pascal cleanup,
-    guard/error behavior and complete original-paired display tests remain.
-    See `docs/performance.md`; the production baseline above is unchanged.
+    The nine drawing entries pass 1,152 fast/full comparisons, 126 guard
+    rejections, four terminal-error controls, 192 actual exception-return ABI
+    cases and all 82 full planar/viewports checks. The two repeated profiles
+    match all baseline player records and endpoints. CopyBits and ClipRect
+    retain full dispatch; the earlier ten-entry pilot remains unqualified.
     A synchronous Kalms CPU/blitter column prototype passes the 193-case native
     pixel/ABI fixture but regresses landing to 296.00 ms. A two-buffer overlap
     pilot using the shared blitter queue still costs 289.67 ms; its revised blit

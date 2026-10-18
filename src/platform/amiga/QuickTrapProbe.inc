@@ -12,6 +12,7 @@ uint32_t g_quickDeadlineRejected=0,g_quickZoneRejected=0;
 uint32_t g_quickCallbackChecks=0,g_quickCallbackRejected=0;
 __attribute__((noinline)) void pop2QuickProbeDone(){__asm__ volatile("nop" ::: "memory");}
 }
+#include "QuickDisplayProbe.inc"
 static void quickTrapFixture() {
     uint32_t unlockPC=0;
     const uint16_t traps[]={0xa9b4,0xa975,0xa055,0xa05d,0xa029,0xa069,0xa02a};
@@ -207,6 +208,7 @@ static void quickTrapFixture() {
        namedZone)
         ++g_quickZoneRejected;
     else ++g_quickProbeFailures;
+    quickDisplayFixture();
     displayBatchFrame=owner;displayBatchParent=parent;displayBatchReturn=returned;
     timerCount=tasks;vblCount=vbls;vblPass=passes;timers[0]=first;
     addressMode=mode;low[0xcb2]=mode;quickServicesValid=false;
