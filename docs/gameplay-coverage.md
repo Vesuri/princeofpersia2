@@ -8,8 +8,9 @@ routes, not a claim of one uninterrupted unassisted playthrough.
 
 D12 accepts the recorded one- or two-frame exit differences and remaining
 level-3/4/13 animation, RNG and non-player actor-slot differences for this item;
-item 16 retains their investigation. D18 accepts timing-dependent differences
-once their causes and gameplay effects are verified; service defects must be fixed.
+Item 16 is complete under D18: the recorded differences have original-paired
+causes and gameplay-effect evidence. They are accepted timing consequences,
+not exact frame/state matches. Service guards remain active.
 The strict diagnostic reports deliberately remain failed (`route_accepted:
 false` where present). Their captured next-level entries are positive exit
 evidence; an entry obtained solely by a level cheat is not exit evidence.
@@ -68,10 +69,39 @@ audit also passes; no runtime code or diagnostic defaults changed for closure.
 | 13 | `.run-jXfO5v` | `gameplay-assisted-level13-flame-1` | `gameplay-level13-rejected-entry.sha256` |
 
 The acceptance matrix above governs current status. Detailed failed discovery
-controls and intermediate comparison findings below remain evidence for item 16;
+controls and intermediate comparison findings below remain retained evidence;
 they do not reopen item 12 or establish exact equivalence.
 
-## Item 16 investigation
+## Timing and state differences resolved under D18
+
+Item 16 is closed by verified explanation under D18. Ambient-sound scheduling
+shifts consumption of the shared RNG stream; original counterfactuals establish
+the effects on torch animation, actor decisions and persistent skeleton timers.
+The death-sound gate shifts shadow creation and the altar flame reset by one
+frame. Exit traces identify sound-completion branches as the source of the
+recorded frame-count differences. Additional draws around the level-eight and
+level-thirteen transitions account for their terminal RNG differences.
+No production RNG, actor state or clock policy was changed to force equality.
+The first-room parameter-block residue comparison is the scoped correction
+described in `docs/native-integration.md`.
+
+| Exit level | Original step | Native step | Paired evidence scope |
+|---|---:|---:|---|
+| 1 | 1001 | 1000 | Current probes; entry pixels, context, actors and RNG match |
+| 3 | 2767 | 2766 | Replay of the pinned historical level-three diagnostic |
+| 4 | 1889 | 1888 | Existing timer/actor diagnostic and fresh original exit trace |
+| 6 | 333 | 331 | Exit, queued-note timestamp and delivery observers |
+| 7 | 359 | 356 | Fresh exit audit; older native capture exited at 357 |
+| 8 | 1193 | 1190 | Fresh exit audit and paired boundary RNG calls |
+| 10–12 | 292 | 290 | Separate fresh exit audits for all three levels |
+| 13 | 1517 | 1515 | Exit/RNG audit tied to the shadow/flame causal pair |
+
+These are game-step observations on the retained emulator, not calibrated
+performance claims. Current full-route probes stop at the earlier level-two
+timing guard; they do not establish a current full level-three replay. The
+historical replay below resolves the recorded level-three difference. The
+strict guards and failed comparisons remain intact. Corrected-clock and release
+qualification remain items 22 and 14 respectively.
 
 The first-room reference A5−0B77 difference is resolved as retained volume-date
 metadata; see `docs/native-integration.md` for original call/return provenance,
@@ -204,6 +234,91 @@ and missing/corrupt-timestamp controls. The new native manifest pins the run.
 The first attempt `.run-QvZ6AU` failed when sandbox policy blocked the debugger
 listener; it contains no gameplay checkpoint and is not comparison evidence.
 
+MEASURED: level-seven audit `item16-exit-audit-level7-1` repeats the full
+canonical route and consumed inputs. Native `.run-8h2qSE` starts the pending
+transition at the same step 147, but the sound test releases it at 356 versus
+359 on the original. The older native capture released at 357. All 23 preceding
+checkpoints and the next-level entry match original pixels, palette, captured
+context, actors and RNG; the entry step/key counts remain different. The exit
+audit reuses the strict rejected-entry inspector, checks every consecutive
+sound branch and rejects removed transitions. The two
+`manifest/gameplay-item16-exit-audit-7-*.sha256` manifests pin this pair.
+This is observed sound-gate timing variation, not a fixed two-frame offset or
+a passing strict timing comparison.
+
+MEASURED: the following original exit-audit repeats match their complete
+canonical routes and consumed inputs. Each native run matches all 23 preceding
+checkpoints and the next-level entry's pixels, palette, captured context,
+actors and RNG. Both sides begin waiting at step 138; the first sound test
+releases at 292 on the original and 290 on native. The strict timing failure
+is retained, and neither native run changes the older recorded native state.
+
+| Level | Original run | Native run |
+|---|---|---|
+| 10 | `item16-exit-audit-level10-1` | `.run-kxs2QD` |
+| 11 | `item16-exit-audit-level11-1` | `.run-zEfQT3` |
+| 12 | `item16-exit-audit-level12-1` | `.run-vhFoUL` |
+
+The corresponding `gameplay-item16-exit-audit-LEVEL-original.sha256` and
+`-native.sha256` manifests pin the observations; `check_gameplay_exit_audit.py`
+checks the complete sound branches, strict rejected-entry state comparison,
+build/restoration audits and missing-transition controls for each pair.
+
+MEASURED: corrected level-eight repeat `item16-exit-audit-level8-2` matches
+its complete canonical route. Native `.run-a9ls3Q` matches all 77 preceding
+checkpoints and the next-level entry's pixels, palette, context and actors,
+but its entry RNG differs from the original. The pending exit
+begins at 981 on both; the sound gate releases at native 1190 versus original
+1193. The older native capture released at 1191 and matched the original entry
+RNG. The default strict rejected-entry comparison therefore fails on RNG.
+The exit-audit-8 original/native manifests pin the runs.
+
+MEASURED: bounded original `item16-exit-rng8-1` repeats the complete route.
+At step 1193, `PlayAmbient` (CODE 5, return +50BA) draws once while
+still in level eight, before the exit branch, then again after entering
+level nine. Native `.run-9Y2tkt` reproduces `.run-a9ls3Q` in every captured
+state, colour table and plane buffer; its only draw in the observed
+982–1200 window occurs at step 1190, after entering level nine, and returns
+the value consumed by the original pre-transition call. Both versions have
+the same seed at the preceding step-982 capture.
+The extra original pre-transition ambient call therefore accounts for the
+terminal seed difference; neither RNG results nor actor records are normalized.
+`check_gameplay_exit_rng8.py` verifies the caller/transition order, captured
+seeds, complete original repeat, unchanged native state, restoration and two
+corruption controls. The two `gameplay-item16-exit-rng8-*.sha256` manifests pin
+that proof. The exit audit accepts this verified timing consequence under D18
+while reporting the unequal RNG and failed strict timing explicitly. The
+standalone rejected-entry inspector retains strict comparison by default.
+
+The first level-eight repeat used asynchronous keyboard input instead of the
+reference's explicit direct-key mode: its first Down read arrived at step 22
+rather than 21. It correctly failed checkpoint 9 and supplies no accepted
+exit evidence. The initial frozen native audit also stopped before gameplay:
+its older executable expected the previous relocation table and rejected the
+current inputs with `CORE INPUT / SHA256`. The failed-controls manifest pins
+both failures; subsequent audits use current, input-matched diagnostics.
+
+MEASURED: the final-level exit audit pairs original
+`item16-exit-audit-level13-1` with native `.run-64CRkE`. Both begin the pending
+level-fourteen transition at step 1363; the original sound-completion branch
+releases it at 1517, the native branch at 1515. The original repeats every
+canonical checkpoint and consumed key map. All native actor, RNG, step, screen
+and captured-context states reproduce the already paired shadow-gate run
+`.run-NeBYwx`; the differences from the older item-12 native capture remain
+reported separately. Clean restoration and code/input audits pass.
+
+The bounded final RNG trace matches the first 52 draws, including frame,
+seed/result and mapped original caller. During the two additional original
+waiting frames, `TempGetTorchFrame` (CODE 10+12B6, return +12C6) makes four more
+draws and `PlayAmbient` (CODE 5, return +50BA) makes one. These account for
+the captured entry-seed difference before the transition; no next-level
+initialization draw is involved. `check_gameplay_exit_audit.py 13` verifies the complete exit
+branches, caller mapping, native causal baseline and the five additional draws,
+and rejects missing transitions and a corrupt final seed. The two
+`manifest/gameplay-item16-exit-audit-13-*.sha256` manifests pin the observations.
+This resolves the terminal level-thirteen RNG difference under D18 without
+changing game decisions. The strict frame-count comparison remains failed.
+
 MEASURED: current verification replay `.run-NeChbT` retains the two level-one
 RNG differences at checkpoints 64 and 90. All 95 preceding checkpoints match
 pixels, displayed palette, captured context and all six actor records; the strict
@@ -214,6 +329,36 @@ exception. `manifest/gameplay-item16-level1-baseline.sha256` pins the evidence.
 It uses the retained emulator for correctness only; no calibrated performance
 claim follows. The corrected-clock attempt `.run-efa3Gx` was stopped during
 slow verification startup without a route endpoint and is not a pass.
+
+MEASURED: `.run-J9EmWq` attempts the full level-three route with current
+inputs and trap tracing enabled, but stops at that same earlier level-two
+entry. Every captured state, screen, palette and plane buffer reproduces
+`.run-NeChbT`. Paired original/native exit branches begin waiting at step 918
+and release at 1001/1000, respectively, with cue 9. The explicit
+`check_gameplay_exit_audit.py 3 --first-level-control` verifies only this
+level-one boundary and two missing-transition controls. The default level-three
+audit rejects it with `TARGET LEVEL NOT OBSERVED`; it is not level-three exit
+evidence. Matching the older diagnostic flags in current `.run-g0fds0`
+(disabling trap tracing) produces the same earlier stop and identical retained
+state. Both current probes remain incomplete for level three. The historical
+level-three diagnostic `.run-glhUWS` uses its original pinned relocation
+plan from revision `386bb98`; the other staged plans match current inputs.
+`gameplay-item16-legacy-inputs.sha256` pins the private historical-input control.
+Ordinary release inputs are not changed by this scoped replay.
+
+MEASURED: that historical replay reaches the actual level-three exit, with
+pending transition at 2695 in both versions and sound-gate release at
+original 2767/native 2766. All level-three actor/RNG/counter, context, screen, palette and plane
+captures reproduce `.run-Vz4heJ`, including its recorded differences from
+the original. The sole difference
+from that native baseline is the earlier level-one checkpoint 90 RNG, which
+now matches the original exactly. The full original repeat, native build and
+historical input identities, all retained states, exit branches and two
+missing-transition controls pass `check_gameplay_exit_audit.py 3` with
+`--native-manifest manifest/gameplay-item16-exit3-legacy-native.sha256`.
+The default current-run check still rejects an unreached level-three probe.
+This is evidence for the recorded historical difference, not a current-build
+full-route pass or a rollback of production inputs.
 
 ## Current evidence
 
@@ -253,17 +398,17 @@ and bounded captures. Original bytes, saved state and captures remain ignored.
 |---|---|---|
 | Level 1 | Meaningful gameplay route and original level-exit decision | Completed native/original pair; two pinned RNG exceptions under D11 |
 | Level 2 | Meaningful gameplay route and original level-exit decision | Completed native/original pair; inherited level-one RNG exceptions only |
-| Level 3 | Meaningful gameplay route and original level-exit decision | Accepted under D12: level-four entry captured; one-frame exit, torch/RNG/context and non-player actor differences retained in item 16 |
-| Level 4 | Meaningful gameplay route and original level-exit decision | Accepted under D12: all 93 checkpoints and level-five entry reached; recorded animation/RNG/context and actor-slot differences retained in item 16 |
+| Level 3 | Meaningful gameplay route and original level-exit decision | Accepted under D12: level-four entry captured; one-frame exit, torch/RNG/context and non-player actor differences explained and accepted under D18 |
+| Level 4 | Meaningful gameplay route and original level-exit decision | Accepted under D12: all 93 checkpoints and level-five entry reached; recorded animation/RNG/context and actor-slot differences explained and accepted under D18 |
 | Level 5 | Meaningful gameplay route and original level-exit decision | Clean assisted original repeat and native pair pass all 46 checkpoints and level six begins; the separate profiling route exercises carpet NIS 1 |
-| Level 6 | Meaningful gameplay route and original level-exit decision | Accepted under D12: alternate door route and level-seven entry state match; one-frame exit difference retained in item 16 |
-| Level 7 | Meaningful gameplay route and original level-exit decision | Accepted under D12: route and level-eight entry state match; two-frame exit difference retained in item 16 |
-| Level 8 | Meaningful gameplay route and original level-exit decision | Accepted under D12: direct-entry route and level-nine entry state match; two-frame exit difference retained in item 16 |
+| Level 6 | Meaningful gameplay route and original level-exit decision | Accepted under D12: alternate door route and level-seven entry state match; one-frame exit difference explained and accepted under D18 |
+| Level 7 | Meaningful gameplay route and original level-exit decision | Accepted under D12: route and level-eight entry state match; two-frame exit difference explained and accepted under D18 |
+| Level 8 | Meaningful gameplay route and original level-exit decision | Accepted under D12: direct-entry route and level-nine entry state match; two-frame exit difference explained and accepted under D18 |
 | Level 9 | Meaningful gameplay route and original level-exit decision | Original repeat and native pair pass all 15 checkpoints |
-| Level 10 | Meaningful gameplay route and original level-exit decision | Accepted under D12: route and level-eleven entry state match; two-frame exit difference retained in item 16 |
-| Level 11 | Meaningful gameplay route and original level-exit decision | Accepted under D12: route and level-twelve entry state match; two-frame exit difference retained in item 16 |
-| Level 12 | Meaningful gameplay route and original level-exit decision | Accepted under D12: route and level-thirteen entry state match; two-frame exit difference retained in item 16 |
-| Level 13 | Meaningful gameplay route and original level-exit decision | Accepted under D12: level-fourteen entry captured; two-frame exit and recorded altar animation/context/RNG differences retained in item 16 |
+| Level 10 | Meaningful gameplay route and original level-exit decision | Accepted under D12: route and level-eleven entry state match; two-frame exit difference explained and accepted under D18 |
+| Level 11 | Meaningful gameplay route and original level-exit decision | Accepted under D12: route and level-twelve entry state match; two-frame exit difference explained and accepted under D18 |
+| Level 12 | Meaningful gameplay route and original level-exit decision | Accepted under D12: route and level-thirteen entry state match; two-frame exit difference explained and accepted under D18 |
+| Level 13 | Meaningful gameplay route and original level-exit decision | Accepted under D12: level-fourteen entry captured; two-frame exit and recorded altar animation/context/RNG differences explained and accepted under D18 |
 | Level 14 | Meaningful gameplay route and original level-exit decision | Assisted final encounter and original decision 15 paired through the ending and Hall insertion |
 | Main cutscenes, individually | Original natural return and paired visible/state checkpoints | Selectors 1–11 individually paired; level-eight route accepted with the separately recorded D12 exceptions |
 | Timed story scenes, individually | Original natural return for each selected scene | Selectors 12–20 individually paired through normal return; time-expired selector 20 included |
@@ -681,7 +826,7 @@ an unreached endpoint, with passing controls before corruption checks. The
 completed reference disk images are compressed with SHA-256 round-trip checks;
 all original captures and emulator state remain ignored.
 
-### Native level-1 comparison in progress
+### Level-one ambient scheduling and retained strict comparisons
 
 MEASURED: the diagnostic A1200-030 run `.run-rXZcAu` reaches level 2, room 2
 at step 1001, with 1002 matching consumed key maps and successful code, input
@@ -690,16 +835,18 @@ full level context, six actor records, level/room/step counters, displayed
 pixels, eight bitplanes, palette and Copper configuration. The pair is not
 accepted: the QuickDraw random seed differs at checkpoints 64 and 90. In both
 cases the reference is one random draw ahead; later checkpoints match again.
-The cause remains under investigation with explicitly enabled random-call
-observers. No exception has been added to the acceptance checker.
+The read-only random-call observations below identify the ambient scheduling
+shift. D11 scopes the retained hash exceptions; D18 accepts the verified timing
+consequences. The strict comparison still reports them.
 
 MEASURED: a second original route reproduces the pinned checkpoints with a
 read-only random-call observer. `PlayAmbient` (CODE 5+4F92) consumes the next
 random value at steps 526 and 823; the corresponding native trace consumes
 the same values at steps 544 and 854. The ambient record at A5−3738 also
 differs at the rejected endpoints, then matches again. This is an audio-state
-difference, not merely an unused seed. Audio completion and elapsed clocks
-need comparison before assigning a cause or changing services.
+difference, not merely an unused seed. The production effect-lifetime and queued-clock comparisons above distinguish
+logical effect duration from asynchronous scheduling. D18 accepts the measured
+consequences without requiring identical wall-clock phase.
 
 MEASURED: `gameplay-level1-audio-3` completes the original level-1 route with
 its audio observer and retains all 96 pinned route checkpoints. A separate
@@ -790,7 +937,7 @@ images are compressed with verified round trips. Saves and captures stay ignored
 This proves original level-two repeatability, not its Amiga pair.
 
 
-### Native level-two comparison in progress
+### Level-two comparison with inherited ambient exceptions
 
 MEASURED: `.run-ITSYlT` executes the complete pinned input stream through levels
 one and two on A1200-030, reaching level 3, room 1, at step 1360. It consumes all
@@ -800,8 +947,8 @@ level-two entry/action checkpoints match the original context, actors, RNG,
 level/room/step counters, pixels, AGA planes, palette and Copper configuration.
 The combined route remains rejected at the same two level-one RNG checkpoints
 (64 and 90). The checker evaluates later checkpoints while retaining those
-failures. This is one completed native run; repeatability and the unresolved
-level-one ambient timing issue remain open.
+failures. The inherited ambient scheduling differences retain their strict
+failures and are explained under D18 above.
 
 
 ### Macintosh save import
@@ -985,9 +1132,10 @@ run pairs, including a missing scene return and altered late-level evidence.
 `manifest/gameplay-level3-reference.sha256` pins the first run's captures,
 actions and log. `tools/replay_gameplay_route.py --through-level 3` replays
 the authored route for further original repetitions. Native level-three
-validation remains open; the earlier level-one RNG mismatches remain failures.
+coverage is accepted under D12; D18 explains the recorded timing/state
+differences below. The earlier strict RNG comparisons remain failures.
 
-### Native level-three comparison in progress
+### Level-three comparison and causal RNG fixtures
 
 MEASURED: `.run-oMs5lv` on A1200-030 captures checkpoints 0–179 and reaches
 the level-four first-frame hook, but the route gate rejects that entry: native
@@ -1005,8 +1153,8 @@ differ within x168–480/y276–312. Code/input audits and restoration pass.
 `manifest/gameplay-level3-rejected-entry.sha256` pins this diagnostic evidence;
 its report explicitly retains `route_accepted: false`.
 The endpoint player record at A5 minus 0x50D2 matches in full. Actor differences
-are confined to zero-based slot 0; the significance of those differences is not
-yet established. Visual comparison places the pixel differences in the two
+are confined to zero-based slot 0. The seed fixture below establishes their
+RNG-dependent position and animation consequences. Visual comparison places the pixel differences in the two
 wall torches. These observations do not extend the owner-approved exception.
 
 The first additional level-three mismatch occurs at checkpoint 121. Checkpoints
@@ -1014,8 +1162,8 @@ The first additional level-three mismatch occurs at checkpoint 121. Checkpoints
 pixels, planes and palette. At checkpoint 121 all six actor records still match,
 but RNG, three context bytes and torch pixels differ. Later checkpoints retain
 pixel/RNG differences. The prior level-one RNG failures at 64 and 90 also
-remain. This localizes the next investigation; it does not establish a cause
-or accepted level-three or cutscene coverage.
+remain. These observations locate the first divergence; the paired RNG traces
+and original counterfactuals below establish its cause and gameplay effects.
 
 MEASURED: the explicit random-call observer in `gameplay-level3-random-1`
 completes the full three-level route with normal exit and matches all 181
@@ -1237,8 +1385,8 @@ Copper output; code, input, heap and hardware restoration pass. This is entry
 and short-play coverage, not a claim that the original exit puzzle of every
 level has been exercised.
 
-D11 now permits the previously recorded level-one RNG differences to remain in
-item 16. `check_gameplay_route.py --deferred-rng` accepts only the exact pinned
+D11 permits the previously recorded level-one RNG exceptions; their ambient
+scheduling consequences are documented under D18 above. `check_gameplay_route.py --deferred-rng` accepts only the exact pinned
 native/original seed hashes at checkpoints 64 and 90, only for the completed
 level-one/two routes. It still requires all other state/pixel checks and positive
 completion. Native `.run-rXZcAu` and `.run-ITSYlT` pass that explicitly qualified
@@ -1441,7 +1589,7 @@ new first-frame boundary at step 1888; its actual level/room was not captured.
 The original enters level five at 1889,
 so the strict first-frame guard rejects the replay. Hardware, heap and input/code
 restoration pass. The audio blocker is resolved; the route's timing and
-intermediate comparisons remain unresolved.
+intermediate differences are explained by the exit and timer/RNG fixtures below.
 
 The live level-eight discovery had not picked up the sword at checkpoint 101:
 the capture still shows it on the floor. Positioning at x=480 and pressing Shift
@@ -1501,8 +1649,8 @@ MEASURED: in `.run-0c0hOQ`, the first RNG mismatch is checkpoint 13
 (step 146, room 9). The first context/pixel mismatch is checkpoint 22
 (step 310, room 13), initially at context byte 0x0D89. Actor records match
 through checkpoint 86; the final six checkpoints differ, beginning at step
-1673 in room 27. These observations delimit the unresolved comparison and
-do not classify the later actor differences as ambient-only.
+1673 in room 27. The timer/RNG fixtures below establish their gameplay
+significance; these actor records are not treated as rendering scratch.
 
 MEASURED: the complete 62-byte player record at A5 minus 0x50D2 matches at
 all 93 level-four checkpoints, including entry to level five. The late actor
@@ -1585,6 +1733,17 @@ additional corrupted-trace controls. Together with the successful original
 timer fixture, this connects the late actor difference to RNG-dependent
 persistent state. Under D18 this is a gameplay-relevant timing consequence,
 not a reason to normalize the actor records or alter the original decisions.
+
+MEASURED: original `item16-exit4-1` repeats every canonical level-four
+checkpoint and consumed key map with exit-branch observations enabled. Both
+it and the retained opponent run `.run-KkYYZ2` begin waiting at step 1817.
+The first sound test releases at original 1889 versus native 1888, with cue
+294; both then take the original next-level branch. `check_gameplay_exit_audit.py 4` verifies the fresh original repeat, the existing pinned opponent/RNG evidence,
+consecutive exit branches and two missing-transition controls. The new original
+manifest is `gameplay-item16-exit4-original.sha256`; the native observations
+remain in `gameplay-item16-opponents-native.sha256`. This identifies the
+additional one-frame exit difference in the timer investigation as a sound-gate
+timing consequence. It does not reclassify the strict native route as equal.
 
 DERIVED: the active-character working record is A5−5056. `AnimChar`
 (CODE 4+2C0C) reads its word +36 as the sequence cursor and +38 as the
@@ -1854,8 +2013,8 @@ palette, captured context and actor records match; RNG does not. Native counts a
 1515 frames/1517 key reads versus original 1517/1519. Code/input audits and
 hardware/heap restoration pass. `manifest/gameplay-level13-rejected-entry.sha256`
 pins the final capture and diagnostic report, which explicitly retains
-`route_accepted: false`. Timing, preceding flame/context differences and
-endpoint RNG remain unresolved.
+`route_accepted: false`. The sound/shadow/flame chain and terminal RNG
+observations above explain these differences under D18.
 
 Original fresh-session `gameplay-hall-view-4` imports the pinned Hall file
 written by `gameplay-assisted-hall-4`. Command-H runs `ShowHallOfFame`
@@ -2092,8 +2251,8 @@ alternate door route: counters, captured context, actors, RNG, viewport pixels,
 palette and copper output. It then reaches level seven, room 32, at step 332
 instead of 333. The strict `GAMEPLAY ROUTE / FIRST FRAME` guard stops before
 the final checkpoint, so this is not a completed paired route. The earlier
-context discrepancy is absent from the captured portion; the boundary timing
-remains unresolved. Native evidence is pinned in
+context discrepancy is absent from the captured portion; the paired exit and
+queued-note observations above explain the boundary timing under D18. Native evidence is pinned in
 `manifest/gameplay-level6-door-native.sha256`.
 
 MEASURED: `.run-7yMRHs` repeats that rejection and captures the level-seven

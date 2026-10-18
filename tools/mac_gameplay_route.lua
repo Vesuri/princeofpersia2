@@ -108,6 +108,16 @@ local function capture(reason)
 end
 function M.map(seg,base,guard,condition)
  bases[seg]=base
+ if seg==17 and os.getenv('POP2_ROUTE_EXIT_RNG')=='1' then
+  local first=tonumber(os.getenv('POP2_ROUTE_EXIT_RNG_START') or '1490')
+  local last=tonumber(os.getenv('POP2_ROUTE_EXIT_RNG_END') or '1545')
+  assert(first and last and first==math.floor(first) and last==math.floor(last) and first>=0 and last>=first and last<=65535,'EXIT RNG / WINDOW')
+  for _,offset in ipairs({0x1c4e,0x6e1e})do
+   guard(seg,base,offset,4)
+   cpu.debug:bpset(base+offset,condition..string.format(' && w@(a5-0x349a)>=0x%X && w@(a5-0x349a)<=0x%X',first,last),
+    string.format('logerror "EXIT_RNG step=%%04X level=%%04X seed=%%08X result=%%04X site=%04X caller=%%08X\\n",w@(a5-0x349a),w@(a5-0x4fd2),d@(a5-0x18fc),w@sp,d@(a6+4);g',offset))
+  end
+ end
  if os.getenv('POP2_ROUTE_SHADOW_GATE')=='1' and (seg==4 or seg==10) then
   local offsets=seg==4 and {0x3c68,0x3c76,0x3c96} or {0x2b14}
   for _,offset in ipairs(offsets)do

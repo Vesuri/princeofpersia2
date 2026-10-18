@@ -25,17 +25,17 @@ loaded by a cheat is coverage of loading and entry, not proof of its exit or
 ending. Harness assistance is opt-in and excluded from ordinary release builds.
 
 D11 (owner-authorized gameplay acceptance): the already recorded torch/RNG
-state and pixel differences remain in deferred item 16. Item 12 may accept
-completed assisted routes with those exceptions explicitly identified, provided
+state and pixel differences were assigned to item 16; its investigation is
+complete under D18. Item 12 may accept completed assisted routes with those exceptions explicitly identified, provided
 there are no unresolved loud stops and the game reaches the ending. This does
 not turn unexecuted routes or unreached endpoints into passes.
 
 D12 (owner-authorized item-12 closure): accept the recorded routes through all
 levels and the ending while deferring the observed one- or two-frame exit
 counter differences and remaining level-3/4/13 animation, RNG and actor-slot
-differences to item 16. The gameplay relevance of differing non-player actor
-slots is not yet established. Preserve the failed strict comparisons and their
-captures; this acceptance does not claim exact equivalence or waive unknown
+differences to item 16, now completed under D18. The original-paired investigation
+establishes gameplay-relevant RNG, animation and persistent-timer effects.
+Preserve the failed strict comparisons and their captures; this acceptance does not claim exact equivalence or waive unknown
 service calls, unreached exits, or new differences on other routes. Positive
 original/native exit and session-action evidence remains required. Release/040 validation remains required for item 14; item 15’s release scope under D14 does not change these gameplay exceptions.
 

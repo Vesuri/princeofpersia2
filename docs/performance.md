@@ -1169,8 +1169,9 @@ inputs/results are pinned in `manifest/pure-rectangles.sha256`.
 The fresh integration attempt passed all four service contracts but rejected
 its first gameplay reference at the existing A5 pin: `20261015-151738-f9137e07`
 differs only at A5−0B77 outside the already normalized clock words. Its pixels,
-palette and context match. The failure is retained under item 16; no pin or
-normalization was weakened. The integration regression uses the documented
+palette and context match. The failure is retained as a control; the original
+File Manager residue provenance and scoped comparison correction are documented
+in `docs/native-integration.md`. The integration regression uses the documented
 pinned-reference mode and explicit `--setup a1200-030`, propagated through
 all native checks and rejection controls. The old harness assumed every native
 logo capture would occur at frame 16, despite using a controlled frame-16 original

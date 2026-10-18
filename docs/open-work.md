@@ -33,49 +33,6 @@ Items remain open until their acceptance gates pass.
     Installer-only archive rejection passes on the host; the real Installer 43
     rejection requester still needs an interactive dismissal check.
 
-16. **Deferred gameplay timing and state differences (D11/D12).** Investigate
-    the recorded one- or two-frame early exits in levels 3, 6–8 and 10–13;
-    ambient-audio RNG timing; level-three wall-torch animation and final-entry
-    actor slot 0; level-four animation/context, RNG and late actor slots 3/4;
-    and level-thirteen altar flame/context and RNG differences. The player
-    record matches the recorded level-three entry and all level-four captures.
-    Original counterfactuals establish gameplay effects on actor position,
-    animation and persistent skeleton timers; these are not rendering scratch.
-    Keep the earlier invalid opponent-record copies in the level-six/eight
-    discovery routes as separate failed controls; the accepted alternate routes
-    avoid those copies. Evidence and exact run/manifest identities are in
-    `docs/gameplay-coverage.md`. Item 12's owner-authorized acceptance is not
-    an exact-match result: preserve failed strict reports and named guards.
-    The first-room A5−0B77 discrepancy is resolved as volume-date residue in
-    a reused File Manager parameter block; original call/return provenance and
-    narrowly scoped normalization are documented in `docs/native-integration.md`.
-    New causal fixtures tie the first level-three torch mismatch and the later
-    slot-0 position/animation decision to the shared RNG stream. A level-four
-    seed-only fixture fails and remains a control. Level-six observers identify
-    the music-completion gate and separate earlier note enqueue timestamps from
-    shorter delivery delays on the native driver.
-    These findings do not close the other routes or waive strict comparisons.
-    The 0x2200-byte context snapshot omits most persistent per-room opponent
-    records. Aligning five persistent skeleton timers as well as seed/context
-    reproduces the level-four actor, RNG and frame endpoint on the original.
-    The common 2,952-draw RNG sequence, shifted ambient caller and randomized
-    skeleton countdowns explain the first persistent timer mismatch.
-    Flame observations show the
-    shadow sequence running one step ahead for 80 consecutive paired states;
-    the paired death-sound gate and shadow-creation observers establish that
-    sound completion starts this lead. Driver-clock queries also
-    expose different batching during the level-six music gate; causal clock
-    replay passes its unchanged-value control but fails to reproduce the native
-    schedule. Paired queued timestamps and delivery observations now establish
-    that both inputs differ; the invalid pre-intervention and exhausted-response
-    controls remain failures. Finish the per-route closure audit of the other
-    early exits and terminal RNG
-    differences before removing this item.
-    Acceptance (D18): verify the causes and gameplay effects against the
-    original, accept established timing-dependent differences, and fix service
-    defects. Identical frame-by-frame outcomes are not required. Check the other
-    ports before service changes; keep diagnostics opt-in and release ordinary.
-
 22. **Revalidate accelerated timing with the corrected emulator clock.** The
     retained item-19 68030 profiler uses cycle unit 32 at requested 50 MHz,
     instead of the corrected integer unit 36. The legacy native emulator also

@@ -591,6 +591,7 @@ segment,offset,name,evidence,notes
 10,0x0EC4,DrawTempUpPlate_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 10,0x0F4C,DrawTempPosts_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 10,0x122E,DrawTempTorch_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
+10,0x12B6,TempGetTorchFrame,DERIVED,Calls Random through A5+12E2 at return offset 12C6; observed in the final level-thirteen waiting frames
 10,0x12E4,TempGetTorchFrame_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 10,0x13B6,TempVisibleTorch_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 10,0x1646,ATMSlideRock_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point

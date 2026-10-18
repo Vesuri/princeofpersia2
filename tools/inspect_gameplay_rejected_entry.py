@@ -12,7 +12,7 @@ from check_gameplay_restart import paired_frame
 from gameplay_assisted_inputs import metadata
 
 
-def inspect(native, reference, manifest):
+def inspect(native, reference, manifest, *, terminal_rng=None):
     _, points, _, labels = metadata(reference, manifest)
     log = (native / 'gdb-out.log').read_text()
     assert log.count('CORE REASON GAMEPLAY ROUTE / FIRST FRAME\n') == 1, 'ENTRY / FAILURE OWNER'
@@ -51,13 +51,21 @@ def inspect(native, reference, manifest):
     original = (reference / (labels[-1]+'-a5.bin')).read_bytes()
     assert len(actual) == len(original) == 22266, 'ENTRY / A5 EXTENT'
     for distance, size in ((0x5208,372),(0x18fc,4),(0x4fd2,2),(0x4fc2,2)):
-        assert actual[-distance:-distance+size] == original[-distance:-distance+size], 'ENTRY / FINAL GAME STATE'
+        if distance == 0x18fc and terminal_rng is not None:
+            assert level == 9 and room == 10, 'ENTRY / TERMINAL RNG SCOPE'
+            assert int.from_bytes(actual[-distance:-distance+size], 'big') == terminal_rng['native_seed'], 'ENTRY / VERIFIED NATIVE RNG'
+            assert int.from_bytes(original[-distance:-distance+size], 'big') == terminal_rng['original_seed'], 'ENTRY / VERIFIED ORIGINAL RNG'
+            assert frames == terminal_rng['native_transition'] and final[0] == terminal_rng['original_transition'], 'ENTRY / VERIFIED RNG TIMING'
+        else:
+            assert actual[-distance:-distance+size] == original[-distance:-distance+size], 'ENTRY / FINAL GAME STATE'
     assert int.from_bytes(actual[-0x349a:-0x3498],'big') == step, 'ENTRY / ACTUAL STEP'
     assert int.from_bytes(original[-0x349a:-0x3498],'big') == final[0], 'ENTRY / ORIGINAL STEP'
     report = dict(route_accepted=False, preceding_checkpoints=len(rows),
                   next_level=level, next_room=room, native_frames=frames,
                   original_frames=final[0], native_keys=keys, original_keys=final[3],
-                  endpoint_pixels_palette_context_actors_rng_match=True)
+                  endpoint_pixels_palette_context_actors_rng_match=terminal_rng is None)
+    if terminal_rng is not None:
+        report['verified_terminal_rng_difference'] = terminal_rng
     (native / 'rejected-entry-comparison.json').write_text(json.dumps(report,indent=2)+'\n')
     print(json.dumps(report,sort_keys=True))
     return report
