@@ -101,6 +101,38 @@ no new fast-entry ABI or complete display-correctness claim is made. Source
 patch, frozen executable, capture, reports and endpoint comparison are retained
 under `tmp/` and pinned in `manifest/performance-68020-pixel-query.sha256`.
 
+### Rejected forward-RLE C pilot (item 15)
+
+The original PaintRLE block (CODE 17+$5842..$5917) is already assembly.
+An isolated authored C++ decoder using shared BigEndianMemory, earlier longword
+fill/copy thresholds and one clipping calculation per encoded run passes
+2,048 original-instruction/native cases in `tmp/rle-pilot-native-vl0gdyd5`.
+The 64 pinned forward-RLE calls come from the landing census; each exercises
+all 32 incoming CCR values. Full framebuffer bytes, 48 bytes of frame locals
+and arguments, all 15 registers, return CCR and SP agree. The contract is
+restricted to these positive dimensions and nonoverlapping input/output.
+This is execution of original instructions on the native test machine, not a
+new Macintosh reference fixture or a general replacement qualification.
+
+MEASURED: standalone calibrated-68020 A/B/B/A execution of the same 64-call
+batch, repeated 32 times per sample, takes **89.637/89.645 ms** with the original
+and **158.953/158.957 ms** with the candidate. ReadEClock reports 709,379 Hz
+throughout. The replacement costs **1.773 times** the original. This includes
+the identical invocation/setup harness, excludes framebuffer initialization,
+and does not measure in-game cadence. There is no justification for game
+integration: the C++ pilot is rejected and the production renderer is unchanged.
+Vette's guarded row-loop replacement and both ports' existing memory helpers
+were inspected; the pilot reuses the shared memory operations and native wrapper
+fixture. No shared implementation or other port was changed.
+
+Two earlier setup attempts are retained as failures: `f5n9a19s` supplied invalid
+D0 upper bits, and `fg7ed_mc` placed the synthetic stack across the C callee's
+input frame. Both were stopped through their recorded shared-helper PID.
+The final fixture supplies the original post-SwapMMUMode D0 state and a stack
+below the input frame, outside the framebuffer. Only its explicit 2,048-case
+completion is a pass. Source, inputs, failed setups and final timing are ignored
+and pinned by `manifest/performance-68020-rle-pilot.sha256`.
+
 ### Guarded drawing-service entries (item 15)
 
 Nine drawing services now use Alone in the Dark's guarded C-bridge/Pascal
