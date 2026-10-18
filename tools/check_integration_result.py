@@ -21,18 +21,25 @@ def crop(data):
     return b''.join(data[y*640+65:y*640+577] for y in range(48, 432))
 
 
+def normalized_reference_a5(raw):
+    data = bytearray(raw)
+    require(len(data) == 22266, 'REFERENCE A5 EXTENT')
+    # Original cursor-idle TickCount and TMTask countdown.
+    for distance in (0x53aa, 0x7aa):
+        data[-distance:-distance+4] = bytes(4)
+    # The shared file PB at A5-0xb9a retains the high word of ioVLsMod
+    # (PB+34) after HGetVInfo. SetFPos clears its low word. This is host
+    # volume metadata, not game state; check_reference_file_scratch.py
+    # verifies the original call/return provenance and exact two-byte scope.
+    data[-0xb78:-0xb76] = bytes(2)
+    return bytes(data)
+
+
 def reference_state(reference):
     result = [frames(reference)]
     for name, digest in pins(ROOT/'manifest/integration-reference.sha256').items():
         if name == 'first-room-a5.normalized.bin':
-            data = bytearray((reference/'first-room-a5.bin').read_bytes())
-            require(len(data) == 22266, 'REFERENCE A5 EXTENT')
-            # DERIVED: CODE 2+3a60/3a64 stores cursor-idle TickCount here.
-            # CODE 21+6a62/6a66/6a68 reads the TMTask tmCount at the second site.
-            # MEASURED: only these timing words differ between paired routes.
-            for distance in (0x53aa, 0x7aa):
-                data[-distance:-distance+4] = bytes(4)
-            data = bytes(data)
+            data = normalized_reference_a5((reference/'first-room-a5.bin').read_bytes())
         else:
             require(name == 'first-room-context.bin', 'REFERENCE INPUT NAME')
             data = (reference/name).read_bytes()

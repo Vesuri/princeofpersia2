@@ -115,11 +115,39 @@ checks are identical in fresh and reuse modes. Missing Space consumption, mismat
 pixel mismatch, or missing route completion fails the gate.
 
 The fresh integration references leave the opening uninterrupted. The reference
-A5 hash uses a virtual `first-room-a5.normalized.bin`: the raw snapshot with only
-its four-byte cursor-idle timestamp (A5−0x53aa) and Time Manager countdown
-(A5−0x7aa) zeroed. DERIVED from CODE 2+3a60/3a64 and CODE 21+6a62/6a66/6a68;
-MEASURED repeated original runs differ only in these timing fields. Raw captures
-remain intact. Room context, RNG, pixels and colour entries are not normalized.
+A5 hash uses a virtual `first-room-a5.normalized.bin`: the raw snapshot with
+its four-byte cursor-idle timestamp (A5−0x53aa), Time Manager countdown
+(A5−0x7aa), and two-byte volume-date residue (A5−0x0b78) zeroed. The timing
+fields are DERIVED from CODE 2+3a60/3a64 and CODE 21+6a62/6a66/6a68.
+The original File Manager observation below establishes the date residue.
+Raw captures remain intact. Room context, RNG, pixels and colour entries are
+not normalized.
+
+### Original file-parameter-block residue (item 16)
+
+MEASURED: `item16-file-scratch-2` reaches first-room with the existing read-only
+File Manager observer. Its last HGetVInfo call on the global parameter block
+at A5−0x0b9a is call 82. The returned volume modification timestamp at PB+34
+leaves its high word at A5−0x0b78. Subsequent SetFPos calls clear the low word
+at PB+36, while preserving that high word. All 45 subsequent seeks and the
+first-room snapshot retain it. CODE 21+2368 prepares this shared block for
+SetFPos and reads the resulting position at PB+46; its retained volume date
+is not a game-state field.
+
+The fresh snapshot differs from `20261015-151738-f9137e07` only at A5−0x0b77;
+the value changes from F6 to FA. First-room pixels, displayed palette and full
+context match exactly. Both match `integration-natural-title-1` after the two
+existing timer normalizations and the newly established two-byte residue.
+The old normalized pin (`d16eea0194a4796aab3ff8d7da58cf2b9fbdda9df0f37526da297b30e0b00606`)
+correctly rejected the changing metadata; that failure is not a gameplay
+divergence. The raw inputs and original call/return evidence are pinned in
+`manifest/integration-file-scratch.sha256`.
+
+`tools/check_reference_file_scratch.py` requires the completed original scene,
+successful call returns, date provenance, preserved residue across every later
+file call on that block, and matching state/pixels/palette against the baseline.
+Six corruption controls retain sensitivity to neighbouring bytes, RNG, actors
+and level state. Only the two proven residue bytes are newly normalized.
 
 ## Measured service contracts
 

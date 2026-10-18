@@ -45,11 +45,9 @@ Items remain open until their acceptance gates pass.
     avoid those copies. Evidence and exact run/manifest identities are in
     `docs/gameplay-coverage.md`. Item 12's owner-authorized acceptance is not
     an exact-match result: preserve failed strict reports and named guards.
-    A fresh item-19.1 integration reference (`20261015-151738-f9137e07`) also
-    fails its existing A5 pin at byte A5−0B77 (F3 versus F6), outside the two
-    already normalized clock words; first-room pixels, palette and context match.
-    Keep the failed pin check and establish that byte's role before changing
-    normalization. The 19.1 regression uses the documented pinned-reference mode.
+    The first-room A5−0B77 discrepancy is resolved as volume-date residue in
+    a reused File Manager parameter block; original call/return provenance and
+    narrowly scoped normalization are documented in `docs/native-integration.md`.
     Acceptance: explain and resolve the differences with original-paired
     evidence, including any effects on gameplay decisions. Check the other
     ports before service changes; keep diagnostics opt-in and release ordinary.

@@ -1034,6 +1034,7 @@ segment,offset,name,evidence,notes
 21,0x0086,fileQuit_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 21,0x0140,fileGetOSError_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 21,0x1780,fileGetError_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
+21,0x2368,FileSeekSharedParameterBlock,DERIVED,Prepares A5-0B9A for SetFPos and returns PB+46; original item16-file-scratch-2 retains volume-date high word at PB+34
 21,0x2990,__ct__8fileSpecDv_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 21,0x29B6,__dt__8fileSpecDv_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 21,0x2A26,__ct__8fileSpecDPCc_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
