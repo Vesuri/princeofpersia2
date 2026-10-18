@@ -7,6 +7,7 @@ extern "C" volatile unsigned long pop2WHDLoadBinding[4];
 #include <exec/memory.h>
 #include "CoreRuntime.h"
 #include "SaveRectPatch.h"
+#include "BankSkipPatch.h"
 #include "mac/VideoTicks.h"
 #include "mac/BigEndianMemory.h"
 #include "mac/BlockMoveBytes.h"
@@ -532,6 +533,8 @@ bool relocate(int16_t segment,uint8_t* code,uint32_t size) {
 #endif
     if(segment==17 && !SaveRectPatch::install(code,size,(uint32_t)pop2SaveRectRow))
         return fail("RENDER / SAVERECT ORIGINAL BYTE MISMATCH");
+    if(segment==17 && !BankSkipPatch::install(code,size))
+        return fail("RENDER / BANK SKIP ORIGINAL BYTE MISMATCH");
     flushCode();return true;
 }
 Resource* byHandle(MacHeap::Handle h) {

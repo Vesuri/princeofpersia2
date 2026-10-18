@@ -63,6 +63,46 @@ percentage speedup or all-scene frame rate.
 
 ## 68020 evaluation (item 15)
 
+### Guarded transparent-run skip
+
+MEASURED: the installed BankRLELR patch replaces the transparent-run pointer
+loop with one count-based adjustment, leaving decoding, bank colours and all
+writes in the original routine. `BankSkipPatch.h` guards the complete inner
+block (CODE 17+$0090–$013F) before changing eight bytes at +$010E. The guard
+runs during segment relocation, including verification-mode code audits, and
+retains a named loud stop for mismatches. It adds no per-frame verification.
+The original MOVEM restore and continuation preserve the tested block-boundary
+register/CCR contract. Positive clipped widths bound the skip count to 0–127;
+malformed-stream and invalid-dimension behavior is not claimed by the fixture.
+
+The 1,468 Macintosh/native cases and 38 corruption controls described below
+pass. `tools/check_bank_skip_patch.cpp` checks that the installed bytes exactly
+match that paired candidate and that surrounding bytes remain unchanged;
+1,412 bit-corruption, short-extent and duplicate-install controls reject without
+mutation. Existing donor guard patterns were inspected; this is a game-specific
+patch, with the shared endian helper and existing fixture/launch infrastructure.
+
+Repeated calibrated profiles `item15-bank-skip-020-a/b` (`.run-TvqCJv` and
+`.run-HGOwKQ`) measure **251.04/251.17 ms per landing frame**, versus
+253.07/253.30 ms for the retained changed-row build. Both take **532 PAL fields**
+(previously 537), with 56/82 requested intervals late. All 82 baseline player
+records and endpoint images match; same-build repeatability passes. Flat
+BankRLELR cost falls from 6.90 to 5.13 ms/frame in run A. Inclusive call-tree
+costs remain unverified. The strict original comparison still rejects the extra
+death-phase request, and the 83.3 ms landing cadence gate remains unmet.
+
+The stopped capture `.run-58WKPZ` checks 122 positive bounded BankRLELR calls
+and observes the installed transparent path. All **82 game-frame boundaries**
+match `.run-oNlGlt`: complete viewport/planar pixels, copper palette, colour
+table and 64-byte player record, including 21 frames without publication.
+Eight evidence-corruption controls pass. First-room pixels, planes, palette,
+copper, RNG and curated context match the pinned Macintosh reference. This
+profile-mode restoration has no heap audit; the stopped capture supplies no
+performance claim. `make release` passes; the frozen ordinary executable SHA-256
+is `f0b28161eca1a8a2e35dd7735a4828533af9b751f08ef0604946d93c47e62278`.
+`manifest/performance-68020-bank-installed.sha256` pins the builds, captures,
+checks and the extra live-caller observer. Item 15 remains open.
+
 ### Shared changed-row screen copies
 
 MEASURED: the current screen CopyBits path uses AmigaXDev's optional change
@@ -130,18 +170,15 @@ records and endpoint images match. This small single-run result is unqualified;
 it has no full frame-boundary or repeated timing gate and is removed. Production
 allocation and addresses remain unchanged.
 
-MEASURED: the retained build's flat PCs charge 1.94 ms per landing frame to
+MEASURED: the pre-patch build's flat PCs charge 1.94 ms per landing frame to
 `BankRLELR`'s pointer decrement/DBRA transparent-run loop at CODE 17+$010E.
-An ignored eight-byte candidate replaces that loop with a count-based pointer
-adjustment. The whole original inner block and candidate pass 448 paired native
+The eight-byte replacement uses a count-based pointer adjustment. The whole original inner block and candidate pass 448 paired native
 cases (14 captured calls × 32 initial CCR values) in
 `tmp/bank-skip-native-k73rqdr3`: complete framebuffer, 56 frame/argument bytes,
 15 registers, CCR and stack output agree. The candidate changes scratch D5 high
 bits and transient flags inside the loop; the original enclosing block restores
 D5 and overwrites the flags before its exit. This is evidence at the full-block
-boundary, not a claim that intermediate register states are identical. Guarded
-installation and matched game timing remain required.
-No game patch is installed and no candidate speedup is claimed. Curated names are in `disasm/symbols.csv`;
+boundary, not a claim that intermediate register states are identical. The guarded installation and matched game measurements are described above. Curated names are in `disasm/symbols.csv`;
 `manifest/performance-68020-dispatch-render-candidates.sha256` pins the captures,
 prototype and input identities. The verified ordinary release is restored.
 
@@ -156,7 +193,8 @@ completion signals and calibrated machine metadata pass. Inputs, sources,
 binaries and evidence are pinned in
 `manifest/performance-68020-bank-boundaries.sha256`. These positive-width
 cases do not establish behavior for malformed streams or invalid dimensions,
-and they do not independently establish Macintosh equivalence. Production is unchanged.
+and they do not independently establish Macintosh equivalence; the actual
+Macintosh pairing follows below.
 
 MEASURED: actual System 7.5.5 Macintosh pairing now passes all 1,468 cases
 (`ref/mame/runs/item15-bank-skip-paired-1` versus
@@ -169,7 +207,7 @@ image; this is lossless, not a framebuffer hash or sampled-pixel check. Only
 allocation-dependent addresses are normalized. All 38 evidence-corruption
 controls reject, including registers, flags, locals, pixel positions/values and
 truncated/extended output. Both emulators report positive completion and stop.
-The host suite passes; the release executable remains unchanged.
+The host suite passes. Installed-game validation is recorded above.
 
 `tools/build_bank_skip_fixture.py` reproduces the six fixture inputs byte for
 byte from the pinned original resource and captured calls. Inputs and evidence
@@ -186,8 +224,8 @@ python3 tools/run_wrapper_fixture.py tmp/item15-bank-skip-boundaries \
 ```
 
 Fresh captures need their own evidence pins before `tools/check_bank_skip.py`
-accepts them. No candidate game speedup is claimed: installation guards, live
-caller checks and matched game timing remain outstanding.
+accepts them. These isolated fixtures supply correctness evidence; installed
+game speed comes from the matched measurements above.
 
 ### Bounded sprite-cache feasibility
 

@@ -13,9 +13,9 @@ Items remain open until their acceptance gates pass.
     Macintosh/native cases, full memory/register/CCR comparisons, rejection
     controls and two matched opening runs. Inactive copper palette reuse also
     passes original-table checks across 82 publications and a palette-only change probe.
-    The callback/dispatch shortcuts, shared saved-register copy, guarded HUnlock entry, shared Kalms kernel, nine drawing quick entries and shared changed-row screen copies bring
-    the current runs to 537/537 PAL fields (baseline 660), with 57 of 82 requested intervals late. Landing takes
-    253.07–253.30 ms/frame against the 83.3 ms request. Both retain all baseline
+    The callback/dispatch shortcuts, shared saved-register copy, guarded HUnlock entry, shared Kalms kernel, nine drawing quick entries, shared changed-row screen copies and guarded BankRLELR transparent skips bring
+    the current runs to 532/532 PAL fields (baseline 660), with 56 of 82 requested intervals late. Landing takes
+    251.04–251.17 ms/frame against the 83.3 ms request. Both retain all baseline
     player records and first-room/death pixels, but still have an extra death-phase
     frame relative to the original. Cadence acceptance is not met.
     The retained VBL and Time Manager fixtures pass with 13 and 12 rejection controls.
@@ -45,8 +45,9 @@ Items remain open until their acceptance gates pass.
     A bounded BankRLELR transparent-run replacement passes 1,468 paired
     Macintosh/native-original/native-replacement cases, including all run lengths
     1–128, clipping and mixed transparent/opaque rows, plus 38 rejection controls.
-    It still needs byte-guarded installation and matched game timing. The dispatcher
-    split and framebuffer-alignment experiments are removed; neither is a qualified
+    The installed eight-byte patch also passes 1,412 guard rejection controls,
+    122 bounded live callers, all 82 frame-boundary comparisons and repeated
+    matched timing; the release is restored. The dispatcher split and framebuffer-alignment experiments are removed; neither is a qualified
     production gain. Evidence is in performance.md.
     Next target broader full-dispatch overhead and hot rendering/conversion work;
     the remaining gap cannot be closed by small handle shortcuts alone. Keep
