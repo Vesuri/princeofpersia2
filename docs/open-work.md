@@ -63,6 +63,8 @@ Items remain open until their acceptance gates pass.
     candidate slot. Two matched runs, all 82 frame boundaries, original-paired
     resource/startup fixtures and eight resource rejection controls pass; the
     ordinary release is restored. This saves about 2 ms, not the remaining gap.
+    A short saved-register copy assembly-loop pilot is also removed: 249.28 ms
+    landing shows no useful gain against the retained pair (performance.md).
     Next target broader full-dispatch overhead and hot rendering/conversion work;
     the remaining gap cannot be closed by small handle shortcuts alone. Keep
     equivalent rendering replacements available under D16.

@@ -154,6 +154,23 @@ the complete reference, without changing verifier requirements. Host tests pass.
 `manifest/references.tsv` identifies the shared commit. This bounded change
 is not completion of item 15 or a new all-level gameplay qualification.
 
+### Rejected short-copy loop pilot
+
+MEASURED: the dispatch instruction profile exposes repeated pointer spills
+around the short saved-register copy loop. Vette and Alone in the Dark's entry
+paths and the shared copy helper were inspected. Moving the remaining 1–31
+longwords into a bounded assembly loop preserves the host's 28,388 overlap/
+alignment/canary cases, but the calibrated `item15-short-copy-020-a` pilot
+(`.run-T9EN52`) takes **249.28 ms per landing frame**, against retained
+249.14/248.91 ms. All 82 player records and endpoint screens/palette match;
+phase-state/stall repeat checks pass. This one run establishes no useful gain.
+It is rejected without native assembly-fixture or full-frame qualification;
+production source and shared pins are restored. The ordinary release reproduces
+`2098779d…`. No canonical shared helper is changed.
+`manifest/performance-68020-short-copy-pilot.sha256` pins the local patch,
+profile, source instruction annotations and comparison reports. This does not
+supply a route to the remaining cadence target.
+
 ### Guarded transparent-run skip
 
 MEASURED: the installed BankRLELR patch replaces the transparent-run pointer
