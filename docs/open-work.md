@@ -53,6 +53,9 @@ Items remain open until their acceptance gates pass.
     dispatch/rendering/presentation groups would still leave about 89 ms/frame.
     This is an arithmetic scenario, not a lower-bound proof; no sufficient
     implementation plan is established yet. The cadence gate remains unchanged.
+    Residual profiling finds no single hidden large cost. GetObject/CalcBlue
+    arithmetic is a possible small rendering candidate (6.32 ms/frame combined
+    total cost), recorded without starting another narrow rewrite.
     Next target broader full-dispatch overhead and hot rendering/conversion work;
     the remaining gap cannot be closed by small handle shortcuts alone. Keep
     equivalent rendering replacements available under D16.

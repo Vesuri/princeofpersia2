@@ -1162,3 +1162,5 @@ segment,offset,name,evidence,notes
 17,0x5660,PaintRLELR,DERIVED,Original procedure name at 0x57A8; reversed RLE drawing
 17,0x57B6,PaintRLE,DERIVED,Original procedure name at 0x5926; forward RLE drawing
 17,0x010E,BankRLELR_TransparentSkip,DERIVED,Pointer-only transparent-run loop; reached in the measured opening workload
+5,0x0470,GetObject,DERIVED,LINK entry preceding measured GetObject MacsBug name; selects object values from tables and context
+5,0x0004,CalcBlue,DERIVED,LINK entry preceding measured CalcBlue MacsBug name; updates two A5-relative table pointers

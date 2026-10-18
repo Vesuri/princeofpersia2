@@ -86,6 +86,23 @@ three calls per landing frame, limiting the value of another entry shortcut.
 `manifest/performance-68020-feasibility.sha256` pins the ledger and its source;
 the underlying matched captures remain pinned in the installed-bank manifest.
 
+The residual ledger is also stable across both runs: 47.67 ms of original
+code, 12.87 ms of other native work, 9.14 ms of memory management, about 6 ms
+of audio, 4.22 ms of timing/VBL/interrupt work, roughly 3.5 ms of exception gaps,
+2.32 ms of file/resource work and 2.22 ms of input. The largest individual
+residual functions are the original music VBL task (5.63 ms), native resource
+`get` (4.67 ms), original `GetObject` (4.24 ms), heap coalescing (3.42 ms) and
+VBL selection (3.18 ms). There is no single unexamined residual function whose
+removal approaches the remaining 168 ms deficit.
+
+DERIVED: `GetObject` and `CalcBlue` contain full-width multiplication sequences
+for word-sized table indices. Their original entry names are now curated in
+`disasm/symbols.csv`. Equivalent arithmetic is a possible small rendering
+candidate, but these complete functions together cost only 6.32 ms/frame;
+no replacement is implemented or speedup claimed. This finding does not supply
+a broader route to the cadence gate. `manifest/performance-68020-residual.sha256`
+pins the disjoint per-function ledger and ignored inspection material.
+
 ### Guarded transparent-run skip
 
 MEASURED: the installed BankRLELR patch replaces the transparent-run pointer
