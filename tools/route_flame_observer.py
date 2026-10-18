@@ -4,7 +4,7 @@ from extract_original_data import ROOT, DESTINATION, verify_output
 import trap_census
 
 
-def generate(events=False):
+def generate(events=False, observe=True):
     verify_output(DESTINATION)
     trap_census.load(DESTINATION/'Prince of Persia 2.rsrc')
     script = (ROOT/'amiga/gameplay_route.gdb').read_text()
@@ -26,7 +26,7 @@ end
 end
 set $flamebase=g_coreSegments[10][0]
 '''
-    for offset in (() if events else (0x2cc2, 0x2d48)):
+    for offset in (() if events or not observe else (0x2cc2, 0x2d48)):
         word = int.from_bytes(trap_census.CODE[10][offset:offset+2], 'big')
         setup += f'''if *(unsigned short*)($flamebase+0x{offset:x})!=0x{word:x}
  echo FLAME OBSERVER / ORIGINAL BYTES\\n

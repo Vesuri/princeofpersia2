@@ -38,8 +38,9 @@ Items remain open until their acceptance gates pass.
     ambient-audio RNG timing; level-three wall-torch animation and final-entry
     actor slot 0; level-four animation/context, RNG and late actor slots 3/4;
     and level-thirteen altar flame/context and RNG differences. The player
-    record matches the recorded level-three entry and all level-four captures;
-    the gameplay relevance of the other actor differences is not established.
+    record matches the recorded level-three entry and all level-four captures.
+    Original counterfactuals establish gameplay effects on actor position,
+    animation and persistent skeleton timers; these are not rendering scratch.
     Keep the earlier invalid opponent-record copies in the level-six/eight
     discovery routes as separate failed controls; the accepted alternate routes
     avoid those copies. Evidence and exact run/manifest identities are in
@@ -51,21 +52,28 @@ Items remain open until their acceptance gates pass.
     New causal fixtures tie the first level-three torch mismatch and the later
     slot-0 position/animation decision to the shared RNG stream. A level-four
     seed-only fixture fails and remains a control. Level-six observers identify
-    the music-completion gate, but its clock/scheduling cause remains unresolved.
+    the music-completion gate and separate earlier note enqueue timestamps from
+    shorter delivery delays on the native driver.
     These findings do not close the other routes or waive strict comparisons.
     The 0x2200-byte context snapshot omits most persistent per-room opponent
     records. Aligning five persistent skeleton timers as well as seed/context
-    reproduces the level-four actor, RNG and frame endpoint on the original;
-    the upstream scheduling cause remains open. Flame observations show the
+    reproduces the level-four actor, RNG and frame endpoint on the original.
+    The common 2,952-draw RNG sequence, shifted ambient caller and randomized
+    skeleton countdowns explain the first persistent timer mismatch.
+    Flame observations show the
     shadow sequence running one step ahead for 80 consecutive paired states;
-    the initial difference precedes that window. Driver-clock queries also
+    the paired death-sound gate and shadow-creation observers establish that
+    sound completion starts this lead. Driver-clock queries also
     expose different batching during the level-six music gate; causal clock
     replay passes its unchanged-value control but fails to reproduce the native
-    schedule. Both the TickCount-based enqueue timestamps and the driver-based
-    delivery clock need paired observation; the invalid pre-intervention and
-    exhausted-response controls remain failures.
-    Acceptance: explain and resolve the differences with original-paired
-    evidence, including any effects on gameplay decisions. Check the other
+    schedule. Paired queued timestamps and delivery observations now establish
+    that both inputs differ; the invalid pre-intervention and exhausted-response
+    controls remain failures. Finish the per-route closure audit of the other
+    early exits and terminal RNG
+    differences before removing this item.
+    Acceptance (D18): verify the causes and gameplay effects against the
+    original, accept established timing-dependent differences, and fix service
+    defects. Identical frame-by-frame outcomes are not required. Check the other
     ports before service changes; keep diagnostics opt-in and release ordinary.
 
 22. **Revalidate accelerated timing with the corrected emulator clock.** The

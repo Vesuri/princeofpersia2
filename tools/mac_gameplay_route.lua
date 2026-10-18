@@ -108,6 +108,14 @@ local function capture(reason)
 end
 function M.map(seg,base,guard,condition)
  bases[seg]=base
+ if os.getenv('POP2_ROUTE_SHADOW_GATE')=='1' and (seg==4 or seg==10) then
+  local offsets=seg==4 and {0x3c68,0x3c76,0x3c96} or {0x2b14}
+  for _,offset in ipairs(offsets)do
+   guard(seg,base,offset,2)
+   cpu.debug:bpset(base+offset,condition..' && w@(a5-0x4fd2)==0xd && w@(a5-0x349a)<=0xa0',
+    string.format('logerror "SHADOW_GATE segment=%d site=%04X step=%%04X result=%%04X cue1=%%04X cue2=%%04X\\n",w@(a5-0x349a),d0&0xffff,w@(a5-0x439a),w@(a5-0x4398);g',seg,offset))
+  end
+ end
  if seg==11 and clockFixture then
   -- Reuse the donor debugger-action pattern to avoid pausing at each query.
   -- Exact recorded key reads below keep the input experiment controlled.

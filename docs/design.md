@@ -81,6 +81,13 @@ is not an established fact. Item 14 and corrected-clock item 22 remain required.
 
 ## Faithfulness boundary
 
+D18 (owner-authorized item-16 acceptance): accept timing-dependent gameplay
+differences once their causes and gameplay effects are verified against the
+original. Fix service defects found during that investigation. Closure does not
+require identical frame-by-frame outcomes or authorize changing original game
+decisions to force a match. Retain strict comparison failures and their evidence;
+unexplained differences and unverified causes do not qualify under this decision.
+
 The original Macintosh execution under the D2 reference is the correctness reference.
 Preserve game logic, data interpretation and decisions. The owner authorizes byte-verified low-memory address relocations while preserving
 original instruction lengths and startup logic. Port-owned services handle

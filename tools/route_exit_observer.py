@@ -7,7 +7,8 @@ import trap_census
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def generate(audio=False, random=False, opponents=False):
+def generate(audio=False, random=False, opponents=False, music_time=False):
+    assert not music_time or audio, 'MUSIC TIME / AUDIO OBSERVER REQUIRED'
     verify_output(DESTINATION)
     trap_census.load(DESTINATION/'Prince of Persia 2.rsrc')
     script = (ROOT/'amiga/gameplay_route.gdb').read_text()
@@ -98,6 +99,14 @@ commands
  continue
 end
 '''
+    if music_time:
+        marker = ' if $route_audio_selector==9 || $route_audio_selector==12 || $route_audio_selector==17\n'
+        assert setup.count(marker) == 1
+        setup = setup.replace(marker, ''' if $route_audio_selector==9 || $route_audio_selector==12
+  set $route_note_packet=*(unsigned long*)($sp+8)
+  printf "ROUTE_NOTE_TIME selector=%u due=%08X origin=%08X\\n",$route_audio_selector,*(unsigned long*)($route_note_packet+10),*(unsigned long*)(g_coreA5-0x11d4)
+ end
+'''+marker)
     return script[:-len('continue\n')]+setup+'continue\n'
 
 
@@ -107,5 +116,6 @@ if __name__ == '__main__':
     parser.add_argument('--audio', action='store_true', help='Observe the owned audio veneer return without guest instrumentation')
     parser.add_argument('--random', action='store_true', help='Observe original RNG returns during level four without guest instrumentation')
     parser.add_argument('--opponents', action='store_true', help='Capture the persistent per-room opponent records at checkpoints')
+    parser.add_argument('--music-time', action='store_true', help='With --audio, observe queued note timestamps and their TickCount origin')
     args = parser.parse_args()
-    args.output.write_text(generate(args.audio, args.random, args.opponents))
+    args.output.write_text(generate(args.audio, args.random, args.opponents, args.music_time))

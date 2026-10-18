@@ -8,7 +8,8 @@ routes, not a claim of one uninterrupted unassisted playthrough.
 
 D12 accepts the recorded one- or two-frame exit differences and remaining
 level-3/4/13 animation, RNG and non-player actor-slot differences for this item;
-item 16 retains their investigation, including unknown gameplay implications.
+item 16 retains their investigation. D18 accepts timing-dependent differences
+once their causes and gameplay effects are verified; service defects must be fixed.
 The strict diagnostic reports deliberately remain failed (`route_accepted:
 false` where present). Their captured next-level entries are positive exit
 evidence; an entry obtained solely by a level cheat is not exit evidence.
@@ -31,7 +32,8 @@ skeleton decisions read words +28/+30/+34 from these persistent records for
 timing and shaking state. Equality of the six active actor records and the 0x2200-byte context
 therefore does not establish equality of all AI state. Item 16's opt-in
 `POP2_ROUTE_OPPONENT_STATE` / `--opponents` observations capture that bounded
-table separately; its comparison remains in progress.
+table separately; the paired timer fixture below establishes its role in the
+late actor differences.
 
 ## Closure audit
 
@@ -181,6 +183,26 @@ note-on calls ranges from -1 to 2 (28/93/69/4 calls respectively).
 corrupted origin. These are delivery-call observations, not enqueue timestamps.
 The native trace lacks corresponding TickCount samples, so the relative phase
 has not yet been paired and is not an established cause of the exit offset.
+
+MEASURED: native `.run-YvbwCb` adds read-only queued-timestamp observations
+to the same diagnostic executable as `.run-eNDhoJ`. It preserves all 24
+preceding checkpoints, the complete matching entry state and the rejected
+331-versus-333 exit. Both versions deliver the same 194 note-on packets and
+194 note-off packets. The note-on enqueue spans are 960 original / 956 native
+ticks; note-off spans are 1084 / 1079. Original delivery is zero to two ticks
+after each queued deadline; native delivery is zero to one. Relative to the
+last clock query before the initial stop, the final note-off is due at
+1114 / 1105 and delivered at 1116 / 1105. Both subsequent stop requests
+observe a clock query eight ticks beyond that final delivery. Thus different
+timestamps already exist before delivery; changing only driver-clock queries
+cannot reproduce the complete scheduling input. The stop-query spans in this
+run are 1124 / 1113; the earlier native run observed 1116, while both enter at
+frame 331. These are scoped query observations, not calibrated wall-clock
+performance measurements. `check_gameplay_note_timestamps.py` checks both
+request streams, deadlines, original/native exit gates, preceding/entry state
+and missing/corrupt-timestamp controls. The new native manifest pins the run.
+The first attempt `.run-QvZ6AU` failed when sandbox policy blocked the debugger
+listener; it contains no gameplay checkpoint and is not comparison evidence.
 
 MEASURED: current verification replay `.run-NeChbT` retains the two level-one
 RNG differences at checkpoints 64 and 90. All 95 preceding checkpoints match
@@ -1015,7 +1037,8 @@ in the RNG sequence itself or equivalence of subsequent actor decisions.
 Two missing/altered-evidence controls reject, and
 `manifest/gameplay-item16-random-window.sha256` pins the inputs. The native
 run retains its failed level-four entry and successful code/input/restoration
-audits. The underlying ambient timing and later actor consequences remain open.
+audits. The causal fixtures below establish the resulting torch and actor
+consequences; this bounded call trace alone does not supply that proof.
 
 MEASURED causal control: `item16-rng-rollback-1` repeats the unchanged original
 through checkpoint 120. At the guarded `PlayAmbient` draw at step 1515, the
@@ -1036,8 +1059,8 @@ checkpoint 134, step 1877. Slot 0 differs in x position and words +10, +36,
 +38 and +40. At checkpoint 133 (step 1865), all six actor records still match
 despite the differing RNG seeds. Both checkpoints place the player and this
 actor in room 17. This is a character-state difference during gameplay, not
-just residual data in the next-level capture; its RNG causality remains to be
-paired separately.
+just residual data in the next-level capture. The paired seed fixture below
+establishes its RNG causality.
 
 ### Assisted entry survey
 
@@ -1528,7 +1551,8 @@ five differing table words are timers: room 27 slot 0 (1/0), and room 28 slots
 0 (5/7), 1 (14/27), 2 (34/12), and 4 (23/29), original/native respectively.
 The first non-timer record differences appear at step 1673. These observations
 explain why the earlier snapshots were insufficient; they do not yet prove
-that the timer differences cause the later actor result.
+that the timer differences cause the later actor result; the timer fixture
+below supplies that causal comparison.
 `tools/check_gameplay_opponent_state.py` verifies the pinned captures, unchanged
 original replay, strict native failure and two malformed-capture controls.
 The two `manifest/gameplay-item16-opponents-*.sha256` files pin this evidence.
@@ -1540,11 +1564,27 @@ writes the active actor records. At step 1673, all six actor records, RNG,
 level/room/step, pixels, planes, palette, captured context and the entire
 persistent opponent table match native. The seed/context-only control above
 fails at this same endpoint. This establishes the missing timers' role in the
-late actor difference; it does not establish the upstream audio scheduling
-cause or accept the whole route. The fixture audits its exact write extent and
+late actor difference. The RNG-trace analysis below identifies the preceding
+ambient caller shift and timer draws; neither accepts the whole strict route. The fixture audits its exact write extent and
 positive endpoint; `manifest/gameplay-item16-actor4-timers.sha256` pins it.
 The initial `item16-actor4-timers-1` preparation failed at host HFS permissions
 before launching the game and provides no gameplay evidence.
+
+MEASURED: the retained opponent observers also contain complete level-four
+RNG traces. All 2,952 native draws have the same seed/result sequence as the
+original prefix. The first 109 calls also match frame and mapped caller.
+At step 67 the next draw goes to original `PlayAmbient` but native
+`CaveGetTorchFrame`; native's ambient draw occurs later. At step 1290,
+`SkelDoneShaking` receives raw draws 52257/43250, original/native.
+DERIVED from CODE 4+1B62..1B78: `Random(30)+15` produces timers 37/20;
+the positive persistent timer is decremented at +1704. Native resets at step
+1311 with raw draw 23607, producing 31. At step 1319 these calculations give
+exactly the captured values 8/23. `check_gameplay_opponent_state.py` now checks
+the mapped callers, entire common draw sequence, timer calculations and two
+additional corrupted-trace controls. Together with the successful original
+timer fixture, this connects the late actor difference to RNG-dependent
+persistent state. Under D18 this is a gameplay-relevant timing consequence,
+not a reason to normalize the actor records or alter the original decisions.
 
 DERIVED: the active-character working record is A5−5056. `AnimChar`
 (CODE 4+2C0C) reads its word +36 as the sequence cursor and +38 as the
@@ -1752,7 +1792,8 @@ the bit-7 shrinking state; the only intervening reset changes state 9 to 133
 at step 229. Current native `.run-7TG1jl` executes the same 613 updates and
 recurrence, but resets state 8 to 133 at step 228. The subsequent animation
 phase differs. CODE 10+29F8 and +2AB4 contain the original writes of 133 to
-context word 0x0914; the cause of the changed reset timing is still unresolved.
+context word 0x0914; the event and sound-gate pairs below establish the
+changed reset timing.
 
 MEASURED: `item16-flame-events-1` repeats the full original route while
 capturing steps 160–240 and both possible reset sites. Its only reset is
@@ -1774,8 +1815,26 @@ DERIVED: CODE 4+3C60/+3C72 waits for both current death-sound cues via
 `PrinceSndOn`; after completion, +3C96 writes 600 to A5−4FCC. `FrameAdv`
 sets A5−4FD4 at CODE 2+685E when that state is present in the altar room.
 CODE 10+2B08 checks this flag and +2B14 creates the shadow. This identifies
-the sound gate preceding the shadow sequence, but does not yet measure the
-initial timing difference between steps 40 and 160.
+the sound gate preceding the shadow sequence; the paired observations below
+measure the initial timing difference between steps 40 and 160.
+
+MEASURED: original `item16-shadow-gate-1` repeats all 28 canonical route
+captures. It waits for the second death-sound cue (188) from step 47 through
+149, commits the completed death state at 149, then creates the shadow at
+150. Native `.run-NeBYwx` begins that same wait at 47 but completes it at 148
+and creates the shadow at 149. Both execute the original branch sequence.
+All 36 preceding native captures and the rejected entry retain the previous
+flame-event run's pixels, captured context, actors, RNG and frame counters;
+the executable is identical. `check_gameplay_shadow_gate.py` verifies the
+complete consecutive sound checks, shadow creation, original repeat, native
+restoration/build identity, baseline captures and two corruption controls.
+The two shadow-gate manifests pin this pair. This closes the chain from
+asynchronous death-sound completion through the one-frame shadow lead to
+the flame reset. D18 accepts that timing consequence without changing game
+decisions or reclassifying the strict route as an exact match.
+The earlier native `.run-lHCZN5` correctly failed its byte guard before any
+shadow observation because the observer armed before CODE 10 was loaded;
+the passing observer uses the established level-thirteen arming checkpoint.
 
 `tools/check_gameplay_flame_window.py` checks these pinned observations,
 the original repeat, native build/restoration audits and two corruption

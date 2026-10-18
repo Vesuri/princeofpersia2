@@ -239,6 +239,9 @@ segment,offset,name,evidence,notes
 4,0x17E4,IsExitChasingSkel_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 4,0x1838,SetSkelShakes_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 4,0x1888,SetSkelTimer_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
+4,0x1704,DecrementPersistentSkeletonTimer,DERIVED,Decrements the positive word at opponent record plus 30 during the original update
+4,0x184A,SetSkelTimer,DERIVED,Stores the caller timer word in the persistent opponent record plus 30
+4,0x1B62,ChooseSkeletonShakeTimer,DERIVED,Calls A5+12E2 Random with 30 then adds 15 before SetSkelTimer; paired RNG draws explain captured timers
 4,0x197C,ShakeBones_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 4,0x1A72,SkelAddOpponent_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 4,0x1B88,SkelDoneShaking_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
