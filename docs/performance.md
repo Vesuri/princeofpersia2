@@ -63,35 +63,54 @@ percentage speedup or all-scene frame rate.
 
 ## 68020 evaluation (item 15)
 
-### Native row-comparison candidate
+### Shared changed-row screen copies
 
-MEASURED: an ignored assembly pilot compares disjoint CopyBits row ends with
-longword operations, copies the differing middle, and reports conservative
-four-byte bounds. It reuses the destination buffer and the earlier sixteen-row
-band planner. The standalone calibrated 68020 fixture
-`tmp/c2p-native-dspkh46c` passes 1,665 cases covering widths 0–640, all source
-and destination byte alignments, unchanged/interior/edge/full changes, zero
-height, source preservation, destination padding, row bounds and callee registers.
+MEASURED: the current screen CopyBits path uses AmigaXDev's optional change
+report and bounded 68020 `CopyChangedRows.inc` body. It compares disjoint row
+ends, copies the differing middle and reports conservative four-byte bounds.
+Sixteen-row bands feed the existing dirty-rectangle planner. No comparison
+framebuffer is allocated. Masked, mapped, scaled and overlapping forms retain
+their existing paths. Viewport changes force a full viewport update; palette
+changes still publish even when pixel rows are unchanged. Diagnostics remain
+opt-in, and ordinary release startup has no added verification work.
 
-Opening pilots `item15-native-row-diff-020-a` and `-b` measure 252.63 and
-252.37 ms per landing frame. B adds SetOrigin viewport invalidation, so these
-are two revisions, not a same-build repeat gate. Both complete all 82 player
-records with baseline endpoint pixels and take 536 PAL fields; 56/57 requested
-intervals remain late. In A, conversion costs 34.58 ms/frame and native row
-comparison/copy costs 13.54 ms/frame. Flat attribution explicitly resolves the
-assembly entry alias; inclusive costs remain unverified.
+The final `item15-shared-row-copy-020-a/b` pair (`.run-qtT8b3` and
+`.run-wOgdGB`) measures **253.07/253.30 ms per landing frame**, versus
+262.52–263.27 ms before this change. Both take 537 PAL fields and retain all
+82 baseline player records and endpoint images. The same-build repeat passes;
+57/82 requested intervals remain late and the strict original comparison still
+rejects the extra death-phase request. Item 15's 83.3 ms landing gate is not met.
+Flat A costs are 34.58 ms conversion, 14.77 ms CopyBits and 13.00 ms other
+presentation per frame. Inclusive costs remain unverified.
 
-The B correctness capture `.run-M3sE4H` completes the route and passes full
-planes and minimum dirty coverage for all 61 actual publications. Its image
-sequence equals the retained 82-publication `.run-SguQrY` baseline after
-removing consecutive identical images. The existing strict publication-count
-gate fails and is retained. This does not yet prove equivalent output at every
-game-frame boundary: capture those boundaries before accepting skipped
-publications. The candidate is preserved under `tmp/item15-native-row-diff/`,
-including its patch and frozen build; production sources are restored. It is
-not yet shared or installed. Evidence is pinned in
-`manifest/performance-68020-native-row-pilot.sha256`. Same-build repeats, frame-boundary comparisons,
-and the applicable service/original gates remain required. Item 15 stays open.
+The shared sanitizer suite passes, including 8,192 clipped copy/report cases
+and insufficient-capacity, missing-callback and overlap fallbacks. The actual
+linked native helper in `tmp/changed-rows-native-hrurys0i` passes 1,666 cases:
+widths 0–640, every source/destination byte alignment, unchanged/interior/edge/
+full changes, zero height, the full 640×480 extent, complete destination and
+padding checks, source preservation, conservative spans and callee registers.
+The reusable API/body are pinned to AmigaXDev commit `ef10397` and installed
+through its shared workflow. Neither donor game tree was modified.
+
+The final frame-boundary capture `.run-oNlGlt` compares with the unchanged
+baseline `.run-i7zWFM` at all **82 game-frame boundaries**, including 21 with
+no pending publication. Every full viewport, decoded planar image, copper
+palette, colour table and 64-byte player record matches. Eight corrupted-evidence
+controls pass. First-room pixels, planes, palette, copper, RNG and curated
+context also match the pinned Macintosh reference
+`ref/mame/runs/integration-natural-title-1`. This profile-mode capture verifies
+restoration without a heap audit; it does not claim a new title or timing gate.
+The earlier strict 82-publication failure is retained: publication count is no
+longer the game-frame count, and the new check compares every game frame instead.
+
+Reproduce the native fixture with
+`python3 tools/run_wrapper_fixture.py tools --kind changed-rows`. Use
+`tools/capture_c2p_bounds.py --frame-boundaries --setup a1200-fast` for stopped
+correctness captures, then `tools/check_frame_boundaries.py RUN --compare BASE`
+and `tools/test_frame_boundaries.py RUN`. These debugger-stopped captures are
+never used for timing. Host tests and `make release` pass.
+`manifest/performance-68020-shared-row-copy.sha256` pins the evidence and frozen
+build; the earlier pilot remains pinned separately.
 
 ### Bounded sprite-cache feasibility
 

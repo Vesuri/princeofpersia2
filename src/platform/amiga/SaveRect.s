@@ -22,3 +22,12 @@ pop2SaveRectRow:
 	movem.l (sp)+,d1/a1
 	cmp.l -8(a6),d0
 	rts
+
+| Shared change-detecting copy for owned screen buffers; original code is untouched.
+	.include "src/mac/CopyChangedRows.inc"
+	.section .text.pop2CopyBitsChangedRows,"ax"
+	.globl pop2CopyBitsChangedRows
+	.type pop2CopyBitsChangedRows,@function
+pop2CopyBitsChangedRows:
+	copy_changed_rows
+	.size pop2CopyBitsChangedRows,.-pop2CopyBitsChangedRows

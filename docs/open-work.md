@@ -13,9 +13,9 @@ Items remain open until their acceptance gates pass.
     Macintosh/native cases, full memory/register/CCR comparisons, rejection
     controls and two matched opening runs. Inactive copper palette reuse also
     passes original-table checks across 82 publications and a palette-only change probe.
-    The callback/dispatch shortcuts, shared saved-register copy, guarded HUnlock entry, shared Kalms kernel and nine drawing quick entries bring
-    the current runs to 552/551 PAL fields (baseline 660), with 59 of 82 requested intervals late. Landing takes
-    262.52–263.27 ms/frame against the 83.3 ms request. Both retain all baseline
+    The callback/dispatch shortcuts, shared saved-register copy, guarded HUnlock entry, shared Kalms kernel, nine drawing quick entries and shared changed-row screen copies bring
+    the current runs to 537/537 PAL fields (baseline 660), with 57 of 82 requested intervals late. Landing takes
+    253.07–253.30 ms/frame against the 83.3 ms request. Both retain all baseline
     player records and first-room/death pixels, but still have an extra death-phase
     frame relative to the original. Cadence acceptance is not met.
     The retained VBL and Time Manager fixtures pass with 13 and 12 rejection controls.
@@ -23,7 +23,7 @@ Items remain open until their acceptance gates pass.
     previous explicit-frequency baselines ran too fast. D16 authorizes further
     equivalent, byte-guarded original-rendering replacements with original-paired
     validation; the cadence gate remains unchanged.
-    Row-end comparison during screen CopyBits is also rejected: four- and
+    The earlier C++ row-end comparison during screen CopyBits is rejected: four- and
     sixteen-row bands reduce conversion work but comparison/planning consume
     nearly all the saving (293.19/292.79 ms landing pilots). Neither establishes
     full display correctness or a repeatable material gain. See the rejected-pilot
@@ -31,16 +31,17 @@ Items remain open until their acceptance gates pass.
     cases and the original-paired integration route.
     The HUnlock entry passes 256 native/full flag/CCR cases, 96 invalid-handle
     rejections and 32 original-paired freed-handle cases. Its earlier A/B repeat
-    failed; its frozen B/C pair passes. The final Kalms pair supplies the current
-    figures and passes 193 native byte/ABI cases plus all 82 full planar images.
+    failed; its frozen B/C pair passes. The retained Kalms fixture passes
+    193 native byte/ABI cases plus all 82 full planar images.
     The 192 KiB block-cache pilot is rejected: comparison and maintenance consume
     most of its conversion saving; the prototype is removed.
-    A native row-comparison candidate measures 252.37 ms landing and passes
-    1,665 isolated copy/ABI cases plus 61 complete planar publications. Its image
-    sequence matches the baseline with adjacent duplicates removed, but the strict
-    82-publication gate fails. Before adopting it, establish equivalence at every
-    game-frame boundary, repeat the same build and share the reusable helper.
-    The candidate is preserved in ignored scratch; production is unchanged.
+    The shared native row-comparison path passes 1,666 copy/ABI cases, including
+    a full 640×480 copy, and all 82 game-frame boundaries against the prior build.
+    Pixels, planes, copper colours, colour tables and player state match even
+    on 21 frames that skip unchanged publication. First-room output and curated
+    state match the pinned Macintosh reference. Eight corrupted-evidence controls
+    and the shared sanitizer suite pass. The strict original cadence failure is
+    retained; fewer publications do not waive any game-frame checks.
     Next target broader full-dispatch overhead and hot rendering/conversion work;
     the remaining gap cannot be closed by small handle shortcuts alone. Keep
     equivalent rendering replacements available under D16.

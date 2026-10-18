@@ -4,6 +4,16 @@
 #include "BigEndianMemory.h"
 #include "RegionRows.h"
 namespace CopyBits8 {
+// Optional change report for distinct, unscaled, unmasked identity copies.
+// Row offsets are relative to left; an empty row has left == right. Other
+// supported copy forms still copy normally and leave valid false.
+struct RowSpan { uint16_t left,right; };
+// The optional copier must preserve bytes outside each row and report bounds
+// containing every changed byte. Inputs are distinct owned pixel buffers.
+using ChangedRows = void (*)(const uint8_t*,uint8_t*,uint32_t,uint32_t,uint32_t,uint32_t,RowSpan*);
+struct Changes {
+    RowSpan* rows;uint32_t capacity,count;int32_t top,left;bool valid;ChangedRows copy;
+};
 inline int32_t coord(const uint8_t* r,unsigned i) { return int16_t(BigEndianMemory::read16(r+2*i)); }
 // Owned, distinct pixel buffers need no overlap handling. Permit arbitrary
 // byte alignment without violating aliasing rules; the target is 68020+.
@@ -117,7 +127,8 @@ inline bool copy(const uint8_t* src,uint32_t srcBytes,uint16_t srcStride,const u
                  uint8_t* dst,uint32_t dstBytes,uint16_t dstStride,const uint8_t* dstMap,
                  const uint8_t* from,const uint8_t* to,const uint8_t* port,
                  const uint8_t* vis,const uint8_t* clip,uint8_t* drawn,const uint8_t* colors=0,
-                 const uint8_t* mask=0,uint16_t maskBytes=0,RegionRows::ValidationCache* maskCache=nullptr) {
+                 const uint8_t* mask=0,uint16_t maskBytes=0,RegionRows::ValidationCache* maskCache=nullptr,Changes* changes=nullptr) {
+    if(changes)changes->valid=false;
     if(!src || !dst || !srcMap || !dstMap || !from || !to
        || !port || !vis || !clip || !drawn)return false;
     if(!validMap(srcMap,srcStride,srcBytes) || !validMap(dstMap,dstStride,dstBytes))return false;
@@ -178,8 +189,13 @@ inline bool copy(const uint8_t* src,uint32_t srcBytes,uint16_t srcStride,const u
         const uint8_t* in=source+(sourceX+limits[1]);
         uint8_t* out=target+(destinationX+limits[1]);
         const uint32_t count=uint32_t(limits[3]-limits[1]);
-        if(!colors)directRows(in,out,count,uint32_t(limits[2]-limits[0]),srcStride,dstStride);
-        else for(int32_t y=limits[0];y<limits[2];++y,in+=srcStride,out+=dstStride)
+        if(!colors) {
+            const uint32_t height=uint32_t(limits[2]-limits[0]);
+            if(changes && changes->rows && changes->copy && height<=changes->capacity) {
+                changes->copy(in,out,count,height,srcStride,dstStride,changes->rows);
+                changes->top=limits[0];changes->left=limits[1];changes->count=height;changes->valid=true;
+            } else directRows(in,out,count,height,srcStride,dstStride);
+        } else for(int32_t y=limits[0];y<limits[2];++y,in+=srcStride,out+=dstStride)
             for(uint32_t x=0;x<count;++x)out[x]=colors[in[x]];
         return true;
     }

@@ -12,6 +12,7 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--replay",type=Path,help="receipt-verified frozen opening build")
     parser.add_argument("--setup",choices=("a1200-030","a1200-fast"),default="a1200-030")
+    parser.add_argument("--frame-boundaries",action="store_true",help="capture every completed game frame, including skipped publications")
     args=parser.parse_args()
     if args.replay:args.replay=args.replay.resolve()
     os.chdir(ROOT)
@@ -34,7 +35,16 @@ def main():
     entry=' if g_integrationStage==3\n'
     assert opening.count(entry)==1, 'C2P / UNIQUE GAMEPLAY ENTRY'
     opening=opening.replace(entry,entry+'  install-c2p-bounds\n')
-    observer.write_text((ROOT/'amiga/c2p_bounds.gdb').read_text()+opening)
+    template=(ROOT/('amiga/frame_boundaries.gdb' if args.frame_boundaries else 'amiga/c2p_bounds.gdb')).read_text()
+    if args.frame_boundaries:
+        lines=(ROOT/'src/platform/amiga/CoreRuntime.cpp').read_text().splitlines()
+        sites=[i+2 for i,line in enumerate(lines) if
+               'if(!NativeDisplay::publish(displayBatchScene))return stop(' in line and
+               lines[i+1].strip()=='displayBatchScene=false;']
+        assert len(sites)==1,'FRAME / UNIQUE POST-PUBLICATION BOUNDARY'
+        assert template.count('@BOUNDARY_LINE@')==1,'FRAME / TEMPLATE BOUNDARY'
+        template=template.replace('@BOUNDARY_LINE@',str(sites[0]))
+    observer.write_text(template+opening)
     env=dict(os.environ,CORE='1',OPENING_PROFILE='1',CPU_PROFILE='0',APROF_ACTIVE='0',AMIGA_SETUP=args.setup,GDBSCRIPT=str(observer),DEADLINE='1800')
     with (out/'run.log').open('w') as log:
         result=subprocess.run(['bash','amiga/run.sh'],env=env,stdout=log,stderr=subprocess.STDOUT)

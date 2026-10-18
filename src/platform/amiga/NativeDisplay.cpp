@@ -4,6 +4,7 @@
 #include "mac/GWorld8.h"
 #include "mac/Palette8.h"
 #include "mac/CopyBits8.h"
+extern "C" void pop2CopyBitsChangedRows(const uint8_t*,uint8_t*,uint32_t,uint32_t,uint32_t,uint32_t,CopyBits8::RowSpan*);
 #include "mac/FillRect8.h"
 #include "mac/RegionCopy.h"
 #define AMIGAXDEV_REGION_UNION 1
@@ -24,7 +25,7 @@ struct World {uint8_t* port;H pm,pixels,vis,clip,vars,patterns[3];bool locked,is
 World worlds[16]={};
 uint8_t regionWorkspace[32766];
 PrinceScreen* output;const uint8_t* transfer;
-Planar8::Rect dirty[64];uint16_t dirtyCount=0;bool paletteDirty=false;
+Planar8::Rect dirty[64];uint16_t dirtyCount=0;bool paletteDirty=false,viewportDirty=false;
 struct Palette {H body,privateData;};Palette palettes[8]={};
 uint16_t w(const uint8_t* p) {return uint16_t(p[0])<<8|p[1];}
 uint32_t l(const uint8_t* p) {return uint32_t(w(p))<<16|w(p+2);}
@@ -81,6 +82,7 @@ World* create(const uint8_t* bounds,bool screen=false) {
 Palette* palette(H h) {for(auto& p:palettes)if(p.body==h && h)return &p;return nullptr;}
 bool position(World& v,int16_t left,int16_t top) {
     if(!v.isScreen || left<0 || top<0 || left>128 || top>96)return false;
+    if(int16_t(w(*v.pm+6))!=-top || int16_t(w(*v.pm+8))!=-left)viewportDirty=true;
     GWorld8::rect(*v.pm+6,{int16_t(-top),int16_t(-left),int16_t(480-top),int16_t(640-left)});
     return true;
 }
@@ -89,6 +91,34 @@ void changed(World& v,const uint8_t* bounds) {
     if(dirtyCount==64) {dirtyCount=1;dirty[0]={top,left,int16_t(top+384),int16_t(left+512)};return;}
     dirty[dirtyCount++]={int16_t(top+int16_t(w(bounds))),int16_t(left+int16_t(w(bounds+2))),
                         int16_t(top+int16_t(w(bounds+4))),int16_t(left+int16_t(w(bounds+6)))};
+}
+// Sixteen-row bands bound the rectangle count without keeping another framebuffer.
+// Coordinates are local to the visible window, whose viewport is 512 by 384.
+void changedCopy(World& v,const CopyBits8::Changes& changes) {
+    Planar8::Rect pending={0,0,0,0};bool have=false;
+    for(uint32_t row=0;row<changes.count;row+=16) {
+        int32_t left=512,right=0;
+        const uint32_t end=row+16<changes.count?row+16:changes.count;
+        for(uint32_t y=row;y<end;++y) {
+            const auto& span=changes.rows[y];
+            if(span.left==span.right)continue;
+            const int32_t l=changes.left+span.left,r=changes.left+span.right;
+            if(l<left)left=l;if(r>right)right=r;
+        }
+        int32_t top=changes.top+int32_t(row),bottom=changes.top+int32_t(end);
+        if(left<0)left=0;if(right>512)right=512;
+        if(top<0)top=0;if(bottom>384)bottom=384;
+        if(left>=right || top>=bottom)continue;
+        Planar8::Rect next={int16_t(top),int16_t(left),int16_t(bottom),int16_t(right)};
+        DirtyBands::alignSpan<512>(next);
+        if(have && pending.bottom==next.top && pending.left==next.left && pending.right==next.right)
+            pending.bottom=next.bottom;
+        else {
+            if(have){uint8_t box[8];GWorld8::rect(box,{pending.top,pending.left,pending.bottom,pending.right});changed(v,box);}
+            pending=next;have=true;
+        }
+    }
+    if(have){uint8_t box[8];GWorld8::rect(box,{pending.top,pending.left,pending.bottom,pending.right});changed(v,box);}
 }
 bool activate(World& v) {
     if(!v.palette)return true; // An unbound window has the system device colours.
@@ -100,7 +130,7 @@ bool activate(World& v) {
 }
 const char* error() {return reason;}
 const uint8_t* screen() {return pixels;}
-void reset() {heap=nullptr;valid=nullptr;low=pixels=thePort=windowManagerPort=nullptr;device=map=colors=nullptr;for(auto& v:worlds)v={};for(auto& p:palettes)p={};resource=nullptr;output=nullptr;transfer=nullptr;dirtyCount=0;paletteDirty=false;}
+void reset() {heap=nullptr;valid=nullptr;low=pixels=thePort=windowManagerPort=nullptr;device=map=colors=nullptr;for(auto& v:worlds)v={};for(auto& p:palettes)p={};resource=nullptr;output=nullptr;transfer=nullptr;dirtyCount=0;paletteDirty=viewportDirty=false;}
 bool prepare(MacHeap& owner,uint8_t* shadow,Valid validator,Resource reader) {
     reset();heap=&owner;low=shadow;valid=validator;resource=reader;
     // Kalms prefetches one unused longword after its final source span.
@@ -145,7 +175,7 @@ void wait() {if(output)output->wait();}
 void paceFrame() {if(output)output->paceFrame();}
 bool publish(bool prepareScene) {
     g_integrationScreen=(uint32_t)pixels;g_integrationColors=(uint32_t)colors;
-    if(!output || (!dirtyCount && !paletteDirty))return true;
+    if(!output || (!dirtyCount && !paletteDirty && !viewportDirty))return true;
     if(!transfer)return fail("DISPLAY / VIDEO TRANSFER MISSING");
     World* window=nullptr;for(auto& v:worlds)if(v.port && v.isScreen && v.port[110]) {
         if(window)return fail("DISPLAY / MULTIPLE VISIBLE WINDOWS");window=&v;
@@ -153,12 +183,13 @@ bool publish(bool prepareScene) {
     if(!window)return true;
     int16_t top=-int16_t(w(*window->pm+6)),left=-int16_t(w(*window->pm+8));
     Planar8::Rect viewport={top,left,int16_t(top+384),int16_t(left+512)};
+    if(viewportDirty){dirty[0]=viewport;dirtyCount=1;}
     uint32_t rgb[256];for(unsigned i=0;i<256;++i) {
         const uint8_t* color=*colors+8+i*8;
         rgb[i]=uint32_t(transfer[color[2]])<<16|uint32_t(transfer[color[4]])<<8|transfer[color[6]];
     }
     if(!output->publish(pixels,viewport,dirty,dirtyCount,rgb,prepareScene))return fail("DISPLAY / PUBLICATION");
-    dirtyCount=0;paletteDirty=false;return true;
+    dirtyCount=0;paletteDirty=viewportDirty=false;return true;
 }
 bool handles(uint16_t trap) {
     if(trap==0xa8a6 || trap==0xa8d7 || trap==0xa8e0 || trap==0xa8d3)return true;
@@ -471,6 +502,7 @@ bool dispatch(uint16_t trap,uint32_t* regs,uint8_t* args,uint32_t& consumed) {
         else if(trap==0xa878) {
             int16_t dy=int16_t(w(args))-int16_t(w(v->port+16));
             int16_t dx=int16_t(w(args+2))-int16_t(w(v->port+18));
+            if(v->isScreen && (dx || dy))viewportDirty=true;
             uint8_t* bounds[]={v->port+16,*v->pm+6,*v->vis+2};
             for(auto r:bounds)for(unsigned i=0;i<4;++i)sw(r+i*2,uint16_t(w(r+i*2)+(i&1?dx:dy)));
         }
@@ -508,11 +540,17 @@ bool dispatch(uint16_t trap,uint32_t* regs,uint8_t* args,uint32_t& consumed) {
         // CopyBits applies port clipping only when its destination is the
         // current port bitmap; the title copy keeps the window current.
         uint8_t drawn[8];
+        static CopyBits8::RowSpan copiedRows[480];
+        CopyBits8::Changes changes={copiedRows,480,0,0,0,false,pop2CopyBitsChangedRows};
+        CopyBits8::Changes* report=destination->isScreen && destination->port[110]?&changes:nullptr;
         if(!CopyBits8::copy(source->isScreen?pixels:*source->pixels,source->isScreen?640*480:heap->handleSize(source->pixels),w(*source->pm+4)&0x3fff,*source->pm+6,
             destination->isScreen?pixels:*destination->pixels,destination->isScreen?640*480:heap->handleSize(destination->pixels),w(*destination->pm+4)&0x3fff,*destination->pm+6,
             from,to,currentDestination?destination->port+16:bounds,
-            currentDestination?*destination->vis+2:bounds,currentDestination?*destination->clip+2:bounds,drawn))return fail("DISPLAY / COPYBITS FORM");
-        if(destination->isScreen)changed(*destination,drawn);
+            currentDestination?*destination->vis+2:bounds,currentDestination?*destination->clip+2:bounds,drawn,nullptr,nullptr,0,nullptr,report))return fail("DISPLAY / COPYBITS FORM");
+        if(destination->isScreen) {
+            if(report && changes.valid)changedCopy(*destination,changes);
+            else changed(*destination,drawn);
+        }
         consumed=22;return true;
     }
     if(trap==0xa86e) {
