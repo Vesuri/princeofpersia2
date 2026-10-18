@@ -63,6 +63,29 @@ percentage speedup or all-scene frame rate.
 
 ## 68020 evaluation (item 15)
 
+### Current feasibility assessment
+
+MEASURED: the current matched landing pair still needs 167.71–167.84 ms/frame
+removed to reach 83.3 ms. A disjoint flat-PC ledger assigns 51.91–52.03 ms to
+dispatch, 34.64 ms to C2P, 12.95 ms to other presentation, 14.73 ms to CopyBits,
+13.89 ms to pure rectangles and 33.99 ms to the selected PaintRLE/PaintCopy/
+BankRLELR/SaveRect functions plus the native SaveRect row. The remaining
+measured work is 88.93–88.95 ms/frame.
+
+DERIVED: even setting every listed group to zero in that ledger leaves more
+than the requested interval. This is an arithmetic removal scenario, not a
+working implementation, an absolute lower bound or proof that 68020 support
+is impossible. Real changes can also alter work outside their original bucket.
+It does establish that optimizing only those currently selected hot paths is
+not a sufficient plan under that accounting. There is presently no demonstrated
+implementation path to the unchanged cadence gate; further optimization is
+exploratory and would need broader savings. D14 and item 15 remain unchanged.
+The older `item15-dispatch-o3-020-a` compiler pilot already rejected the obvious
+speed-compilation experiment; it was not repeated. `CopyBits` is only about
+three calls per landing frame, limiting the value of another entry shortcut.
+`manifest/performance-68020-feasibility.sha256` pins the ledger and its source;
+the underlying matched captures remain pinned in the installed-bank manifest.
+
 ### Guarded transparent-run skip
 
 MEASURED: the installed BankRLELR patch replaces the transparent-run pointer

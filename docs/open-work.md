@@ -49,6 +49,10 @@ Items remain open until their acceptance gates pass.
     122 bounded live callers, all 82 frame-boundary comparisons and repeated
     matched timing; the release is restored. The dispatcher split and framebuffer-alignment experiments are removed; neither is a qualified
     production gain. Evidence is in performance.md.
+    The current disjoint cost ledger shows that eliminating all selected hot
+    dispatch/rendering/presentation groups would still leave about 89 ms/frame.
+    This is an arithmetic scenario, not a lower-bound proof; no sufficient
+    implementation plan is established yet. The cadence gate remains unchanged.
     Next target broader full-dispatch overhead and hot rendering/conversion work;
     the remaining gap cannot be closed by small handle shortcuts alone. Keep
     equivalent rendering replacements available under D16.
