@@ -130,7 +130,38 @@ library QBlit and assumes a different buffer layout. It is not a drop-in kernel
 for this port's takeover, row-interleaved planes and shared completion queue.
 Any experiment must adapt those interfaces, retain dirty conversion at frame end,
 and include intermediate Chip-memory traffic and completion in its measurement.
-No speed or correctness claim is made for that unimplemented alternative.
+The synchronous column adaptation below tests this alternative; asynchronous
+CPU/DMA overlap remains unimplemented.
+
+### Rejected synchronous hybrid conversion
+
+MEASURED: `item15-hybrid-c2p-020-b` completes the calibrated opening route in
+605 PAL fields, with 60/82 requested intervals late. Landing costs 296.00 ms
+per stored frame, against the retained final Kalms pair's 275.99/275.91 ms.
+All 82 Kid records and first-room/death chunky images and palette match final
+Kalms C. The strict original cadence comparison still fails. This single pilot
+regresses, so it is removed; production source and release are restored.
+
+The prototype adapts the pinned Kalms c3b1 CPU stage to 16-pixel columns at
+source stride 640. A 6 KiB Chip scratch holds one column; eight synchronous
+blits finish it into the existing row-interleaved planes. The host scalar model
+passes 10,000 deterministic input blocks. The isolated calibrated native fixture
+`c2p-native-v_1xx49d` passes all 193 existing C2P cases, checking complete output
+and surrounding guards, source preservation, source alignments, edge/full-screen
+extents and all C ABI saved registers. This does not establish complete in-game
+planar correctness. The earlier failed native fixture and pre-launch build are
+retained separately, not counted as passes.
+
+Exclusive landing costs are 29.89 ms in the adapted CPU stage and 31.16 ms in
+the aggregate shared blitter wait routine, before counting adapter setup and
+other presentation work. The standard reporter omits untyped `hybridColumn`
+and incorrectly labels its range with the preceding unused Kalms symbol;
+the retained pilot-only reporter adds the actual ELF symbol and supplies the
+corrected flat report. No inclusive call-tree costs are used for this decision.
+CPU work and DMA are serialized in this prototype. Overlapping them would need
+a distinct implementation and measurement; the CPU-only figure is not a speedup.
+Sources, successful/failed fixture evidence, frozen pilot and reports are pinned
+in `manifest/performance-68020-hybrid-c2p.sha256`.
 
 Item 15 remains open. The fixed target is `a1200-fast`: 68EC020 at
 14,187,580 Hz, instruction cache enabled, no data cache, 2 MB Chip and 8 MB

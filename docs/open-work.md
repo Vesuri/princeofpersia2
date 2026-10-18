@@ -49,6 +49,9 @@ Items remain open until their acceptance gates pass.
     records and endpoints. It is not installed or qualified: new Pascal cleanup,
     guard/error behavior and complete original-paired display tests remain.
     See `docs/performance.md`; the production baseline above is unchanged.
+    A synchronous Kalms CPU/blitter column prototype passes the 193-case native
+    pixel/ABI fixture but regresses landing to 296.00 ms. It is removed. CPU/DMA
+    overlap remains unimplemented and must not be credited with assumed savings.
     Acceptance: original timing-service contracts and game-step cadence pass on
     `a1200-fast`, matched gameplay regressions pass, and the release hardware and
     installer requirements accurately include the validated configuration.
