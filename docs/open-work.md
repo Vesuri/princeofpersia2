@@ -13,9 +13,9 @@ Items remain open until their acceptance gates pass.
     Macintosh/native cases, full memory/register/CCR comparisons, rejection
     controls and two matched opening runs. Inactive copper palette reuse also
     passes original-table checks across 82 publications and a palette-only change probe.
-    The callback/dispatch shortcuts, shared saved-register copy, guarded HUnlock entry, shared Kalms kernel, nine drawing quick entries, shared changed-row screen copies and guarded BankRLELR transparent skips bring
-    the current runs to 532/532 PAL fields (baseline 660), with 56 of 82 requested intervals late. Landing takes
-    251.04–251.17 ms/frame against the 83.3 ms request. Both retain all baseline
+    The callback/dispatch shortcuts, shared saved-register copy, guarded HUnlock entry, shared Kalms kernel, nine drawing quick entries, shared changed-row screen copies, guarded BankRLELR transparent skips and validated resource-slot hints bring
+    the current runs to 523/524 PAL fields (baseline 660), with 56/54 of 82 requested intervals late. Landing takes
+    248.91–249.14 ms/frame against the 83.3 ms request. Both retain all baseline
     player records and first-room/death pixels, but still have an extra death-phase
     frame relative to the original. Cadence acceptance is not met.
     The retained VBL and Time Manager fixtures pass with 13 and 12 rejection controls.
@@ -49,7 +49,7 @@ Items remain open until their acceptance gates pass.
     122 bounded live callers, all 82 frame-boundary comparisons and repeated
     matched timing; the release is restored. The dispatcher split and framebuffer-alignment experiments are removed; neither is a qualified
     production gain. Evidence is in performance.md.
-    The current disjoint cost ledger shows that eliminating all selected hot
+    The pre-resource-hint disjoint cost ledger shows that eliminating all selected hot
     dispatch/rendering/presentation groups would still leave about 89 ms/frame.
     This is an arithmetic scenario, not a lower-bound proof; no sufficient
     implementation plan is established yet. The cadence gate remains unchanged.
@@ -59,6 +59,10 @@ Items remain open until their acceptance gates pass.
     Residual profiling finds no single hidden large cost. GetObject/CalcBlue
     arithmetic is a possible small rendering candidate (6.32 ms/frame combined
     total cost), recorded without starting another narrow rewrite.
+    Shared identity hints preserve resource-chain resolution and revalidate each
+    candidate slot. Two matched runs, all 82 frame boundaries, original-paired
+    resource/startup fixtures and eight resource rejection controls pass; the
+    ordinary release is restored. This saves about 2 ms, not the remaining gap.
     Next target broader full-dispatch overhead and hot rendering/conversion work;
     the remaining gap cannot be closed by small handle shortcuts alone. Keep
     equivalent rendering replacements available under D16.

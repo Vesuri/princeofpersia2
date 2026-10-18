@@ -65,3 +65,4 @@ AmigaXDev	9a7b2d99efd223ac198cf0c61368e73575ef8425	shared overlap-safe longword 
 Alone in the Dark	29a3d9ebd22aa2b7edab0515803c962c58f0acd1	original BlockMoveBytes and BlockMoveChecks adopted unchanged through AmigaXDev
 AmigaXDev	d4226fd33682865373972dcab421598093186877	shared Kalms 030_2 rectangle adapter; 193 native byte/ABI cases and 82 full planar comparisons on calibrated 68020
 AmigaXDev	ef103975367f3a0adadcd8c3b24c0dfab0c509a8	optional changed-row CopyBits reporting and shared bounded 68020 comparison/copy body
+AmigaXDev	26c3049dc564fd151b3c9cfc6b6e74eb872426ca	validated identity-index hints with sanitizer mutation/resize oracle; item 15 resource lookup

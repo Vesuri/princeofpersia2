@@ -65,7 +65,7 @@ percentage speedup or all-scene frame rate.
 
 ### Current feasibility assessment
 
-MEASURED: the current matched landing pair still needs 167.71–167.84 ms/frame
+MEASURED: the pre-resource-hint matched landing pair needs 167.71–167.84 ms/frame
 removed to reach 83.3 ms. A disjoint flat-PC ledger assigns 51.91–52.03 ms to
 dispatch, 34.64 ms to C2P, 12.95 ms to other presentation, 14.73 ms to CopyBits,
 13.89 ms to pure rectangles and 33.99 ms to the selected PaintRLE/PaintCopy/
@@ -117,6 +117,42 @@ difference. No timing budget is adjusted or corrected by subtracting it.
 The experimental edits are removed, and `make release` reproduces the existing
 `f0b28161…` executable. `manifest/performance-68020-phase-overhead.sha256` pins
 the control patch, frozen build, captures and results.
+
+### Validated resource-slot hints
+
+MEASURED: `item15-shared-resource-hint-020-a/b` (`.run-eiuOoZ` /
+`.run-rgSRVz`) take **249.14/248.91 ms per landing frame**, versus the
+251.04/251.17 ms bank-skip pair. They span 523/524 PAL fields, with 56/54
+of 82 requested intervals late. All 82 player records and endpoint images
+match the baseline; same-build repeatability passes. The strict original
+comparison still rejects the extra death-phase request. The 83.3 ms gate
+remains unmet; the earlier feasibility ledger above has not been remeasured.
+
+Vette and Alone in the Dark's indexed resource tables were inspected first.
+The shared `IdentityIndexCache` uses 128 hints (512 bytes) to avoid repeated
+linear loaded-slot searches. Resource-file chain resolution and ResError remain
+unchanged. Every hit rechecks bounds, identity, live handle and detached state;
+a collision or stale hint falls back to the original scan. It adds no runtime
+hashing or diagnostic probes. AmigaXDev's sanitizer suite includes 100,000
+mutation/resize queries against a linear oracle, with stale-slot, collision and
+miss controls. The canonical helper is installed unchanged and pinned.
+
+The stopped `.run-13gY9C` capture matches all 82 full viewport/plane/colour/
+player boundaries against `.run-58WKPZ`, including 21 unchanged publications.
+Eight damaged-evidence controls pass; first-room pixels and curated state match
+the Macintosh reference. The bounded resource fixture `.run-tkufvz` passes
+against `files-catalog-1`, using complete startup reference
+`20261015-193126-30ff96b7`: original startup state/code checks, full SHAP/DSLV
+payloads, metadata, 11 FSSpec cases and detach/close retention. Eight resource
+controls reject damaged evidence. The launcher's initial verification selected
+an incomplete startup reference and failed; the completed capture passes with
+the complete reference, without changing verifier requirements. Host tests pass.
+
+`make release` passes link/release audits; executable SHA-256 is
+`2098779d8167c953f2c7881fe31f79b0ba7ac430b7e3af400fd8b5cba4c80248`.
+`manifest/performance-68020-resource-hints.sha256` pins the evidence;
+`manifest/references.tsv` identifies the shared commit. This bounded change
+is not completion of item 15 or a new all-level gameplay qualification.
 
 ### Guarded transparent-run skip
 

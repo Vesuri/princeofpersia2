@@ -8,6 +8,7 @@ extern "C" volatile unsigned long pop2WHDLoadBinding[4];
 #include "CoreRuntime.h"
 #include "SaveRectPatch.h"
 #include "BankSkipPatch.h"
+#include "mac/IdentityIndexCache.h"
 #include "mac/VideoTicks.h"
 #include "mac/BigEndianMemory.h"
 #include "mac/BlockMoveBytes.h"
@@ -340,6 +341,7 @@ uint8_t auditBuffer[65536];
 uint8_t* patchedLoad=0;uint8_t* patchedExit=0;
 struct Resource { uint32_t type;int16_t id;OriginalApplication::Resource source;MacHeap::Handle handle;bool detached;uint32_t identity;int16_t fileRef;uint8_t changes; };
 Resource resources[1024]={};unsigned resourceCount=0;int16_t resourceError=0;
+IdentityIndexCache<> resourceHints;
 bool validMemory(uint32_t at,uint32_t n) {
     return (at>=(uint32_t)stack && at-(uint32_t)stack<=65536 && n<=65536-(at-(uint32_t)stack)) ||
         (at>=(uint32_t)world && at-(uint32_t)world<=worldSize && n<=worldSize-(at-(uint32_t)world)) ||
@@ -601,9 +603,13 @@ Resource* get(uint32_t type,int16_t id) {
     NativeResources::Item item={};resourceError=NativeResources::find(type,id,false,item);
     sw(low+0xa60,resourceError);
     if(resourceError)return 0;
-    for(unsigned i=0;i<resourceCount;++i)if(resources[i].identity==item.identity && resources[i].handle && !resources[i].detached) {
-        if(low[0xa5e] && !load(resources[i]))return 0;
-        return resources+i;
+    // Resolve the current resource-file chain first; only the loaded-slot scan
+    // is hinted. Recheck identity/liveness after detach, disposal or slot reuse.
+    uint32_t found=0;
+    if(resourceHints.find(resources,resourceCount,item.identity,
+        [](const Resource& r,uint32_t identity){return r.identity==identity && r.handle && !r.detached;},found)) {
+        if(low[0xa5e] && !load(resources[found]))return 0;
+        return resources+found;
     }
     unsigned index=0;while(index<resourceCount && resources[index].handle)++index;
     if(index==1024) { fail("RESOURCE / SLOT CAPACITY");return 0; }
