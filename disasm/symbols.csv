@@ -117,6 +117,7 @@ segment,offset,name,evidence,notes
 2,0x6060,FirstFrame_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x60EE,DoCleanCut_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x616E,FrameAdvCallerReturn,MEASURED,Original CODE 2+616A calls FrameAdv; live LINK chain encloses health-bar and scene drawing
+2,0x6134,PendingLevelSoundGate,DERIVED,Pending level transition polls CODE 5+4E76 and PrinceSndOn before branching to 61CE; active sounds allow another FrameAdv
 2,0x674C,FrameAdv,DERIVED,Original LINK entry ending at named RTS 0x68B2; gameplay frame timing boundary
 2,0x68B4,FrameAdv_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 2,0x696C,ResetFrameVars_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
@@ -256,6 +257,7 @@ segment,offset,name,evidence,notes
 4,0x2BCE,AddCharX_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 4,0x2BFE,AddFCharX_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 4,0x3052,AnimChar_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
+4,0x2C0C,AnimChar,DERIVED,Original MacsBug name at 0x3052; interprets the active actor animation sequence using words +36 and +38 and writes frame word +10
 4,0x308C,GetSeqOp_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 4,0x30D0,hGetSequence_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 4,0x3186,AnimCharTap_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
@@ -272,6 +274,7 @@ segment,offset,name,evidence,notes
 4,0x3AEC,GetCharCol_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 4,0x3B26,GetRow_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 4,0x3D16,PlayerCtrl_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
+4,0x3D24,UpdateActiveActorControlState,DERIVED,Reads active actor word +24 at 0x3D48 and conditionally advances word +28; these fields are not rendering scratch
 4,0x3FEC,IsLedge_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 4,0x4138,RemoveObj_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 4,0x4426,ClipChar_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
@@ -390,6 +393,7 @@ segment,offset,name,evidence,notes
 5,0x4DEC,AddSound_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 5,0x4E00,CheckSnd_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 5,0x4E66,InitAmbient_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
+5,0x4E76,AmbientSoundPlaying,DERIVED,Selects the ambient sound index through CODE 5+4E0C then calls PrinceSndOn for a nonnegative index; used by CODE 2 pending-level gate
 5,0x4F84,LoadSounds_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 5,0x5112,PlayAmbient_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point
 5,0x523E,PrinceReleaseSnd_MacsBug,MEASURED,Original RTS-adjacent procedure name record; not an entry point

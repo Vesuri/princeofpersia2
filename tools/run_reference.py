@@ -20,6 +20,13 @@ def digest(path):
 
 
 def run(name=None, control=None, deadline=None):
+    if os.environ.get('POP2_GAMEPLAY_RNG_FIXTURE'):
+        if (os.environ.get('POP2_GAMEPLAY') != 'route'
+                or os.environ.get('POP2_ROUTE_DISCOVERY') != '1'
+                or os.environ.get('POP2_ROUTE_RANDOM_TRACE') != '1'):
+            raise ValueError('RNG FIXTURE / REQUIRES DISCOVERY AND RANDOM OBSERVER')
+        from gameplay_rng_fixture import verify
+        verify(Path(os.environ['POP2_GAMEPLAY_RNG_FIXTURE']))
     if os.environ.get('POP2_BANK_SKIP_FIXTURE'):
         if os.environ.get('POP2_INTEGRATION')!='1' or os.environ.get('POP2_NULL_DISPOSE')!='1':
             raise ValueError('BANK / REQUIRES INTEGRATION AND NULL_DISPOSE')

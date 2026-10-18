@@ -48,6 +48,11 @@ Items remain open until their acceptance gates pass.
     The first-room A5−0B77 discrepancy is resolved as volume-date residue in
     a reused File Manager parameter block; original call/return provenance and
     narrowly scoped normalization are documented in `docs/native-integration.md`.
+    New causal fixtures tie the first level-three torch mismatch and the later
+    slot-0 position/animation decision to the shared RNG stream. A level-four
+    seed-only fixture fails and remains a control. Level-six observers identify
+    the music-completion gate, but its clock/scheduling cause remains unresolved.
+    These findings do not close the other routes or waive strict comparisons.
     Acceptance: explain and resolve the differences with original-paired
     evidence, including any effects on gameplay decisions. Check the other
     ports before service changes; keep diagnostics opt-in and release ordinary.

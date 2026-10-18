@@ -58,6 +58,79 @@ The acceptance matrix above governs current status. Detailed failed discovery
 controls and intermediate comparison findings below remain evidence for item 16;
 they do not reopen item 12 or establish exact equivalence.
 
+## Item 16 investigation
+
+The first-room reference A5−0B77 difference is resolved as retained volume-date
+metadata; see `docs/native-integration.md` for original call/return provenance,
+the narrow comparison change and controls. This does not resolve the gameplay
+differences below.
+
+MEASURED: `tools/check_gameplay_effect_lifetimes.py` pairs all 144 natural effect
+completions after gameplay entry in `gameplay-level1-audio-3` with the current
+production `HalestormEngine::effectOn/advance`. All complete after exactly the
+same number of synthesis blocks. The host probe passes ASan/UBSan and two
+missing-evidence controls. `manifest/gameplay-effect-lifetimes.sha256` pins the
+original trace and driver. Explicit stops/replacements are excluded by their
+distinct completion caller; the measured natural mixer return is driver+2C7C.
+This establishes logical effect lifetimes for these descriptors, not wall-clock
+phase or when gameplay observes completion.
+
+DERIVED: CODE 2+6134 tests a pending level change, calls CODE 5+4E76 and
+`PrinceSndOn` (CODE 5+52C8), then either enters the next level through +61CE or
+executes another `FrameAdv` at +616A. Sound completion can therefore change
+the exit frame count.
+
+MEASURED: original `item16-exit-level6-2` repeats all checkpoints of the pinned
+`gameplay-level6-door-1` route. Read-only observers on original CODE 2+6134,
++6144, +6152 and +61CE show a pending transition from level six to seven at
+frame 122 in both versions. The ambient sound test returns nonzero until frame
+333 on the Mac and frame 331 in native `.run-b9r2xF`; both then pass the second
+sound test and take the original transition branch. All 24 preceding native
+checkpoints and the rejected next-level entry match pixels, palette, context
+and actors; endpoint RNG also matches. `tools/check_gameplay_exit_gate.py`
+checks the complete consecutive branch observations, original repeat,
+native endpoint and three evidence-corruption controls, using
+`manifest/gameplay-item16-exit-gate.sha256`. This explains the immediate branch
+responsible for the differing frame count, not the underlying audio timing.
+The strict native route remains failed. The earlier original observer run
+`item16-exit-level6-1` used unsupported decimal log formatting and is not valid
+exit-trace evidence; the corrected observer uses hexadecimal fields.
+
+The additional original `item16-exit-level6-audio-1` repeats every canonical
+checkpoint with the audio observer enabled. Its last effect completion lies
+between the pending-transition observations at frames 123 and 124, while the
+ambient gate remains closed until frame 333; the ambient
+record has the MIDI type. `manifest/gameplay-item16-exit-audio.sha256` pins this
+reference. The native in-game audio trace `.run-1QQeIk` was stopped during slow
+startup without a checkpoint. A read-only observer on the byte-identical
+baseline executable, `.run-meBaoD`, also reached its 900-second host deadline
+before a checkpoint. Neither is passing route or audio timing evidence, and
+the slowdown cannot be attributed to the in-game trace from these observations.
+
+MEASURED: the longer read-only native run `.run-eNDhoJ` completes observation
+and restoration, reproducing the rejected entry at frame 331. Its executable is
+byte-identical to `.run-b9r2xF`. The pending-exit music contains the same 194
+note requests, with three adjacent pairs issued in a different order.
+Between the bounding stop requests, the most recent driver-clock queries span
+1124 ticks on the Mac and 1116 natively. These are query observations, not
+exact timestamps for the stop requests. `tools/check_gameplay_music_window.py`
+checks the pinned requests, original call/return pairing, exit branches, complete
+native endpoint comparison and two missing-evidence controls. The extended
+`manifest/gameplay-item16-exit-audio.sha256` pins the native observation too.
+This narrows the discrepancy to music scheduling; it does not establish its
+underlying clock cause or accept the failed route.
+
+MEASURED: current verification replay `.run-NeChbT` retains the two level-one
+RNG differences at checkpoints 64 and 90. All 95 preceding checkpoints match
+pixels, displayed palette, full context and all six actor records; the strict
+gate rejects level-two entry at frame 1000 / 1001 key reads versus original
+1001 / 1002. The captured rejected entry matches pixels, palette, full context,
+actors and RNG. This is a failed strict route, not a newly accepted timing
+exception. `manifest/gameplay-item16-level1-baseline.sha256` pins the evidence.
+It uses the retained emulator for correctness only; no calibrated performance
+claim follows. The corrected-clock attempt `.run-efa3Gx` was stopped during
+slow verification startup without a route endpoint and is not a pass.
+
 ## Current evidence
 
 The original restart route starts a game with Space and sends Command-R after
@@ -865,9 +938,44 @@ completes the full three-level route with normal exit and matches all 181
 checkpoints and 2770 keyboard reads despite observing the calls. Within
 steps 1490–1545, the original makes 161 calls from `CaveGetTorchFrame`
 (CODE 8 return offset 3B5C), three from CODE 5 return offset 205E, and one
-from `PlayAmbient` (CODE 5 return offset 50BA) at step 1515. The corresponding
-native trace is still pending. A shifted ambient call is a hypothesis for
-the later torch differences, not an established service diagnosis.
+from `PlayAmbient` (CODE 5 return offset 50BA) at step 1515.
+
+MEASURED: `tools/check_gameplay_random_window.py` pairs that bounded window
+with native `.run-845iXe`. Both produce the same first 164 RNG seeds and
+results in call order. The original makes one additional draw at step 1515,
+from `PlayAmbient`. Excluding this call, the per-frame call counts and order
+match through step 1545: 161 calls in the torch class and three in the other
+class. The original's extra draw consumes the value otherwise received by
+the next native call. Native caller-class correspondence is INFERRED from
+these unique counts and per-frame order; that older observer did not capture
+its segment map. This establishes a shifted shared RNG stream, not a defect
+in the RNG sequence itself or equivalence of subsequent actor decisions.
+Two missing/altered-evidence controls reject, and
+`manifest/gameplay-item16-random-window.sha256` pins the inputs. The native
+run retains its failed level-four entry and successful code/input/restoration
+audits. The underlying ambient timing and later actor consequences remain open.
+
+MEASURED causal control: `item16-rng-rollback-1` repeats the unchanged original
+through checkpoint 120. At the guarded `PlayAmbient` draw at step 1515, the
+opt-in fixture preserves its returned choice and restores only the preceding
+RNG seed. At checkpoint 121 (step 1542), the original then matches native
+`.run-845iXe` in viewport pixels, all eight planes, palette, complete context,
+all six actor records, RNG and route counters. The unchanged original at the
+same checkpoint differs in RNG and context. This isolates the extra ambient
+draw as the cause of the first torch divergence; it does not accept the rest
+of the route. The original emits the single-write and completed-fixture markers
+and exits normally. `tools/gameplay_rng_fixture.py` derives its ignored inputs
+from pinned observations; `tools/replay_gameplay_rng_fixture.py` verifies the
+unchanged prefix and changed endpoint. Evidence is pinned in
+`manifest/gameplay-item16-rng-rollback.sha256`. Ordinary play is unchanged.
+
+The first level-three actor mismatch is earlier than the rejected final entry:
+checkpoint 134, step 1877. Slot 0 differs in x position and words +10, +36,
++38 and +40. At checkpoint 133 (step 1865), all six actor records still match
+despite the differing RNG seeds. Both checkpoints place the player and this
+actor in room 17. This is a character-state difference during gameplay, not
+just residual data in the next-level capture; its RNG causality remains to be
+paired separately.
 
 ### Assisted entry survey
 
@@ -1317,6 +1425,39 @@ differences are confined to zero-based slot 3 at checkpoint 87 (word +24),
 and slot 4 at checkpoints 87–92 (words +10, +36, +38 and +40). The existing
 CODE 4+3272 mapping identifies the player record. Matching the player does
 not establish equivalence of the other actors or relax the full-state gate.
+
+MEASURED causal control: `item16-actor3-seed-1` repeats the original level-three
+prefix through checkpoint 133 (step 1865), where all actor records still match
+native `.run-Vz4heJ`. Replacing only the four-byte RNG seed with that captured
+native seed makes checkpoint 134 (step 1877) match all six native actor records,
+RNG and route counters. The unchanged original fails the actor comparison.
+This includes slot 0's position and animation decision: the effect is gameplay
+state, not merely rendering scratch. Earlier torch context remains different,
+so full context and frame comparisons still fail. The diagnostic does not
+accept the route or change release gameplay.
+`manifest/gameplay-item16-actor3-seed.sha256` pins the completed original run;
+`tools/replay_gameplay_rng_fixture.py --check-only` rechecks its unchanged prefix,
+single seed write, endpoint and unchanged-reference control.
+
+MEASURED failed control: `item16-actor4-seed-1` repeats the original assisted
+level-four prefix through checkpoint 83 (step 1613), then makes the analogous
+seed-only replacement from native checkpoint 86. It positively finishes at
+original checkpoint 84 (step 1673), but the actor and RNG comparisons against
+native checkpoint 87 fail again. Level, room and step match. The expected
+native final seed occurs one RNG call before the fixture's final seed; this
+does not identify which intervening call first diverged. No actor equivalence
+is inferred from this test. `manifest/gameplay-item16-actor4-seed.sha256` pins
+the failed control, and its check-only replay deliberately rejects it.
+
+DERIVED: the active-character working record is A5−5056. `AnimChar`
+(CODE 4+2C0C) reads its word +36 as the sequence cursor and +38 as the
+sequence lookup key; CODE 4+3036 writes the frame at +10. The word +40 is
+tested by character-control branches, for example CODE 4+15C6 and +3DD0.
+Word +24 is read at CODE 4+3D48 and can change the update of word +28;
+CODE 4+1CC8 sets it during another control path. These uses rule out simply
+normalizing the differing words as rendering scratch. At the first retained
+level-four actor mismatch, slot 4 names room 28 while the current room is 27;
+that fact alone does not establish that its state is irrelevant to later play.
 
 Original `gameplay-assisted-level10-1` activates the room-19 lower-left plate
 (link 44) and enters the exit above, naturally reaching level eleven, room 5,

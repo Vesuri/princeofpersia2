@@ -20,6 +20,10 @@ local points={};local rooms=0;local frames=0;local remaining=0;local sequence=0
 local waiting=false;local complete=false;local currentNIS={}
 local checkpoints={};local heldKeys='none';local lastLevel=0
 local discovery=os.getenv('POP2_ROUTE_DISCOVERY')=='1'
+local rngFixturePath=os.getenv('POP2_GAMEPLAY_RNG_FIXTURE')
+local rngFixture=rngFixturePath and dofile(rngFixturePath..'/metadata.lua') or nil
+local rngFixtureApplied=false;local rngPrevious=nil
+assert(not rngFixture or (discovery and os.getenv('POP2_ROUTE_RANDOM_TRACE')=='1'),'RNG FIXTURE / OBSERVERS REQUIRED')
 local assisted=os.getenv('POP2_ROUTE_ASSIST')=='1'
 local directKeys=os.getenv('POP2_ROUTE_DIRECT_KEYS')=='1'
 local ending=os.getenv('POP2_ROUTE_ENDING')=='1'
@@ -56,6 +60,13 @@ local function capture(reason)
  dump(prefix..'-a5.bin',a5-22266,22266)
  dump(prefix..'-context.bin',mem:readv_u32(a5-0x5014)&0xffffff,0x2200)
  frame.indexed(run..'/'..prefix..'.indices');frame.palette(run..'/'..prefix..'.rgb')
+ if rngFixture and rngFixture.mode and sequence==rngFixture.inject_checkpoint then
+  assert(not rngFixtureApplied and reason=='completed-frames' and mem:readv_u16(a5-0x349a)==rngFixture.step,'RNG FIXTURE / CHECKPOINT GUARD')
+  assert(mem:readv_u32(a5-0x18fc)==rngFixture.before,'RNG FIXTURE / CHECKPOINT SEED')
+  mem:writev_u32(a5-0x18fc,rngFixture.after);rngFixtureApplied=true
+  dump('rng-checkpoint-after-a5.bin',a5-22266,22266)
+  print(string.format('RNG_FIXTURE_SEED checkpoint=%d before=%08X after=%08X',sequence,rngFixture.before,rngFixture.after))
+ end
  local status=string.format('sequence=%d frames=%d step=%d level=%d room=%d player4=%d player6=%d reason=%s prefix=%s\n',sequence,frames,mem:readv_u16(a5-0x349a),mem:readv_u16(a5-0x4fd2),mem:readv_u16(a5-0x4fc2),mem:readv_u16(a5-0x50ce),mem:readv_u16(a5-0x50cc),reason,prefix)
  local f=assert(io.open(run..'/route-status.tmp','w'));f:write(status);f:close()
  assert(os.rename(run..'/route-status.tmp',run..'/route-status.txt'))
@@ -63,6 +74,13 @@ local function capture(reason)
 end
 function M.map(seg,base,guard,condition)
  bases[seg]=base
+ if seg==2 and os.getenv('POP2_ROUTE_EXIT_TRACE')=='1' then
+  for _,offset in ipairs({0x6134,0x6144,0x6152,0x61ce})do
+   guard(seg,base,offset,4)
+   cpu.debug:bpset(base+offset,condition..' && w@(a5-0x4f92)!=w@(a5-0x4fd2)',
+    string.format('logerror "ROUTE_EXIT site=%04X step=%%04X level=%%04X next=%%04X cue=%%04X result=%%04X tick=%%08X\\n",w@(a5-0x349a),w@(a5-0x4fd2),w@(a5-0x4f92),w@(a5-0x439a),d0&0xffff,d@0x16a;g',offset))
+  end
+ end
  if seg==2 and os.getenv('POP2_ROUTE_EXPIRED_PROBE')=='1' then
   assert(discovery and assisted and cutscenes,'EXPIRED STORY / OBSERVERS REQUIRED')
   guard(seg,base,0x71a6,2);points[base+0x71a6]='expired-return'
@@ -180,6 +198,10 @@ local function command()
   finishId=tonumber(finishId)
   if finishId<=sequence then return end
   assert(discovery and finishId==sequence+1 and #currentNIS==0,'GAMEPLAY DISCOVERY FINISH CONTEXT')
+  if rngFixture then
+   assert(rngFixtureApplied and sequence==rngFixture.checkpoint,'RNG FIXTURE / POSITIVE ENDPOINT')
+   print('RNG_FIXTURE_COMPLETE checkpoint='..sequence)
+  end
   sequence=finishId;release();capture('discovery-finished');complete=true;waiting=false
   local log=assert(io.open(run..'/route-actions.txt','a'));log:write(text);log:close()
   if audioObserver then audioObserver.finish()end
@@ -478,8 +500,18 @@ function M.poll()
   print(string.format('GAMEPLAY_HANDLE phase=%s offset=%04X a0=%08X master=%08X memerr=%04X owners=%08X/%08X/%08X',label,cpu.state.PC.value-bases[15],h,mem:readv_u32(h),mem:readv_u16(0x220),mem:readv_u32(a5-0x2454),mem:readv_u32(a5-0x2450),mem:readv_u32(a5-0x244c)))
  elseif label=='random' then
   local step=mem:readv_u16(a5-0x349a)
-  if (step>=523 and step<=551) or (step>=819 and step<=865) or (step>=1490 and step<=1545) then
-   local caller=mem:readv_u32(cpu.state.A6.value+4)&0xffffff
+  local seed=mem:readv_u32(a5-0x18fc)
+  local caller=mem:readv_u32(cpu.state.A6.value+4)&0xffffff
+  if rngFixture and not rngFixture.mode and step==rngFixture.step and caller==bases[rngFixture.caller_segment]+rngFixture.caller_offset then
+   assert(not rngFixtureApplied and rngPrevious==rngFixture.before,'RNG FIXTURE / PREVIOUS SEED')
+   assert(cpu.state.PC.value==bases[17]+rngFixture.site and seed==rngFixture.after and mem:readv_u16(cpu.state.SP.value)==rngFixture.result,'RNG FIXTURE / DRAW GUARD')
+   -- Retain the ambient selection result but undo its consumption of the
+   -- shared RNG stream. This explicitly opted-in causal test is not play.
+   mem:writev_u32(a5-0x18fc,rngFixture.before);rngFixtureApplied=true
+   print(string.format('RNG_FIXTURE_ROLLBACK step=%d before=%08X after=%08X restored=%08X',step,rngPrevious,seed,rngFixture.before))
+  end
+  rngPrevious=mem:readv_u32(a5-0x18fc)
+  if (step>=523 and step<=551) or (step>=819 and step<=865) or (step>=1490 and step<=1545) or (rngFixture and rngFixture.mode and step>=rngFixture.step and step<=rngFixture.final_step) then
    print(string.format('ROUTE_RANDOM step=%d seed=%08X result=%04X site=%04X caller=%08X',step,mem:readv_u32(a5-0x18fc),mem:readv_u16(cpu.state.SP.value),cpu.state.PC.value-(cpu.state.PC.value>=bases[17] and cpu.state.PC.value<bases[17]+28830 and bases[17] or bases[15]),caller))
   end
  elseif label=='keys' then
