@@ -112,6 +112,40 @@ never used for timing. Host tests and `make release` pass.
 `manifest/performance-68020-shared-row-copy.sha256` pins the evidence and frozen
 build; the earlier pilot remains pinned separately.
 
+### Further 68020 candidates
+
+MEASURED: isolating `callbackService` with `noinline` produces a 254.08 ms
+landing pilot (`item15-dispatch-split-020-a`, `.run-WM6Yj3`), with 52.35 ms in
+flat dispatch cost. It preserves all 82 baseline player records and endpoint
+images but establishes no useful saving; the change is removed. The flat
+profile also shows that `pop2QuickSwapMMUModeWarm` itself costs only 0.58 ms per
+frame. Unverified inclusive trap totals must not be treated as the cost of that
+small body or as a promised saving from replacing a rendering wrapper.
+
+MEASURED: a separate framebuffer-bias pilot aligns the measured x=65 viewport
+by adding three bytes to a privately padded screen allocation. Its one run
+(`item15-screen-alignment-020-a`) measures 251.49 ms landing, including 33.29 ms
+conversion, versus 34.58 ms conversion in the retained build. All 82 player
+records and endpoint images match. This small single-run result is unqualified;
+it has no full frame-boundary or repeated timing gate and is removed. Production
+allocation and addresses remain unchanged.
+
+MEASURED: the retained build's flat PCs charge 1.94 ms per landing frame to
+`BankRLELR`'s pointer decrement/DBRA transparent-run loop at CODE 17+$010E.
+An ignored eight-byte candidate replaces that loop with a count-based pointer
+adjustment. The whole original inner block and candidate pass 448 paired native
+cases (14 captured calls × 32 initial CCR values) in
+`tmp/bank-skip-native-k73rqdr3`: complete framebuffer, 56 frame/argument bytes,
+15 registers, CCR and stack output agree. The candidate changes scratch D5 high
+bits and transient flags inside the loop; the original enclosing block restores
+D5 and overwrites the flags before its exit. This is evidence at the full-block
+boundary, not a claim that intermediate register states are identical. Additional
+run-length/clipping boundary fixtures, an actual Macintosh pairing, guarded
+installation and matched game timing remain required. No game patch is installed
+and no candidate speedup is claimed. Curated names are in `disasm/symbols.csv`;
+`manifest/performance-68020-dispatch-render-candidates.sha256` pins the captures,
+prototype and input identities. The verified ordinary release is restored.
+
 ### Bounded sprite-cache feasibility
 
 MEASURED: the final Kalms executable, observed in `.run-BW5Tb2`, completes

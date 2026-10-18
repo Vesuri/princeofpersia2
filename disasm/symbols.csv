@@ -1161,3 +1161,4 @@ segment,offset,name,evidence,notes
 17,0x0004,BankRLELR,DERIVED,Original procedure name at 0x014E; reversed banked RLE drawing
 17,0x5660,PaintRLELR,DERIVED,Original procedure name at 0x57A8; reversed RLE drawing
 17,0x57B6,PaintRLE,DERIVED,Original procedure name at 0x5926; forward RLE drawing
+17,0x010E,BankRLELR_TransparentSkip,DERIVED,Pointer-only transparent-run loop; reached in the measured opening workload
