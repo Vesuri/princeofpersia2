@@ -35,6 +35,12 @@ Items remain open until their acceptance gates pass.
     figures and passes 193 native byte/ABI cases plus all 82 full planar images.
     The 192 KiB block-cache pilot is rejected: comparison and maintenance consume
     most of its conversion saving; the prototype is removed.
+    A native row-comparison candidate measures 252.37 ms landing and passes
+    1,665 isolated copy/ABI cases plus 61 complete planar publications. Its image
+    sequence matches the baseline with adjacent duplicates removed, but the strict
+    82-publication gate fails. Before adopting it, establish equivalence at every
+    game-frame boundary, repeat the same build and share the reusable helper.
+    The candidate is preserved in ignored scratch; production is unchanged.
     Next target broader full-dispatch overhead and hot rendering/conversion work;
     the remaining gap cannot be closed by small handle shortcuts alone. Keep
     equivalent rendering replacements available under D16.

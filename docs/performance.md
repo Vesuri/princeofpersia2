@@ -63,6 +63,36 @@ percentage speedup or all-scene frame rate.
 
 ## 68020 evaluation (item 15)
 
+### Native row-comparison candidate
+
+MEASURED: an ignored assembly pilot compares disjoint CopyBits row ends with
+longword operations, copies the differing middle, and reports conservative
+four-byte bounds. It reuses the destination buffer and the earlier sixteen-row
+band planner. The standalone calibrated 68020 fixture
+`tmp/c2p-native-dspkh46c` passes 1,665 cases covering widths 0–640, all source
+and destination byte alignments, unchanged/interior/edge/full changes, zero
+height, source preservation, destination padding, row bounds and callee registers.
+
+Opening pilots `item15-native-row-diff-020-a` and `-b` measure 252.63 and
+252.37 ms per landing frame. B adds SetOrigin viewport invalidation, so these
+are two revisions, not a same-build repeat gate. Both complete all 82 player
+records with baseline endpoint pixels and take 536 PAL fields; 56/57 requested
+intervals remain late. In A, conversion costs 34.58 ms/frame and native row
+comparison/copy costs 13.54 ms/frame. Flat attribution explicitly resolves the
+assembly entry alias; inclusive costs remain unverified.
+
+The B correctness capture `.run-M3sE4H` completes the route and passes full
+planes and minimum dirty coverage for all 61 actual publications. Its image
+sequence equals the retained 82-publication `.run-SguQrY` baseline after
+removing consecutive identical images. The existing strict publication-count
+gate fails and is retained. This does not yet prove equivalent output at every
+game-frame boundary: capture those boundaries before accepting skipped
+publications. The candidate is preserved under `tmp/item15-native-row-diff/`,
+including its patch and frozen build; production sources are restored. It is
+not yet shared or installed. Evidence is pinned in
+`manifest/performance-68020-native-row-pilot.sha256`. Same-build repeats, frame-boundary comparisons,
+and the applicable service/original gates remain required. Item 15 stays open.
+
 ### Bounded sprite-cache feasibility
 
 MEASURED: the final Kalms executable, observed in `.run-BW5Tb2`, completes
