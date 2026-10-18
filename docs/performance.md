@@ -130,8 +130,8 @@ library QBlit and assumes a different buffer layout. It is not a drop-in kernel
 for this port's takeover, row-interleaved planes and shared completion queue.
 Any experiment must adapt those interfaces, retain dirty conversion at frame end,
 and include intermediate Chip-memory traffic and completion in its measurement.
-The synchronous column adaptation below tests this alternative; asynchronous
-CPU/DMA overlap remains unimplemented.
+The column experiments below test this alternative both synchronously and with
+CPU/DMA overlap; neither replaces the production kernel.
 
 ### Rejected synchronous hybrid conversion
 
@@ -158,10 +158,36 @@ other presentation work. The standard reporter omits untyped `hybridColumn`
 and incorrectly labels its range with the preceding unused Kalms symbol;
 the retained pilot-only reporter adds the actual ELF symbol and supplies the
 corrected flat report. No inclusive call-tree costs are used for this decision.
-CPU work and DMA are serialized in this prototype. Overlapping them would need
-a distinct implementation and measurement; the CPU-only figure is not a speedup.
+CPU work and DMA are serialized in this prototype; the CPU-only figure is not
+a speedup. The following separate experiment measures overlap.
 Sources, successful/failed fixture evidence, frozen pilot and reports are pinned
 in `manifest/performance-68020-hybrid-c2p.sha256`.
+
+### Rejected overlapping hybrid conversion
+
+MEASURED: `item15-hybrid-overlap-020-a` completes the calibrated opening in
+612 PAL fields with 60/82 late requested intervals. Landing costs 289.67 ms
+per stored frame, still above the retained final Kalms pair's 275.99/275.91 ms.
+All 82 Kid records and first-room/death chunky images and palette match final
+Kalms C; strict original cadence still fails. This single pilot is removed and
+production release restored. It does not qualify complete in-game planar output.
+
+The pilot uses two 6 KiB Chip buffers, preparing the next column while the
+shared `blitterCombineWithMask` queue finishes the previous one. It drains
+before scratch reuse and publication, and uses the existing completion handler.
+The source/mask arrangement matches the helper used by both reference ports;
+`c2p-native-ub8slkom` passes the 193-case native pixel/ABI oracle for the revised
+three-channel blit mapping. That isolated synchronous oracle does not validate
+the new overlap scheduling.
+
+Exclusive landing costs are 34.40 ms in `pop2HybridColumn`, 9.91 ms in shared
+masked-blit submission and 6.58 ms in the shared queue processor, before the
+remaining presentation/interrupt work. Compared with the synchronous prototype,
+the same 155,991 CPU-stage instructions now take longer (29.89 to 34.40 ms),
+consistent with overlapping Chip-bus contention. These flat-PC measurements
+do not use the unverified call tree. This implementation therefore supplies no
+reason to replace the production CPU converter or qualify the hybrid further.
+Evidence is pinned in `manifest/performance-68020-hybrid-overlap.sha256`.
 
 Item 15 remains open. The fixed target is `a1200-fast`: 68EC020 at
 14,187,580 Hz, instruction cache enabled, no data cache, 2 MB Chip and 8 MB
