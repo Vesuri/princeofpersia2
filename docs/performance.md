@@ -2,7 +2,7 @@
 
 The current owner-directed target is `a1200-030`: the shared 50 MHz 68030,
 AGA, PAL, 2 MB Chip RAM and 8 MB Fast RAM preset with data cache enabled.
-68020 item 15 is required before 0.90 (D14); its earlier baseline below fails cadence.
+68020 item 15 is closed by owner acceptance (D17); its measured cadence remains below the former target.
 The retained accelerated measurements below use the legacy explicit-frequency
 calculation; item 22 requires requalification with the corrected clock.
 These are emulator measurements, not real-hardware performance claims. The Fast RAM requirement is 8 MB (D5).
@@ -63,7 +63,16 @@ percentage speedup or all-scene frame rate.
 
 ## 68020 evaluation (item 15)
 
-### Current feasibility assessment
+### Accepted outcome
+
+D17 closes item 15 without a cadence pass. The retained matched pair measures
+248.91–249.14 ms per landing frame against 83.3 ms; the extra death-phase
+request remains recorded. Correctness evidence and failed timing comparisons
+below are retained. The supported minimum remains 68030 with 8 MB Fast RAM.
+No equivalent 68020 Macintosh performance measurement establishes that the
+original could not run. No further 68020 optimization is required for 0.90.
+
+### Feasibility assessment
 
 MEASURED: the pre-resource-hint matched landing pair needs 167.71–167.84 ms/frame
 removed to reach 83.3 ms. A disjoint flat-PC ledger assigns 51.91–52.03 ms to
@@ -79,7 +88,7 @@ is impossible. Real changes can also alter work outside their original bucket.
 It does establish that optimizing only those currently selected hot paths is
 not a sufficient plan under that accounting. There is presently no demonstrated
 implementation path to the unchanged cadence gate; further optimization is
-exploratory and would need broader savings. D14 and item 15 remain unchanged.
+exploratory and would need broader savings. D17 accepts closure with this limitation.
 The older `item15-dispatch-o3-020-a` compiler pilot already rejected the obvious
 speed-compilation experiment; it was not repeated. `CopyBits` is only about
 three calls per landing frame, limiting the value of another entry shortcut.
@@ -152,7 +161,7 @@ the complete reference, without changing verifier requirements. Host tests pass.
 `2098779d8167c953f2c7881fe31f79b0ba7ac430b7e3af400fd8b5cba4c80248`.
 `manifest/performance-68020-resource-hints.sha256` pins the evidence;
 `manifest/references.tsv` identifies the shared commit. This bounded change
-is not completion of item 15 or a new all-level gameplay qualification.
+does not establish a cadence pass or a new all-level gameplay qualification.
 
 ### Rejected short-copy loop pilot
 
@@ -209,7 +218,7 @@ profile-mode restoration has no heap audit; the stopped capture supplies no
 performance claim. `make release` passes; the frozen ordinary executable SHA-256
 is `f0b28161eca1a8a2e35dd7735a4828533af9b751f08ef0604946d93c47e62278`.
 `manifest/performance-68020-bank-installed.sha256` pins the builds, captures,
-checks and the extra live-caller observer. Item 15 remains open.
+checks and the extra live-caller observer. Item 15 is closed under D17 with the measured limitations retained.
 
 ### Shared changed-row screen copies
 
@@ -450,7 +459,7 @@ baseline's player records and endpoints. Exclusive dispatch costs fall from
 unmatched returns preclude verified inclusive call-tree claims.
 Both runs still have **59/82 late requested intervals**, and the strict original
 comparison rejects the extra death-phase request/frame. The 83.3 ms landing
-request remains unmet; item 15 stays open.
+request remains unmet; D17 accepts this limitation.
 
 Native exception-return fixture `tmp/pascal-native-rensyfh1` passes 192 cases
 covering all 15 saved registers, all 32 CCR values, six Pascal cleanup sizes
@@ -549,7 +558,7 @@ do not use the unverified call tree. This implementation therefore supplies no
 reason to replace the production CPU converter or qualify the hybrid further.
 Evidence is pinned in `manifest/performance-68020-hybrid-overlap.sha256`.
 
-Item 15 remains open. The fixed target is `a1200-fast`: 68EC020 at
+Item 15 is closed under D17 with the measured limitations retained. The fixed target is `a1200-fast`: 68EC020 at
 14,187,580 Hz, instruction cache enabled, no data cache, 2 MB Chip and 8 MB
 Fast RAM. The current candidate does not meet the original cadence.
 
@@ -669,7 +678,7 @@ are 303.84/304.40 ms per recorded frame, against 328.92/329.19 ms. Both repeats
 retain all 82 baseline player records and identical first-room and death pixels
 and palette. The repeat phase-state and field-variation gate passes. They still
 miss 61/62 of 82 requested intervals and retain the extra death-phase request;
-**item 15 is not complete**. Only exclusive PC measurements support these claims.
+these runs do not pass the former cadence gate. Only exclusive PC measurements support these claims.
 
 Reproduce after sourcing `amiga/env.sh`:
 
@@ -768,7 +777,7 @@ records and endpoint images, and pass the repeat comparison with identical
 ELF and executable bytes. First-room pixels and palette match the pinned
 Macintosh reference. Both still have **59/82 late requested intervals** and
 an extra death-phase request relative to the original; strict cadence fails.
-The 83.3 ms request and item 15's acceptance are unchanged.
+The 83.3 ms request remains unmet; D17 accepts closure with this limitation.
 
 The port uses AmigaXDev's shared rectangle adapter and the unchanged Kalms
 `c2p1x1_8_c5_030_2` kernel from the already pinned upstream revision. Vette and
@@ -835,7 +844,7 @@ measured 284.18 ms. The accepted register-copy baseline was 286.39/287.43 ms.
 
 Both final runs still have **60/82 late requested intervals**, and the strict
 original comparison rejects their extra death-phase frame/request sequence.
-Item 15 remains open against the unchanged 83.3 ms request. Flat exclusive costs
+These runs do not meet the 83.3 ms request; D17 accepts the limitation. Flat exclusive costs
 in C include 78.21 ms original code, 65.60 ms trap entry/dispatch and 54.77 ms C2P;
 unmatched returns preclude treating the printed call-tree costs as verified.
 
@@ -896,8 +905,8 @@ MEASURED: calibrated `item15-dispatch-owner-020-a/b` record 292.43/293.12 ms per
 landing frame, versus 295.06/295.36 ms for the zone baseline. Exclusive dispatch
 cost is 65.27/65.54 ms versus 67.91 ms in baseline C. Both routes take 607 PAL
 fields, retain all 82 baseline player records and endpoint images, and pass the
-phase-repeat check. Both still miss 61 of 82 timer intervals; item 15 remains
-open against 83.3 ms. The existing extra death-phase frame is not waived.
+phase-repeat check. Both still miss 61 of 82 timer intervals against 83.3 ms.
+The extra death-phase frame remains a recorded difference under D17.
 
 The verification route `.run-VtXyJL` passes the quick-entry/callback controls,
 live guard checks, original CODE audit and restoration. First-room pixels,
@@ -944,7 +953,7 @@ also confirms that the audio-readiness override and fixture counters are absent.
 
 Cadence still fails: 60/61 of 82 requested intervals are late, and the extra
 death-phase frame still fails the strict original timer-request comparison.
-Item 15 remains open. `manifest/performance-68020-zones.sha256` records the
+Item 15 is closed under D17 with the measured limitations retained. `manifest/performance-68020-zones.sha256` records the
 measurement and validation artifacts, including rejected experiments.
 
 ## Frame-end conversion

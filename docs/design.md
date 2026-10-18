@@ -8,7 +8,7 @@
 | D2 | Reference system: System 7.5.5 under MAME on a compatible Macintosh IIci, 8 MB, main `mdc48` display at 256 colours, Virtual Memory off. Owner-authorized fallback from the failing System 6.0.8 / Macintosh IIx configuration | Decided |
 | D3 | Display: PAL hires interlaced, 8 bitplanes, FMODE 3, showing the original 512×384 window 1:1. No DblPAL or other 31 kHz mode | Decided |
 | D4 | Drop lores; retain D3’s 512×384 display at 1:1. `DrawHalf` and `ComputeHalfRect` select scene rectangles at the original scale, not a reduced-resolution renderer. Confirmed by the owner after analysis | Decided |
-| D5 | Current target: AGA, 68030 or better, 8 MB Fast RAM. Timing is accepted on `a1200-030`; 68040 validation remains part of release work. 68020 item 15 is required before version 0.90 (D14). The 68020 target is being evaluated, not yet accepted. Release startup fails at 4 MB and passes at 8 MB on the measured a1200-030 configuration | Decided |
+| D5 | Current target: AGA, 68030 or better, 8 MB Fast RAM. Timing is accepted on `a1200-030`; 68040 validation remains part of release work. 68020 evaluation item 15 is closed under D17 without qualifying 68020 as a supported target. Release startup fails at 4 MB and passes at 8 MB on the measured a1200-030 configuration | Decided |
 | D6 | Bypass the copy protection at a measured, byte-verified seam | Decided |
 | D7 | Music: reuse Alone in the Dark's native Halestorm driver in place of the original `MDRV`, improving it as needed. All audio through Paula DMA voices; no software mixing | Decided |
 | D8 | Remove all Macintosh UI: menu bar, window frames, dialogs and pointer. Reached functions get port-owned replacements | Decided |
@@ -51,8 +51,8 @@ The owner subsequently authorized doing audio-cost item 19.6 next, keeping
 
 ## Version 0.90 release scope
 
-D14 (owner-authorized): complete item 15 (68020 support) before version 0.90
-(16.10.2026), retaining its acceptance gate. Item 19’s performance work is
+D14 (owner-authorized release scope, amended by D17): item 15 is closed by
+owner acceptance for version 0.90 (16.10.2026). Item 19’s performance work is
 complete. Item 14’s 68040 cadence, real-hardware and installer validation gates
 remain required.
 
@@ -64,9 +64,20 @@ installer validation remain required.
 D16 (owner-authorized): item 15 may replace hot original rendering routines
 with equivalent native implementations. Guard original bytes before installing
 any replacement and validate memory, registers, condition codes and live callers
-against the original. Preserve game decisions and the existing fixed-68020
-cadence gate. Reuse Vette’s validation approach and share reusable helpers through
+against the original. Preserve game decisions; D17 closes the fixed-68020
+evaluation without requiring its cadence gate to pass. Reuse Vette’s validation approach and share reusable helpers through
 AmigaXDev.
+
+D17 (owner-authorized, 18.10.2026): consider item 15 complete and end further
+68020 optimization as a release requirement. Accept the retained implementation
+and measured limitations: 248.91–249.14 ms per landing frame against the former
+83.3 ms gate, with the recorded extra death-phase request. This closes the item
+by owner acceptance, not by passing the timing gate or qualifying full 68020
+gameplay. The supported minimum remains AGA/68030 with 8 MB Fast RAM; do not
+add a validated 68020 claim to the release or installer. Preserve the failed
+comparisons and successful correctness evidence. Performance of the original
+on a comparable 68020 Macintosh has not been measured, so its inability to run
+is not an established fact. Item 14 and corrected-clock item 22 remain required.
 
 ## Faithfulness boundary
 

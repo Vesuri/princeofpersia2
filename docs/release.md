@@ -6,10 +6,10 @@ and heap changes. Its identity is recorded below.
 The owner will test an Amiga 1200 with 68040/40, 32 MB and MMU. Hardware
 confirmation remains required; emulator observations do not replace it.
 
-Under owner decision D14, item 15 (68020 support) and shared-tooling item
-19.9 are deferred beyond 0.90. The owner separately authorized
-19.4, 19.5, 19.7 and 19.8 ahead of release; those items are complete.
-The deferred items’ future acceptance gates remain intact.
+Under D17, item 15 is closed by owner acceptance of the measured 68020
+limitations. The supported minimum remains 68030 with 8 MB Fast RAM;
+68020 cadence and full gameplay are not qualified. Item 19 is complete.
+Corrected-clock accelerated timing remains in item 22.
 Under D15, cinematic deadline item 19.10 and diagnostic return-wrapper item 21
 are complete. The wrapper ABI, live save/load CCR, integration, restart,
 save/load and ending/Hall gates pass; see `docs/native-integration.md`.
