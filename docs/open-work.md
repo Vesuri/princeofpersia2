@@ -56,8 +56,14 @@ Items remain open until their acceptance gates pass.
     The 0x2200-byte context snapshot omits most persistent per-room opponent
     records. Aligning five persistent skeleton timers as well as seed/context
     reproduces the level-four actor, RNG and frame endpoint on the original;
-    the upstream scheduling cause remains open. New flame observations match the update rule but reset
-    one step apart; the cause of that event timing remains open.
+    the upstream scheduling cause remains open. Flame observations show the
+    shadow sequence running one step ahead for 80 consecutive paired states;
+    the initial difference precedes that window. Driver-clock queries also
+    expose different batching during the level-six music gate; causal clock
+    replay passes its unchanged-value control but fails to reproduce the native
+    schedule. Both the TickCount-based enqueue timestamps and the driver-based
+    delivery clock need paired observation; the invalid pre-intervention and
+    exhausted-response controls remain failures.
     Acceptance: explain and resolve the differences with original-paired
     evidence, including any effects on gameplay decisions. Check the other
     ports before service changes; keep diagnostics opt-in and release ordinary.

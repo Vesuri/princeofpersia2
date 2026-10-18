@@ -4,7 +4,7 @@ from extract_original_data import ROOT, DESTINATION, verify_output
 import trap_census
 
 
-def generate():
+def generate(events=False):
     verify_output(DESTINATION)
     trap_census.load(DESTINATION/'Prince of Persia 2.rsrc')
     script = (ROOT/'amiga/gameplay_route.gdb').read_text()
@@ -26,7 +26,7 @@ end
 end
 set $flamebase=g_coreSegments[10][0]
 '''
-    for offset in (0x2cc2, 0x2d48):
+    for offset in (() if events else (0x2cc2, 0x2d48)):
         word = int.from_bytes(trap_census.CODE[10][offset:offset+2], 'big')
         setup += f'''if *(unsigned short*)($flamebase+0x{offset:x})!=0x{word:x}
  echo FLAME OBSERVER / ORIGINAL BYTES\\n
@@ -41,9 +41,34 @@ commands
  continue
 end
 '''
+    if events:
+        for offset in (0x2cc2, 0x29f8, 0x2ab4):
+            word = int.from_bytes(trap_census.CODE[10][offset:offset+2], 'big')
+            window = ' && *(unsigned short*)(g_coreA5-0x349a)>=160 && *(unsigned short*)(g_coreA5-0x349a)<=240' if offset == 0x2cc2 else ' && *(unsigned short*)(g_coreA5-0x349a)<=640'
+            setup += f'''if *(unsigned short*)($flamebase+0x{offset:x})!=0x{word:x}
+ echo FLAME EVENTS / ORIGINAL BYTES\\n
+ quit 1
+end
+break *($flamebase+0x{offset:x})
+commands
+ silent
+ if *(unsigned short*)(g_coreA5-0x4fd2)==13{window}
+  set $flame_step=*(unsigned short*)(g_coreA5-0x349a)
+  set $flame_context=*(unsigned long*)(g_coreA5-0x5014)
+  eval "dump binary memory @RUN@/flame-event-{offset:04X}-%u-a5.bin g_coreA5-22266 g_coreA5",$flame_step
+  eval "dump binary memory @RUN@/flame-event-{offset:04X}-%u-context.bin $flame_context $flame_context+0x2200",$flame_step
+  printf "FLAME_EVENT site={offset:04X} step=%u frame=%04X player=%04X\\n",$flame_step,*(unsigned short*)(g_coreA5-0x504c),*(unsigned short*)(g_coreA5-0x50c8)
+ end
+ continue
+end
+'''
     return script+setup+'set $flame_armed=1\ncontinue\n'
 
 
 if __name__ == '__main__':
-    import sys
-    Path(sys.argv[1]).write_text(generate())
+    import argparse
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('output', type=Path)
+    parser.add_argument('--events', action='store_true')
+    args = parser.parse_args()
+    args.output.write_text(generate(args.events))

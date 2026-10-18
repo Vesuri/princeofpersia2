@@ -131,6 +131,57 @@ native endpoint comparison and two missing-evidence controls. The extended
 This narrows the discrepancy to music scheduling; it does not establish its
 underlying clock cause or accept the failed route.
 
+MEASURED in that same complete 194-note window: the original returns 1,129
+clock queries with increments 0/2/3 occurring 722/94/312 times. Native returns
+1,116 queries with increments 0/1/2 occurring 185/744/186 times. The checker
+requires monotonic queries, bounds the window by the same stop requests, and
+rejects backwards-clock corruption on both sides. Thus driver-clock batching
+differs even though the note multiset agrees. DERIVED: the original expanded
+driver increments its clock in the Sound Manager buffer callback at +082A
+(and in its alternate output routine at +0950); native `NativeAudio::field`
+accumulates six ticks per five PAL fields. This identifies a scheduling
+mechanism to test, not a causal proof for the exit offset or authorization to
+change the release clock.
+
+
+The initial clock-replay attempts `item16-music-clock-1`,
+`item16-music-clock-control-1` and `item16-music-clock-2` are failed controls:
+all stop at checkpoint 7 before any clock substitution. Their second recorded
+key read is empty, whereas the canonical input has Left pressed; the RNG seed
+still matches, but context and pixels do not. Identical host commands were
+insufficient to reproduce that input read. These captures cannot establish a
+clock-replay effect. `manifest/gameplay-item16-clock-prefix-control.sha256`
+preserves them; the revised fixture pins and replays the reference key reads.
+`item16-music-clock-control-2` then reproduces all 16 canonical checkpoints
+and the complete original music schedule using the pinned key reads. Its clock
+trigger is unreached, so it is an activation-failure control, not a passing
+clock fixture. The trigger had used the preceding key-read frame rather than
+the counter after `FrameAdv` increments it. The trigger-control manifest and
+checker retain both its passing input replay and failed activation. The revised unchanged-value control `item16-music-clock-control-3` positively
+activates at step 109, observes 1,119 queries, and preserves all 16 checkpoints
+and the complete original note schedule. The substitution run
+`item16-music-clock-3` completes but fails the clock-fixture query-count gate:
+it consumes the 1,115 pinned native responses and then four extrapolated
+formula responses. Those four are outside the pinned native stream, so this
+is a failed counterfactual, not proof of an equivalent native schedule.
+It still exits at step 333. Clock-query batching alone has not been established
+as the timing cause. The clock-control and clock-replay manifests retain both
+runs, and the strict replay checker continues to reject the substitution.
+Future substitutions stop at the end of the pinned response stream; that new
+runtime exhaustion guard has not yet been exercised in the emulator.
+
+DERIVED: `HandleLiveMusicVBLTask` (CODE 11+0004) compares queued-note timestamps
+with `GetDriverSyncTime`. The note-on enqueue path at +0266 instead uses
+`TickCount + 1 - A5[-11D4]`; +019E establishes that TickCount origin and resets
+the driver clock. Replaying only the driver's increments therefore does not
+replay both scheduling inputs. MEASURED: in the pinned original 194-note
+window, the origin is 0xC8A and `TickCount - origin - driver clock` at the
+note-on calls ranges from -1 to 2 (28/93/69/4 calls respectively).
+`check_gameplay_music_window.py` checks those observations and rejects a
+corrupted origin. These are delivery-call observations, not enqueue timestamps.
+The native trace lacks corresponding TickCount samples, so the relative phase
+has not yet been paired and is not an established cause of the exit offset.
+
 MEASURED: current verification replay `.run-NeChbT` retains the two level-one
 RNG differences at checkpoints 64 and 90. All 95 preceding checkpoints match
 pixels, displayed palette, captured context and all six actor records; the strict
@@ -1702,6 +1753,29 @@ at step 229. Current native `.run-7TG1jl` executes the same 613 updates and
 recurrence, but resets state 8 to 133 at step 228. The subsequent animation
 phase differs. CODE 10+29F8 and +2AB4 contain the original writes of 133 to
 context word 0x0914; the cause of the changed reset timing is still unresolved.
+
+MEASURED: `item16-flame-events-1` repeats the full original route while
+capturing steps 160–240 and both possible reset sites. Its only reset is
+CODE 10+29F8 at step 228, when the active shadow character reaches frame 154;
+the altar-transition site +2AB4 does not execute in this observed interval.
+The next flame update at step 229 sees state 133. This locates the event in
+shadow animation, not in the flame update recurrence. Native `.run-jFpn9K`, with the same executable as `.run-7TG1jl`, resets at
+step 227 and retains the rejected level-fourteen entry at step 1515. Only
+shadow slot 1 differs at each same-step comparison from 160 through 240.
+All six native actor records at steps 160–239 equal the original records one
+step later: 80 consecutive exact pairs. This explains the flame phase shift
+as an earlier shadow animation; the initial divergence lies before step 160.
+`tools/check_gameplay_flame_events.py` verifies the complete original repeat,
+81 consecutive captures, both reset publications, native restoration, the
+shifted actor pairs and two corruption controls. The two
+`manifest/gameplay-item16-flame-events-*.sha256` files pin the evidence.
+
+DERIVED: CODE 4+3C60/+3C72 waits for both current death-sound cues via
+`PrinceSndOn`; after completion, +3C96 writes 600 to A5−4FCC. `FrameAdv`
+sets A5−4FD4 at CODE 2+685E when that state is present in the altar room.
+CODE 10+2B08 checks this flag and +2B14 creates the shadow. This identifies
+the sound gate preceding the shadow sequence, but does not yet measure the
+initial timing difference between steps 40 and 160.
 
 `tools/check_gameplay_flame_window.py` checks these pinned observations,
 the original repeat, native build/restoration audits and two corruption

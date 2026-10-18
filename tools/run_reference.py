@@ -20,6 +20,11 @@ def digest(path):
 
 
 def run(name=None, control=None, deadline=None):
+    if os.environ.get('POP2_GAMEPLAY_CLOCK_FIXTURE'):
+        if os.environ.get('POP2_GAMEPLAY') != 'route' or os.environ.get('POP2_ROUTE_DISCOVERY') != '1' or os.environ.get('POP2_ROUTE_AUDIO_TRACE') != '1':
+            raise ValueError('CLOCK FIXTURE / REQUIRES DISCOVERY AND AUDIO OBSERVER')
+        from gameplay_clock_fixture import verify
+        verify(Path(os.environ['POP2_GAMEPLAY_CLOCK_FIXTURE']))
     if os.environ.get('POP2_GAMEPLAY_RNG_FIXTURE'):
         if (os.environ.get('POP2_GAMEPLAY') != 'route'
                 or os.environ.get('POP2_ROUTE_DISCOVERY') != '1'

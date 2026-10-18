@@ -22,6 +22,10 @@ local checkpoints={};local heldKeys='none';local lastLevel=0
 local discovery=os.getenv('POP2_ROUTE_DISCOVERY')=='1'
 local rngFixturePath=os.getenv('POP2_GAMEPLAY_RNG_FIXTURE')
 local rngFixture=rngFixturePath and dofile(rngFixturePath..'/metadata.lua') or nil
+local clockFixturePath=os.getenv('POP2_GAMEPLAY_CLOCK_FIXTURE')
+local clockFixture=clockFixturePath and dofile(clockFixturePath..'/metadata.lua') or nil
+local clockKeyIndex=0
+assert(not clockFixture or (discovery and audioObserver and not rngFixture),'CLOCK FIXTURE / EXCLUSIVE AUDIO OBSERVER REQUIRED')
 local rngFixtureApplied=false;local rngPrevious=nil
 assert(not rngFixture or (discovery and os.getenv('POP2_ROUTE_RANDOM_TRACE')=='1'),'RNG FIXTURE / OBSERVERS REQUIRED')
 local assisted=os.getenv('POP2_ROUTE_ASSIST')=='1'
@@ -104,11 +108,40 @@ local function capture(reason)
 end
 function M.map(seg,base,guard,condition)
  bases[seg]=base
+ if seg==11 and clockFixture then
+  -- Reuse the donor debugger-action pattern to avoid pausing at each query.
+  -- Exact recorded key reads below keep the input experiment controlled.
+  guard(seg,base,0x2100,2);guard(seg,base,0x2ce6,2)
+  dbg:command('temp7=0;temp8=0;temp9=0')
+  local level=condition..' && w@(a5-0x4fd2)==6'
+  cpu.debug:bpset(base+0x2ce6,level..string.format(' && w@(a5-0x349a)!=0x%x && temp9!=1',clockFixture.original_start_step),
+   'logerror "CLOCK_FIXTURE_STOP_OBSERVED step=%X clock=%08X\\n",w@(a5-0x349a),d@(d@(a5-0xf24)+0x6096);g')
+  local begin=('temp7=0;temp8=d@(d@(a5-0xf24)+0x6096);temp9=1;logerror "CLOCK_FIXTURE_BEGIN step=%X base=%08X\\n",w@(a5-0x349a),temp8;g')
+  cpu.debug:bpset(base+0x2ce6,level..string.format(' && w@(a5-0x349a)==0x%x && temp9==0',clockFixture.original_start_step),begin)
+  local formula=string.format('temp8+temp7+if(temp7%%6==3 || temp7%%6==4 || temp7==5 || temp7==0x%x,1,0)',#clockFixture.deltas)
+  if os.getenv('POP2_CLOCK_FIXTURE_SHAM')=='1' then formula='temp6' end
+  local query='temp7=temp7+1;temp6=d0;d0='..formula..';logerror "CLOCK_FIXTURE_QUERY index=%X step=%X before=%08X after=%08X\\n",temp7,w@(a5-0x349a),temp6,d0;g'
+  local limit=os.getenv('POP2_CLOCK_FIXTURE_SHAM')=='1' and 2048 or #clockFixture.deltas
+  cpu.debug:bpset(base+0x2100,level..string.format(' && temp9==1 && temp7<0x%x',limit),query)
+  points[base+0x2100]='clock-exhausted'
+  cpu.debug:bpset(base+0x2100,level..string.format(' && temp9==1 && temp7>=0x%x',limit),
+   'logerror "CLOCK_FIXTURE_EXHAUSTED queries=%X\\n",temp7')
+  cpu.debug:bpset(base+0x2ce6,level..string.format(' && w@(a5-0x349a)>0x%x && temp9==1',clockFixture.original_start_step),
+   'temp9=2;logerror "CLOCK_FIXTURE_TRACK_COMPLETE step=%X queries=%X\\n",w@(a5-0x349a),temp7;g')
+ end
  if seg==10 and os.getenv('POP2_ROUTE_FLAME_TRACE')=='1' then
   for _,offset in ipairs({0x2cc2,0x2d48})do
    guard(seg,base,offset,4)
    cpu.debug:bpset(base+offset,condition..' && w@(a5-0x4fd2)==0xd && w@(a5-0x349a)<=0x280',
     string.format('logerror "ROUTE_FLAME site=%04X step=%%04X state=%%04X next=%%04X shape=%%08X tile=%%04X\\n",w@(a5-0x349a),w@(a5-0x4818),d4&0xffff,d@(a5-0x4c9e),w@(d@(a5-0x5014)+0x914);g',offset))
+  end
+ end
+ if seg==10 and os.getenv('POP2_ROUTE_FLAME_EVENTS')=='1' then
+  assert(os.getenv('POP2_ROUTE_FLAME_TRACE')~='1','FLAME EVENTS / EXCLUSIVE OBSERVER')
+  for _,offset in ipairs({0x2cc2,0x29f8,0x2ab4})do
+   guard(seg,base,offset,4);points[base+offset]='flame-event'
+   local window=offset==0x2cc2 and ' && w@(a5-0x349a)>=0xa0 && w@(a5-0x349a)<=0xf0' or ' && w@(a5-0x349a)<=0x280'
+   cpu.debug:bpset(base+offset,condition..' && w@(a5-0x4fd2)==0xd'..window,'logerror "FLAME_EVENT_STOP\\n"')
   end
  end
  if seg==2 and os.getenv('POP2_ROUTE_EXIT_TRACE')=='1' then
@@ -239,6 +272,7 @@ local function command()
    assert(rngFixtureApplied and sequence==rngFixture.checkpoint,'RNG FIXTURE / POSITIVE ENDPOINT')
    print('RNG_FIXTURE_COMPLETE checkpoint='..sequence)
   end
+  if clockFixture then print('CLOCK_FIXTURE_COMPLETE')end
   sequence=finishId;release();capture('discovery-finished');complete=true;waiting=false
   local log=assert(io.open(run..'/route-actions.txt','a'));log:write(text);log:close()
   if audioObserver then audioObserver.finish()end
@@ -384,7 +418,15 @@ function M.poll()
  if waiting then await_command();return true end
  local label=points[cpu.state.PC.value];if not label then return false end
  local a5=cpu.state.A5.value&0xffffff
- if label=='context-copy' then
+ if label=='clock-exhausted' then
+  error('CLOCK FIXTURE / RESPONSE STREAM EXHAUSTED')
+ elseif label=='flame-event' then
+  local site=cpu.state.PC.value-bases[10];local step=mem:readv_u16(a5-0x349a)
+  local prefix='flame-event-'..string.format('%04X',site)..'-'..step
+  dump(prefix..'-a5.bin',a5-22266,22266)
+  dump(prefix..'-context.bin',mem:readv_u32(a5-0x5014)&0xffffff,0x2200)
+  print(string.format('FLAME_EVENT site=%04X step=%d frame=%04X player=%04X',site,step,mem:readv_u16(a5-0x504c),mem:readv_u16(a5-0x50c8)))
+ elseif label=='context-copy' then
   local context=mem:readv_u32(a5-0x5014)&0xffffff
   local destination=(cpu.state.A3.value&0xffffff)-context
   if destination<0x2080 then
@@ -553,7 +595,16 @@ function M.poll()
   end
  elseif label=='keys' then
   local pointer=(cpu.state.A6.value&0xffffff)-16;local bytes={}
-  if directKeys then
+  if clockFixture and clockFixture.keys then
+   clockKeyIndex=clockKeyIndex+1;local row=clockFixture.keys[clockKeyIndex]
+   assert(row and row.frame==frames and row.step==mem:readv_u16(a5-0x349a),'CLOCK FIXTURE / KEY READ ORDER')
+   local before={}
+   for i=0,15 do
+    before[#before+1]=string.format('%02X',mem:readv_u8(pointer+i))
+    mem:writev_u8(pointer+i,assert(tonumber(row.map:sub(i*2+1,i*2+2),16)))
+   end
+   print(string.format('CLOCK_FIXTURE_KEYS index=%d frame=%d step=%d before=%s after=%s',clockKeyIndex,frames,row.step,table.concat(before),row.map))
+  elseif directKeys then
    for i=0,15 do mem:writev_u8(pointer+i,0)end
    if heldKeys~='none' then for key in heldKeys:gmatch('[^,]+')do
     local code=assert(keyCodes[key],'DIRECT KEY CODE');local byte=pointer+code//8
