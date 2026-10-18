@@ -13,7 +13,8 @@ from scaffold_inputs import verify
 
 
 def run(fixture, seconds, kind="wrapper"):
-    assert kind in ("wrapper", "save-rect", "c2p", "pascal", "changed-rows")
+    assert kind in ("wrapper", "save-rect", "c2p", "pascal", "changed-rows", "bank-skip")
+    bank=kind=="bank-skip"
     changed=kind=="changed-rows"
     pascal=kind=="pascal"
     c2p=kind=="c2p"
@@ -21,7 +22,12 @@ def run(fixture, seconds, kind="wrapper"):
     fixture=fixture.resolve()
     for group in ('build','run'):verify(group)
     stub=ROOT/('tools/changed_rows_abi.s' if changed else 'tools/c2p_abi.s' if c2p else 'tools/wrapper_ccr_fixture.s')
-    if changed:
+    if bank:
+        from bank_skip_fixture import verify_fixture
+        verify_fixture(fixture)
+        verify('calibrated')
+        meta={'image_sha256':hashlib.sha256((fixture/'original.bin').read_bytes()).hexdigest()}
+    elif changed:
         verify('calibrated')
         name='src/mac/CopyChangedRows.inc'
         digest=pins(ROOT/'manifest/shared-runtime.sha256')[name]
@@ -49,7 +55,7 @@ def run(fixture, seconds, kind="wrapper"):
             assert key in recorded and hashlib.sha256(p.read_bytes()).hexdigest()==recorded[key],key
         meta=json.loads((fixture/'metadata.json').read_text())
         assert hashlib.sha256(stub.read_bytes()).hexdigest()==meta['stub_sha256']
-    source=ROOT/('tools/changed_rows_native.c' if changed else 'tools/pascal_return_native.c' if pascal else 'tools/c2p_native.c' if c2p else 'tools/save_rect_native.c' if raster else 'tools/wrapper_ccr_native.c')
+    source=ROOT/('tools/bank_skip_native.c' if bank else 'tools/changed_rows_native.c' if changed else 'tools/pascal_return_native.c' if pascal else 'tools/c2p_native.c' if c2p else 'tools/save_rect_native.c' if raster else 'tools/wrapper_ccr_native.c')
     base=Path(tempfile.mkdtemp(prefix=kind+'-native-',dir=ROOT/'tmp'))
     if pascal:
         entry=(ROOT/'src/platform/amiga/MacEntry.s').read_text()
@@ -80,6 +86,8 @@ def run(fixture, seconds, kind="wrapper"):
     receipt={'fixture':str(fixture.relative_to(ROOT)),'image':meta['image_sha256'],
              'exe':hashlib.sha256(exe.read_bytes()).hexdigest(),'elf':hashlib.sha256(elf.read_bytes()).hexdigest(),
              'native_source':hashlib.sha256(source.read_bytes()).hexdigest()}
+    if bank:
+        receipt['sources']={name:hashlib.sha256((ROOT/name).read_bytes()).hexdigest() for name in ('tools/wrapper_ccr_fixture.s','tools/bank_skip_native.c')}
     if raster:
         receipt['sources']={name:hashlib.sha256((ROOT/name).read_bytes()).hexdigest() for name in ('tools/wrapper_ccr_fixture.s','src/platform/amiga/SaveRect.s','src/mac/ForwardLongCopy.inc')}
     if changed:
@@ -108,13 +116,18 @@ wait "$FSUAE_PID"
     process=None
     try:
         with (base/'emulator.log').open('w') as log:
-            process=subprocess.Popen(['/bin/bash',str(launcher),str(base),str(ROOT)],stdout=log,stderr=log,env=dict(os.environ,**({'FIXTURE_EMULATOR':os.environ['FSUAE_CALIBRATED'],'FIXTURE_SETUP':'a1200-fast'} if (raster or c2p or pascal or changed) else {})))
+            process=subprocess.Popen(['/bin/bash',str(launcher),str(base),str(ROOT)],stdout=log,stderr=log,env=dict(os.environ,**({'FIXTURE_EMULATOR':os.environ['FSUAE_CALIBRATED'],'FIXTURE_SETUP':'a1200-fast'} if (raster or c2p or pascal or changed or bank) else {})))
             deadline=time.monotonic()+seconds
             while time.monotonic()<deadline and not (base/'dh1/Shell.done').exists():
                 if process.poll() is not None:raise RuntimeError('WRAPPER / EMULATOR EXIT')
                 time.sleep(.5)
         assert (base/'dh1/Shell.done').read_text()=='SHELL PASS\n','WRAPPER / SHELL COMPLETION'
-        if changed:
+        if bank:
+            from native_machine import check as check_machine
+            check_machine(base,'a1200-fast')
+            assert (base/'dh1/fixture.complete').read_text()=='BANK_SKIP_COMPLETE cases=1468\n','BANK / COMPLETION'
+            assert (base/'dh1/original.effects').read_bytes()==(base/'dh1/replacement.effects').read_bytes(),'BANK / NATIVE DIFFERENTIAL'
+        elif changed:
             from native_machine import check as check_machine
             check_machine(base,'a1200-fast')
             assert (base/'dh1/fixture.complete').read_text()=='ROWS_COMPLETE cases=1666\n','ROWS / FIXTURE COMPLETION'
@@ -141,7 +154,7 @@ wait "$FSUAE_PID"
 
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('fixture',type=Path)
-    p.add_argument('--kind',choices=['wrapper','save-rect','c2p','pascal','changed-rows'],default='wrapper')
+    p.add_argument('--kind',choices=['wrapper','save-rect','c2p','pascal','changed-rows','bank-skip'],default='wrapper')
     p.add_argument('--seconds',type=int,default=300);a=p.parse_args()
     if not 1<=a.seconds<=3600:p.error('--seconds must be between 1 and 3600')
     run(a.fixture,a.seconds,a.kind)

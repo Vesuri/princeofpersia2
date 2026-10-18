@@ -20,6 +20,11 @@ def digest(path):
 
 
 def run(name=None, control=None, deadline=None):
+    if os.environ.get('POP2_BANK_SKIP_FIXTURE'):
+        if os.environ.get('POP2_INTEGRATION')!='1' or os.environ.get('POP2_NULL_DISPOSE')!='1':
+            raise ValueError('BANK / REQUIRES INTEGRATION AND NULL_DISPOSE')
+        from bank_skip_fixture import verify_fixture
+        verify_fixture(Path(os.environ['POP2_BANK_SKIP_FIXTURE']))
     if os.environ.get('POP2_SAVE_RECT_FIXTURE'):
         if os.environ.get('POP2_INTEGRATION')!='1' or os.environ.get('POP2_NULL_DISPOSE')!='1':
             raise ValueError('SAVE RECT / REQUIRES INTEGRATION AND NULL_DISPOSE')
@@ -132,6 +137,10 @@ def run(name=None, control=None, deadline=None):
         log=(destination/'session.log').read_text()
         if log.count('HANDLE_STATE_FIXTURE_COMPLETE\n')!=1 or 'FAIL REFERENCE' in log:
             raise ValueError('REFERENCE / HANDLE STATE FIXTURE INCOMPLETE')
+    if env.get('POP2_BANK_SKIP_FIXTURE'):
+        log=(destination/'session.log').read_text()
+        if log.count('BANK_COMPLETE cases=1468\n')!=1 or log.count('BANK_RESTORED\n')!=1 or 'FAIL REFERENCE' in log:
+            raise ValueError('REFERENCE / BANK INCOMPLETE')
     if env.get('POP2_SAVE_RECT_FIXTURE'):
         log=(destination/'session.log').read_text()
         if log.count('SAVE_RECT_COMPLETE cases=672\n')!=1 or log.count('SAVE_RECT_RESTORED\n')!=1 or 'FAIL REFERENCE' in log:
@@ -140,7 +149,7 @@ def run(name=None, control=None, deadline=None):
         log=(destination/'session.log').read_text()
         if log.count('WRAPPER_FIXTURE_COMPLETE cases=640\n')!=1 or log.count('WRAPPER_FIXTURE_RESTORED\n')!=1 or 'FAIL REFERENCE' in log:
             raise ValueError('REFERENCE / WRAPPER FIXTURE INCOMPLETE')
-    if env.get('POP2_NULL_DISPOSE') and not any(env.get(k) for k in ('POP2_SAVE_RECT_FIXTURE','POP2_FREED_PROBE','POP2_HEAP_PROBE','POP2_HANDLE_STATE_PROBE','POP2_HANDLE_COPY_PROBE','POP2_EQUAL_RECT_PROBE','POP2_RECTANGLE_PROBE','POP2_WRAPPER_FIXTURE')):
+    if env.get('POP2_NULL_DISPOSE') and not any(env.get(k) for k in ('POP2_BANK_SKIP_FIXTURE','POP2_SAVE_RECT_FIXTURE','POP2_FREED_PROBE','POP2_HEAP_PROBE','POP2_HANDLE_STATE_PROBE','POP2_HANDLE_COPY_PROBE','POP2_EQUAL_RECT_PROBE','POP2_RECTANGLE_PROBE','POP2_WRAPPER_FIXTURE')):
         log=(destination/'session.log').read_text()
         for marker in ('DISPOSE_FIXTURE stage=1 d0=00000000 memerr=0000',
                        'DISPOSE_FIXTURE stage=2 d0=00000000 memerr=0000 a0=00000000',

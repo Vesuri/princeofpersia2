@@ -42,11 +42,12 @@ Items remain open until their acceptance gates pass.
     state match the pinned Macintosh reference. Eight corrupted-evidence controls
     and the shared sanitizer suite pass. The strict original cadence failure is
     retained; fewer publications do not waive any game-frame checks.
-    A bounded BankRLELR transparent-run replacement passes 1,468 paired native
-    original-instruction cases, including all run lengths 1–128, clipping and
-    mixed transparent/opaque rows. Before installation it still needs actual
-    Macintosh pairing, byte guards and matched game timing. The dispatcher split
-    and framebuffer-alignment experiments are removed; neither is a qualified production gain. Evidence is in performance.md.
+    A bounded BankRLELR transparent-run replacement passes 1,468 paired
+    Macintosh/native-original/native-replacement cases, including all run lengths
+    1–128, clipping and mixed transparent/opaque rows, plus 38 rejection controls.
+    It still needs byte-guarded installation and matched game timing. The dispatcher
+    split and framebuffer-alignment experiments are removed; neither is a qualified
+    production gain. Evidence is in performance.md.
     Next target broader full-dispatch overhead and hot rendering/conversion work;
     the remaining gap cannot be closed by small handle shortcuts alone. Keep
     equivalent rendering replacements available under D16.

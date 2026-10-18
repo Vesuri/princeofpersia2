@@ -1,3 +1,4 @@
+local bankSkip=os.getenv('POP2_BANK_SKIP_FIXTURE') and dofile('tools/mac_bank_skip.lua') or nil
 local freed=os.getenv('POP2_FREED_PROBE') and dofile('tools/mac_freed_handles.lua') or nil
 local heapFixture=dofile('tools/mac_heap.lua')
 local rectangles=dofile('tools/mac_rectangles.lua')
@@ -104,6 +105,7 @@ function M.startNil()
  local code=(cpu.state.SP.value&0xffffff)-8192
  assert(code>0x100000,'INTEGRATION FIXTURE EXTENT')
  if freed then freed.start(code,M.finish);return end
+ if bankSkip then bankSkip.start(code,M.finish);return end
  if saveRect then saveRect.start(code,M.finish);return end
  if wrappers then wrappers.start(code,M.finish);return end
  if os.getenv('POP2_HEAP_PROBE') then heapFixture.start(code,M.finish);return end
@@ -160,6 +162,7 @@ function M.startFixed()
 end
 function M.poll()
  if freed and freed.poll()then return true end
+ if bankSkip and bankSkip.poll()then return true end
  if saveRect and saveRect.poll()then return true end
  if wrappers and wrappers.poll()then return true end
  if heapFixture.poll()then return true end

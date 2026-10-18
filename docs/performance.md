@@ -139,8 +139,8 @@ cases (14 captured calls × 32 initial CCR values) in
 15 registers, CCR and stack output agree. The candidate changes scratch D5 high
 bits and transient flags inside the loop; the original enclosing block restores
 D5 and overwrites the flags before its exit. This is evidence at the full-block
-boundary, not a claim that intermediate register states are identical. An actual
-Macintosh pairing, guarded installation and matched game timing remain required.
+boundary, not a claim that intermediate register states are identical. Guarded
+installation and matched game timing remain required.
 No game patch is installed and no candidate speedup is claimed. Curated names are in `disasm/symbols.csv`;
 `manifest/performance-68020-dispatch-render-candidates.sha256` pins the captures,
 prototype and input identities. The verified ordinary release is restored.
@@ -156,7 +156,38 @@ completion signals and calibrated machine metadata pass. Inputs, sources,
 binaries and evidence are pinned in
 `manifest/performance-68020-bank-boundaries.sha256`. These positive-width
 cases do not establish behavior for malformed streams or invalid dimensions,
-and they do not replace actual Macintosh pairing. Production is unchanged.
+and they do not independently establish Macintosh equivalence. Production is unchanged.
+
+MEASURED: actual System 7.5.5 Macintosh pairing now passes all 1,468 cases
+(`ref/mame/runs/item15-bank-skip-paired-1` versus
+`tmp/bank-skip-native-kwf4vdx5`). The maintained fixture extends the existing
+SaveRect/reference and native wrapper harnesses. Both native instruction blocks
+produce identical effects to the Macintosh original, including complete
+framebuffer contents, frame locals, registers, CCR and stack output. Captures
+encode every changed framebuffer byte relative to the deterministic initial
+image; this is lossless, not a framebuffer hash or sampled-pixel check. Only
+allocation-dependent addresses are normalized. All 38 evidence-corruption
+controls reject, including registers, flags, locals, pixel positions/values and
+truncated/extended output. Both emulators report positive completion and stop.
+The host suite passes; the release executable remains unchanged.
+
+`tools/build_bank_skip_fixture.py` reproduces the six fixture inputs byte for
+byte from the pinned original resource and captured calls. Inputs and evidence
+are pinned in `manifest/bank-skip-inputs.sha256` and
+`manifest/bank-skip-evidence.sha256`. Reproduce with the shared environment:
+
+```sh
+python3 tools/build_bank_skip_fixture.py tmp/item15-bank-skip-boundaries
+POP2_BANK_SKIP_FIXTURE="$PWD/tmp/item15-bank-skip-boundaries" \
+  POP2_INTEGRATION=1 POP2_NULL_DISPOSE=1 \
+  python3 tools/run_reference.py --name bank-skip-reference --deadline 1200
+python3 tools/run_wrapper_fixture.py tmp/item15-bank-skip-boundaries \
+  --kind bank-skip --seconds 900
+```
+
+Fresh captures need their own evidence pins before `tools/check_bank_skip.py`
+accepts them. No candidate game speedup is claimed: installation guards, live
+caller checks and matched game timing remain outstanding.
 
 ### Bounded sprite-cache feasibility
 
