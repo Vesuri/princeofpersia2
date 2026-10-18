@@ -103,6 +103,21 @@ no replacement is implemented or speedup claimed. This finding does not supply
 a broader route to the cadence gate. `manifest/performance-68020-residual.sha256`
 pins the disjoint per-function ledger and ignored inspection material.
 
+MEASURED: a matched diagnostic-overhead control removes seven per-service/
+callback phase-label assignments and the interrupt phase-histogram update,
+while retaining frame/timer-request records, publication checks and gameplay.
+`item15-phase-overhead-020-a/b` (`.run-OxcUK2` / `.run-jtav2w`) measure
+251.07/250.87 ms per landing frame, versus the ordinary profiling pair's
+251.04/251.17 ms. They take 530/531 PAL fields, preserve all 82 baseline player
+records and endpoint images, and pass same-build repeatability. These selected
+diagnostic updates therefore do not explain the roughly threefold cadence gap.
+This is not a complete instrumentation-removal experiment or a measurement of
+uninstrumented release cadence; code placement and rounding can affect the small
+difference. No timing budget is adjusted or corrected by subtracting it.
+The experimental edits are removed, and `make release` reproduces the existing
+`f0b28161…` executable. `manifest/performance-68020-phase-overhead.sha256` pins
+the control patch, frozen build, captures and results.
+
 ### Guarded transparent-run skip
 
 MEASURED: the installed BankRLELR patch replaces the transparent-run pointer

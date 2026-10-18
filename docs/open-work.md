@@ -53,6 +53,9 @@ Items remain open until their acceptance gates pass.
     dispatch/rendering/presentation groups would still leave about 89 ms/frame.
     This is an arithmetic scenario, not a lower-bound proof; no sufficient
     implementation plan is established yet. The cadence gate remains unchanged.
+    Removing diagnostic phase labels/histogram updates leaves landing at
+    250.87–251.07 ms in matched repeated controls; those probes do not explain
+    the gap. The experiment is removed and the release is unchanged.
     Residual profiling finds no single hidden large cost. GetObject/CalcBlue
     arithmetic is a possible small rendering candidate (6.32 ms/frame combined
     total cost), recorded without starting another narrow rewrite.
