@@ -133,6 +133,31 @@ below the input frame, outside the framebuffer. Only its explicit 2,048-case
 completion is a pass. Source, inputs, failed setups and final timing are ignored
 and pinned by `manifest/performance-68020-rle-pilot.sha256`.
 
+### Rejected batched CPU/blitter pilot (item 15)
+
+A second layout adapts the pinned Kalms three-stage shuffle into eight word
+streams per row, then submits eight constant-mask blits per 32-row strip.
+Two 16 KiB Chip buffers overlap CPU preparation with the preceding strip's DMA.
+The standalone `c2p-native-43duizw1` fixture passes all 193 complete pixel/ABI
+cases. The in-game measurement uses the existing queue/completion machinery
+through a temporary assembler-ABI adapter, which is removed with the pilot;
+no shared framework interface or other port was changed.
+
+MEASURED: `item15-hybrid-batch-020-b` costs **276.71 ms** per landing frame,
+versus the retained **262.52–263.27 ms** pair, and takes 568 PAL fields with
+60/82 late intervals. The CPU stage alone costs 49.09 ms, almost the complete
+50.09 ms CPU-only converter cost, before queue processing and waits. All 82
+player records and endpoint screens/palette match the baseline, but no complete
+in-game planar qualification is claimed. The pilot is rejected and removed;
+ordinary release/link audits pass. The failed assembly-macro and first game
+build attempts are retained, with no emulator completion attributed to them.
+`manifest/performance-68020-hybrid-batch.sha256` pins sources and evidence.
+
+A build-setting control checked Vette and Alone in the Dark's explicit
+`-fomit-frame-pointer`. This compiler already enables it at `-O2`; an explicit
+rebuild produces the exact same executable. Its 262.56 ms landing measurement
+is a same-binary control, not an optimization. No build flag was changed.
+
 ### Guarded drawing-service entries (item 15)
 
 Nine drawing services now use Alone in the Dark's guarded C-bridge/Pascal

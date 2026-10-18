@@ -57,6 +57,9 @@ Items remain open until their acceptance gates pass.
     pilot using the shared blitter queue still costs 289.67 ms; its revised blit
     mapping also passes the 193-case oracle. Both are removed; neither establishes
     complete in-game planar correctness or improves the production baseline.
+    A batched constant-mask CPU/blitter layout also passes the 193-case native
+    oracle but regresses landing to 276.71 ms: its CPU stage alone costs 49.09 ms.
+    It is removed; no hybrid converter is installed.
     Acceptance: original timing-service contracts and game-step cadence pass on
     `a1200-fast`, matched gameplay regressions pass, and the release hardware and
     installer requirements accurately include the validated configuration.
