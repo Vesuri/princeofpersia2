@@ -11,7 +11,7 @@
 (set #parent
   (askdir
     (prompt "Where should Prince of Persia 2 be installed?")
-    (help "Select a hard disk drawer. Allow 40 MB free for a fresh install and additional space for an existing-installation backup. Do not install to RAM:.")
+    (help "Select a destination drawer. Allow 40 MB free for a fresh install and additional space for an existing-installation backup.")
     (default @default-dest)))
 (set #dest (tackon #parent "Prince of Persia 2"))
 (set #helper (tackon #source "Pop2InstallData"))
