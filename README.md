@@ -29,9 +29,7 @@ Supply your own licensed Kickstart image. The matching RTB is available in
 ## Installation
 
 1. Unpack `PrinceOfPersia2-0.90.lha` and open the **PoP2 Install** drawer.
-2. Obtain `Prince_Of_Persia2.SIT` from
-   [Macintosh Repository](https://www.macintoshrepository.org/download.php?id=4673).
-   Leave the downloaded file compressed.
+2. Have your `Prince_Of_Persia2.SIT` archive ready. Leave it compressed.
 3. Run **Install**, select the destination parent drawer, and select the SIT
    archive when asked. Extraction and verification can take several minutes.
 4. Start the installed **PrinceOfPersia2** icon.
@@ -66,8 +64,8 @@ See [the packaged ReadMe](release/ReadMe) for the installation instructions.
 
 ## Building and development
 
-Source builds use AmigaXDev's toolchain, including `m68k-amiga-elf-gcc`,
-`elf2hunk` and vasm. With the toolchain and required local inputs prepared,
+Source builds use `m68k-amiga-elf-gcc`, `elf2hunk` and vasm. With the toolchain
+and required local inputs prepared,
 `make dist` builds the installer archive without original game data.
 
 See [development setup](docs/development.md) for build commands, tests and
