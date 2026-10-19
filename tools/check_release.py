@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 MEMBERS = {
     'PrinceOfPersia2', 'PrinceOfPersia2.slave', 'Pop2InstallData',
     'PrinceOfPersia2.inf', 'Install', 'Install.info', 'ReadMe',
-    'ReadMe.info', 'LICENSE.LGPL.txt', 'video-transfer.bin',
+    'ReadMe.info', 'LICENSE.LGPL.txt',
 }
 MEMBERS.update('InstallerSource/' + name for name in INSTALLER_SOURCE)
 MEMBERS.add('InstallerSource/Build.txt')
@@ -36,6 +36,12 @@ def check():
             assert hashlib.sha256((folder / name).read_bytes()).hexdigest() == digest, name
         for name in ['PrinceOfPersia2', 'Pop2InstallData']:
             assert (folder / name).read_bytes()[:4] == b'\0\0\x03\xf3', name
+        from display_inputs import header
+        transfer=(ROOT/'build/display/video-transfer.bin').read_bytes()
+        header(transfer)  # Verify the measured input before auditing its linked bytes.
+        executable=(folder/'PrinceOfPersia2').read_bytes()
+        assert transfer in executable, 'RELEASE / EMBEDDED VIDEO TRANSFER'
+        assert b'video-transfer.bin' not in executable, 'RELEASE / EXTERNAL VIDEO TRANSFER'
         tag = (version + ' (19.10.2026)').encode()
         for name in ['PrinceOfPersia2', 'PrinceOfPersia2.slave', 'Pop2InstallData', 'Install', 'ReadMe']:
             assert tag in (folder / name).read_bytes(), name

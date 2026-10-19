@@ -102,7 +102,7 @@ wait "$FSUAE_PID"
             assert (base/'completed').exists(),'Installer did not reach completion'
             for name,digest in EXPECTED.items():assert hashlib.sha256((dest/name).read_bytes()).hexdigest()==digest,name
             assert (base/'installed-icon-ok').exists(),'Installed icon failed native validation'
-            for n in ['PrinceOfPersia2','PrinceOfPersia2.slave','ReadMe','ReadMe.info','video-transfer.bin']:assert (dest/n).read_bytes()==(boot/n).read_bytes(),n
+            for n in ['PrinceOfPersia2','PrinceOfPersia2.slave','ReadMe','ReadMe.info']:assert (dest/n).read_bytes()==(boot/n).read_bytes(),n
             assert (base/'asked-archive').exists()==(a.case!='reuse')
             assert (base/'asked-reuse').exists()==(a.case=='reuse')
             if before:

@@ -33,8 +33,8 @@ def generate(reference):
     assert digest==expected,'VIDEO / TABLE PIN'
     out=ROOT/'build/display';out.mkdir(parents=True,exist_ok=True)
     (out/'video-transfer.bin').write_bytes(table)
-    # Only the digest is embedded in authored native code; the measured table
-    # stays in the ignored runtime input, like other original-derived inputs.
-    (out/'VideoTransfer.h').write_text('static const uint8_t videoTransferSHA256[32]={'+','.join('0x'+digest[i:i+2] for i in range(0,64,2))+'};\n')
+    # Generated measured bytes stay ignored, but are linked into the executable.
+    from display_inputs import header
+    (out/'VideoTransfer.h').write_text(header(table))
     print('VIDEO TRANSFER PASS: all 65536 values and 256 mixed colours;',digest)
 if __name__=='__main__':generate(Path(sys.argv[1]))

@@ -87,6 +87,12 @@ verify-ui:
 endif
 ifneq (,$(filter -DPOP2_DISPLAY,$(EXTRA_DEFINES)))
 obj/CoreRuntime.o: ../build/display/VideoTransfer.h
+../build/display/VideoTransfer.h: ../build/display/video-transfer.bin ../tools/display_inputs.py ../tools/video_transfer.py
+	@python3 ../tools/display_inputs.py
+.PHONY: verify-display
+verify: verify-display
+verify-display: ../build/display/VideoTransfer.h
+	@python3 ../tools/display_inputs.py --verify
 ifneq (,$(filter -DPOP2_DISPLAY_FRAMES_PROBE,$(EXTRA_DEFINES)))
 obj/CoreRuntime.o: ../build/display/DisplayFrames.h
 endif

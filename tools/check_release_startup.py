@@ -7,6 +7,7 @@ from extract_original_data import ROOT,pins
 
 
 def check(run,reference):
+    assert not (run/'dh1/video-transfer.bin').exists(),'RELEASE / EXTERNAL TRANSFER STAGED'
     log=(run/'gdb-out.log').read_text()
     assert log.count('RELEASE OPENING COMPLETE segment=15 offset=0416 text=6978 page=1\n')==1,'RELEASE / POSITIVE COMPLETION'
     assert 'RELEASE STARTUP FAILED' not in log,'RELEASE / EARLY STOP'

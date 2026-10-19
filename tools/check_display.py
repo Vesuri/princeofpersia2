@@ -74,7 +74,14 @@ def main():
     for suffix in ('planes','logical'):
         for n in (1,2):assert (native['scenes']/f'scene-{n}-{suffix}.bin').read_bytes()==(native['repeat']/f'scene-{n}-{suffix}.bin').read_bytes()
     controls=evidence_controls(native['repeat'],scenes,logs)
-    for control in ('bad-transfer','bad-frames'):
+    from display_inputs import header
+    transfer=(ROOT/'build/display/video-transfer.bin').read_bytes()
+    header(transfer)
+    damaged=bytearray(transfer);damaged[0]^=1
+    try:header(damaged)
+    except AssertionError:pass
+    else:raise AssertionError('DISPLAY / CORRUPT BUILD INPUT ACCEPTED')
+    for control in ('bad-frames',):
         path=launch(control,False,CORE_CONTROL=control,DISPLAY_STARTUP='1')
         assert 'CORE INPUT / SHA256' in (path/'gdb-out.log').read_text(),control
         assert (path/'dh1/Shell.done').read_text().strip()=='SHELL FAIL'

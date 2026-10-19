@@ -337,7 +337,6 @@ uint8_t* audioReplay=nullptr;uint32_t audioReplaySize=0;uint8_t* audioPacket=nul
 #endif
 uint8_t* uiPlan=nullptr;uint32_t uiPlanSize=0;
 uint8_t* displayFrames=nullptr;uint32_t displayFramesSize=0;
-uint8_t* videoTransfer=nullptr;uint32_t videoTransferSize=0;
 bool didStop=false,normalExit=false;
 uint8_t auditBuffer[65536];
 uint8_t* patchedLoad=0;uint8_t* patchedExit=0;
@@ -684,7 +683,13 @@ bool exitedNormally() {
 #endif
         ;
 }
-const uint8_t* displayTransfer() {return videoTransfer;}
+const uint8_t* displayTransfer() {
+#ifdef POP2_DISPLAY
+    return videoTransfer;
+#else
+    return nullptr;
+#endif
+}
 bool prepare() {
     if(!readFile("Prince of Persia 2.rsrc",file,fileSize,1024*1024,applicationSHA256))return false;
     if(!app.open(file,fileSize,applicationSHA256))return fail(app.error());
@@ -735,8 +740,6 @@ bool prepare() {
     OriginalApplication::Resource code0;app.resource(0x434f4445,0,code0);
     copy(a5+spec.jumpOffset,code0.bytes+16,spec.jumpBytes);
 #ifdef POP2_DISPLAY
-    if(!readFile("video-transfer.bin",videoTransfer,videoTransferSize,256,videoTransferSHA256))return false;
-    if(videoTransferSize!=256)return fail("DISPLAY / VIDEO TRANSFER INPUT");
     if(!NativeDisplay::prepare(heap,low,validMemory,[](uint32_t type,int16_t id,const uint8_t*& bytes,uint32_t& size) {Resource* r=get(type,id);if(!r || !load(*r))return false;bytes=*r->handle;size=heap.handleSize(r->handle);return true;}))return fail(NativeDisplay::error());
 #endif
 #ifdef POP2_UI
@@ -1018,7 +1021,6 @@ void release() {
     if(uiPlan)FreeMem(uiPlan,uiPlanSize);uiPlan=nullptr;
     if(initial)FreeMem(initial,g_coreBelow);if(stack)FreeMem(stack,65536);if(world)FreeMem(world,worldSize);
     if(displayFrames)FreeMem(displayFrames,displayFramesSize);displayFrames=nullptr;
-    if(videoTransfer)FreeMem(videoTransfer,videoTransferSize);videoTransfer=nullptr;
     if(arena)FreeMem(arena,g_coreZoneBytes);if(plan)FreeMem(plan,planSize);if(file)FreeMem(file,fileSize);
     initial=stack=world=arena=plan=file=0;
 }

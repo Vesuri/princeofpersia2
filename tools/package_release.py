@@ -46,6 +46,7 @@ def release_package():
     transfer=(ROOT/'build/display/video-transfer.bin').read_bytes()
     if hashlib.sha256(transfer).hexdigest()!=pins(ROOT/'manifest/display-inputs.sha256')['video-transfer.bin']:
         raise RuntimeError('PACKAGING / VIDEO TRANSFER PIN')
+    assert transfer in (ROOT/'amiga/out/PrinceOfPersia2.exe').read_bytes(),'PACKAGING / EMBEDDED VIDEO TRANSFER'
     files={
       'PrinceOfPersia2':(ROOT/'amiga/out/PrinceOfPersia2.exe').read_bytes(),
       'PrinceOfPersia2.slave':(ROOT/'build/whdload/PrinceOfPersia2.slave').read_bytes(),
@@ -56,7 +57,6 @@ def release_package():
       'ReadMe':(ROOT/'release/ReadMe').read_bytes(),
       'ReadMe.info':release.template_icon(icons,'readme.info.b64'),
       'LICENSE.LGPL.txt':(ROOT/'tools/install-data/COPYING.LIB').read_bytes(),
-      'video-transfer.bin':transfer,
     }
     for name in INSTALLER_SOURCE:
         files['InstallerSource/'+name]=(ROOT/'tools/install-data'/name).read_bytes()

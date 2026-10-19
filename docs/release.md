@@ -15,14 +15,15 @@ The packaged ReadMe follows the WHDLoad install template and contains only
 player-facing information, with one history entry: initial release.
 `manifest/release-template.json` pins the template used.
 
-Two clean builds produce identical stripped executables and byte-identical LHAs.
+A clean rebuild reproduces the current stripped executable and LHA byte for byte.
 Independent Lhasa extraction verifies the member list, hashes, version tags,
 HUNK/icon headers and payload identities. Ordinary release audits exclude
 runtime hashing, trap traces, profiling and test input.
 
-The slave, helper and Installer script retain the date-only changes qualified
-by `tmp/item14-final/date-only.json` and `installer-script-date-only.json`.
-The game additionally contains the locked-handle dispatch correction below.
+The slave and helper retain the date-only changes qualified by
+`tmp/item14-final/date-only.json`. The game contains the locked-handle dispatch
+correction below and embeds its colour-transfer table. The Installer no longer
+copies that table as a separate file.
 Existing correctness evidence retains its stated scope.
 
 ## Installer
@@ -105,7 +106,8 @@ two clean rebuilds produce identical game executables and archives
 (`tmp/death-restart/rebuild.json`). The restart-fix package comparison confirms that only the game executable
 changed in that correction. The current package additionally updates the
 ReadMe installation instructions with the supplied download link and the
-actual installation/reinstallation steps; all other members are identical.
+actual installation/reinstallation steps. The subsequent embedded-table change
+updates the game and Installer and removes the separate table member.
 `manifest/death-restart.sha256` pins the captured failure and regression evidence.
 
 The owner confirms the requested guard-death/Enter retry succeeds. Separately,
@@ -116,6 +118,21 @@ not the original level-1/room-15 failure site. The immutable log snapshot and
 release receipt are pinned in the same manifest. The release executable is
 `a479b7e4250565b54b66a90ad0c31425e65bb810995d36014d0ccc17891b5913`.
 
+
+## Embedded colour-transfer table
+
+The pinned 256-byte video transfer is compiled from an ignored generated header
+into the release executable. The package and fresh installation no longer need
+`video-transfer.bin`; an old copy retained during an upgrade is unused. No
+runtime read, allocation or hash scan remains for this table. The build rejects
+corrupt or truncated input before generating its header, and release audits
+check the embedded bytes and absence of the external-file dependency.
+
+The a1200-030 release startup (`amiga/.run-MXi3Vo`) completes with no table file
+on the staged volume and matches the pinned original opening viewport pixels.
+Archive extraction and a clean rebuild pass. Evidence is pinned in
+`manifest/embedded-transfer.sha256`. Diagnostic captures can still carry a
+separate copy for their host-side colour comparisons.
 
 ## Hardware checks still required
 
@@ -160,8 +177,8 @@ supports `--window` for observation without changing its scripted answers.
 The sandbox launch failure and the run interrupted for the owner’s date change
 also remain non-passing attempts.
 
-`dist/PrinceOfPersia2-0.90.lha`: **191,681 bytes**, SHA-256
-`3fed873f2140183193f3e8289d1aacf3c4be3ee1ccbce9ebd65b7a8f73aba88d`.
+`dist/PrinceOfPersia2-0.90.lha`: **191,574 bytes**, SHA-256
+`d95c6f4186424f156053ab24fdad96d17acbf06b5963a56f264a93d5429caa71`.
 
 Release executable SHA-256:
-`a479b7e4250565b54b66a90ad0c31425e65bb810995d36014d0ccc17891b5913`.
+`860e4afb0c1e17c554653e7ae954fa084025317cb2bf1ee9c61d224a0e511b12`.

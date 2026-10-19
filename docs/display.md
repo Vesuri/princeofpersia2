@@ -42,11 +42,14 @@ against the verified original CODE resources. Two fresh runs give identical
 `manifest/reference-display.sha256` pins these eight outputs.
 
 `manifest/display-inputs.sha256` pins the measured transfer and the two-scene
-fixture. The actual bytes stay under ignored `build/display/`; generated headers
-contain hashes only. Native preflight verifies the files independently before
-using them. No game pixels or measured colour-transfer table are compiled into
-tracked source. A fresh `make display` measures the transfer if it is absent;
-an existing mismatched table fails verification.
+fixture. The measured bytes and generated header stay under ignored
+`build/display/`. The build verifies the 256-byte table's pinned hash and embeds
+it as constant data in the executable. No runtime file read, allocation or hash
+scan is needed for the table. Diagnostic volumes may retain a separate copy
+solely as a host comparison oracle; release volumes and packages omit it.
+No measured table bytes are committed in tracked source. A fresh `make display`
+measures the transfer if it is absent; a mismatched table fails the build.
+
 
 ## Service boundary
 

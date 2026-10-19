@@ -71,7 +71,6 @@
 (complete 90)
 (copyfiles (source (tackon #source "PrinceOfPersia2")) (dest #dest) (help @copyfiles-help))
 (copyfiles (source (tackon #source "PrinceOfPersia2.slave")) (dest #dest) (help @copyfiles-help))
-(copyfiles (source (tackon #source "video-transfer.bin")) (dest #dest) (help @copyfiles-help))
 (copyfiles (source (tackon #source "ReadMe")) (dest #dest) (infos) (help @copyfiles-help))
 (copyfiles (source (tackon #source "PrinceOfPersia2.inf")) (dest #dest) (newname "PrinceOfPersia2.info") (help @copyfiles-help))
 (tooltype (dest (tackon #dest "PrinceOfPersia2")) (settooltype "Slave") (settooltype "PreLoad"))
