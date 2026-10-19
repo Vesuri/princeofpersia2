@@ -1,115 +1,88 @@
-# Prince of Persia 2
+# Prince of Persia 2 — Amiga
 
-Macintosh-to-Amiga port following Vette! and Alone in the Dark. The original 68k game
-instructions run natively on an AGA Amiga, currently targeting 68030 or better, and the port
-implements the Macintosh services they call. The display is PAL hires interlaced,
-showing the original 512×384 window.
+An unofficial Amiga port of **Prince of Persia 2: The Shadow and the Flame**,
+based on the Macintosh version by Jordan Mechner / Brøderbund.
 
-The release can be inspected and extracted reproducibly (see the source inventory).
-A pinned headless Macintosh reference reaches the opening cutscene, with a verified
-static/live map of that route. Paired service, audio and presentation probes exist.
-Original native startup reaches the first playable room, with matching reference
-pixels and state and verified gameplay input. Timing and performance budgets pass on the corrected-clock `a1200-030` emulator; physical-hardware qualification remains open.
-Gameplay coverage is accepted with the recorded D11/D12 exceptions; physical-hardware release qualification remains open.
+The original 68k game code runs natively with Amiga implementations of the
+Macintosh services it uses. The port keeps the original 512×384 graphics on a
+PAL hires interlaced display, with music and sound effects through Paula.
+Hard disk installation, saved games and quitting to Workbench are supported.
+Joystick input is not supported yet.
 
-## Setup checks
+**Version 0.90 (19.10.2026) is a release candidate.** The game is playable and
+tested in emulation; real-Amiga hardware qualification is still pending.
 
-AmigaXDev supplies the shared toolchain and tools through
-`~/.local/share/amiga/env.sh`. Run `make check` in AmigaXDev to verify that installation.
-Here, run `make check` to verify the staged archive and compiler access. For later
-builds and runs, source `. amiga/env.sh` in the same shell. `AMIGA_ENV` can override
-the shared environment file.
+## Requirements
 
-The supplied archive is stored read-only at `tmp/originals/Prince_Of_Persia2.SIT`,
-which Git ignores. On a fresh checkout, place your own matching archive there and
-run `make verify-input`. Do not add original or extracted game material to Git.
+- PAL **AGA Amiga**, **68030 or better**.
+- **2 MB Chip RAM and at least 8 MB Fast RAM**. Allow additional memory for
+  WHDLoad and PRELOAD.
+- WHDLoad 18.0 or newer and Installer 43 or newer.
+- An A1200 Kickstart 3.1 image and its matching RTB file in `DEVS:Kickstarts`,
+  named `kick40068.A1200` and `kick40068.A1200.RTB`.
+- At least **40 MB free disk space**, plus space to preserve an existing
+  installation.
 
-Run `make inspect` to reproduce the application survey, `make extract-original-data`
-to create the verified fork/metadata layout under `tmp/runtime-data/`, and
-`make check-extraction` for the repeatability and preservation gate. These commands
-require `unar`, `lsar`, macOS `xattr`, and the shared Python environment with Capstone.
-Differing existing output is retained under `.replaced/`; scratch stays in `tmp/`.
+Supply your own licensed Kickstart image. The matching RTB is available in
+`util/boot/skick346.lha` on Aminet.
 
-- File: `Prince_Of_Persia2.SIT`
-- Size: 7,716,607 bytes
-- SHA-256: `02437dc253dffec4eee516f8e5e0f2ecaccc4bd31f3d6957d42ea4f87b80b080`
+## Installation
 
-Run `make reference` for the original System 7.5.5 / Macintosh IIci opening
-checkpoint, or `make check-reference` for the two-run repeatability and rejection
-gate. Local ROMs/system images and MAME must match the reference manifests. See
-[Macintosh reference](docs/mac-reference-loop.md) for inputs, results, and limits.
+1. Unpack `PrinceOfPersia2-0.90.lha` and open the **PoP2 Install** drawer.
+2. Obtain `Prince_Of_Persia2.SIT` from
+   [Macintosh Repository](https://www.macintoshrepository.org/download.php?id=4673).
+   Leave the downloaded file compressed.
+3. Run **Install**, select the destination parent drawer, and select the SIT
+   archive when asked. Extraction and verification can take several minutes.
+4. Start the installed **PrinceOfPersia2** icon.
 
-See [source inventory](docs/source-inventory.md), [design](docs/design.md),
-[open work](docs/open-work.md) and [agent rules](AGENTS.md).
+When updating, **Use existing** keeps verified installed game data;
+**Reinstall** extracts it again. Both preserve saved games and preferences and
+keep a backup of the previous installation. The program, slave, icon and ReadMe
+are always updated.
 
-Run `make map` for the static census, `make ghidra` for headless exports, and
-`make static-map-check` for two fresh original runs plus rejection controls. See
-[static and live map](docs/static-map.md) for coverage, service seams and limits.
+PRELOAD is enabled by default. Disable that Tooltype if there is insufficient
+memory to cache the files. No original game data, Kickstart, Workbench or
+WHDLoad binaries are included in the package.
 
-Run `make` or `make release` for the playable release build. Runtime SHA-256
-scans, trap tracing and expensive exit audits are off by default. `make VERIFY=1`
-explicitly enables them; verification gates select that mode themselves. Both
-modes retain file-format, bounds, ownership and original-byte guards. Host
-installation/staging tools verify the pinned inputs before use.
+See [the packaged ReadMe](release/ReadMe) for the installation instructions.
 
-Run `make play AMIGA_SETUP=a1200-040` for a visible interactive release run with
-sound. The launcher refuses verification or probe builds. `make host-tests`
-runs portable helper tests; `make scaffold` and `make scaffold-check` retain the
-empty Amiga boot/quit checks. See [runtime scaffold](docs/scaffold.md).
+## Controls
 
-Run `make core` for the bounded original startup executable or `make core-check`
-for paired Macintosh/Amiga execution and rejection controls. See
-[core runtime](docs/core-runtime.md) for relocations, services and current limits.
+| Key | Action |
+| --- | --- |
+| Space | Start play |
+| Cursor keys | Move |
+| Shift | Careful movement and grabbing |
+| Ctrl | Sword actions |
+| Amiga-N / Amiga-E | New game / end game |
+| Amiga-O / Amiga-S | Load / save game |
+| Amiga-P | Pause |
+| Amiga-T / Amiga-M | Toggle sound / music |
+| Amiga-R | Restart |
+| Amiga-H | Hall of fame |
+| Amiga-Q | Quit normally |
+| F10 | Quit WHDLoad |
 
-Run `make files-check` for paired original/native file operations, resource
-validation and save persistence across a fresh boot. See [file services](docs/file-services.md)
-for the tested scope and the distinction between service probes and continued gameplay.
+## Building and development
 
-Run `make display` to enable the display services or `make display-check` for
-paired Macintosh contracts, repeatable title/first-room presentation and rejection
-controls. Original native startup then stops at `InitFonts`; scene validation uses
-display-service replay. See [display services](docs/display.md) for scope and limits.
+Source builds use AmigaXDev's toolchain, including `m68k-amiga-elf-gcc`,
+`elf2hunk` and vasm. With the toolchain and required local inputs prepared,
+`make dist` builds the installer archive without original game data.
 
-Run `make ui` for VBI input and port-owned menus/prompts, or `make ui-check` for
-paired original contracts, byte-verified protection/compression seams and native
-output/rejection checks. The bounded service fixture stops at an explicit startup checkpoint after
-144 matching original calls. See [input and UI](docs/input-ui.md) for controls,
-coverage and the distinction between service fixtures and native gameplay.
+See [development setup](docs/development.md) for build commands, tests and
+emulator setup. [Release validation](docs/release.md) documents the tested
+configurations and remaining hardware checks.
 
-Run `make audio` for the port-owned Halestorm driver or `make audio-check` for
-paired original title/gameplay/death/cutscene audio events and Paula DMA checks.
-See [audio](docs/audio.md) for measured voice priority, data provenance and the
-service-replay boundary. Audio uses Paula voices without software mixing.
+## Credits and licensing
 
-`make integration-contracts-check`
-reproduces the original fixed-point, font, GWorld and title-copy comparisons;
-`make integration-check` additionally runs the title-to-gameplay acceptance gate.
-See [native integration](docs/native-integration.md) for the verified route,
-shared services and current limits. `make audio` builds the ordinary executable
-with all startup services; the integration gate adds test-only input and probes.
+Original game: Jordan Mechner / Brøderbund. Amiga port: Vesa Halttunen (Vesuri).
+Amiga framework: dA JoRMaS. Chunky-to-planar conversion: Mikael Kalms.
 
-The current performance target is `a1200-030` with 8 MB Fast RAM. See
-[performance measurements](docs/performance.md) for the explicit profiling build,
-matched-workload checks and Kalms dirty-rectangle conversion at frame end.
-Profiling is separate from ordinary release and the correctness fixtures.
+This is an unofficial fan port, not affiliated with or endorsed by the original
+creators or rights holders. The original game and its assets remain the
+property of their respective copyright holders.
 
-Version 0.90 (19.10.2026) is a release candidate. `make dist` builds the ordinary
-game, WHDLoad slave and native installer, then independently audits the LHA.
-The package requires the user's original SIT archive; it includes the installer
-helper's complete source. `make installer-check` exercises extraction and
-preservation on the host. See [release validation](docs/release.md) for measured
-results and the remaining hardware test checklist.
-
-Release conversion uses AmigaXDev's separately installed `elf2hunk-fixed`,
-selected by `ELF2HUNK` in `amiga/env.sh`. Its pinned source and build procedure
-are in AmigaXDev's `docs/reference/port-toolchain.md` on
-`codex/release-installer-helpers` (`ba5cc6c`). The bundled converter can emit
-uninitialized padding and is not used for release artifacts.
-
-Ordinary play defaults to `a1200-030` and the pinned corrected-clock emulator.
-`make play AMIGA_SETUP=a1200-040` selects the 040 model. Diagnostic launches also
-use the corrected clock by default; `CALIBRATED_CPU=0` explicitly selects the
-legacy instrument for historical controls. Native-service timing is opt-in:
-`NATIVE_SERVICE_SCOPE=1 CALIBRATED_CPU=1 bash amiga/aprof.sh NAME a1200-030`.
-Its host-only observer adds no guest profiling instructions. It requires the
-pinned shared scoped emulator; ordinary release does not collect these scopes.
+The standalone extraction helper uses MacPaw/XADMaster and is licensed under
+LGPL-2.1-or-later. See [the helper's source and licensing notes](tools/install-data/README.md).
+That license applies to the helper only, not to the original game.
