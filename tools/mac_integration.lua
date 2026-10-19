@@ -1,3 +1,4 @@
+local stripAddress=os.getenv('POP2_STRIP_ADDRESS') and dofile('tools/mac_strip_address.lua') or nil
 local bankSkip=os.getenv('POP2_BANK_SKIP_FIXTURE') and dofile('tools/mac_bank_skip.lua') or nil
 local freed=os.getenv('POP2_FREED_PROBE') and dofile('tools/mac_freed_handles.lua') or nil
 local heapFixture=dofile('tools/mac_heap.lua')
@@ -104,6 +105,7 @@ function M.startNil()
  assert(not pending,'INTEGRATION PENDING AT FIXTURE')
  local code=(cpu.state.SP.value&0xffffff)-8192
  assert(code>0x100000,'INTEGRATION FIXTURE EXTENT')
+ if stripAddress then stripAddress.start(code,M.finish);return end
  if freed then freed.start(code,M.finish);return end
  if bankSkip then bankSkip.start(code,M.finish);return end
  if saveRect then saveRect.start(code,M.finish);return end
@@ -165,6 +167,7 @@ function M.poll()
  if bankSkip and bankSkip.poll()then return true end
  if saveRect and saveRect.poll()then return true end
  if wrappers and wrappers.poll()then return true end
+ if stripAddress and stripAddress.poll()then return true end
  if heapFixture.poll()then return true end
  if rectangles.poll()then return true end
  if not meta or dbg.execution_state~='stop' then return false end

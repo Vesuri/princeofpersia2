@@ -74,3 +74,4 @@ AmigaXDev	cfac19fec9186b9b2ee5437316e8619a27e10b1f	shared bounded memory spans, 
 AmigaXDev	57e7e188543d82e122dab3538918ff6b2dbf7148	alias-safe native rectangle union; 1220 original-paired cases through both native entry paths
 AmigaXDev	a9c439d171e8e2da2c2bbc94608efe51d2ec5a8b	host-only native service scopes with frozen instruction identity, verified Exec vectors and accounting controls
 AmigaXDev	cc0955537f388f70c828102e88de255f43a9566e	frozen flat-PC attribution and explicit Line-A entry charges; live entry/return controls
+Alone in the Dark	40e0fd1369da143a3dfe527ea1adf08ccf291e80	StripAddress identity for native 32-bit pointers inspected for Zorro III regression

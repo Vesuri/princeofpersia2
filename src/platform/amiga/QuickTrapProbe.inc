@@ -6,7 +6,7 @@
 #endif
 extern "C" {
 uint32_t g_blockMoveChecks=0,g_quickWarmChecks=0;
-uint32_t g_moveHighLockedChecks=0;
+uint32_t g_moveHighLockedChecks=0,g_stripAddressChecks=0;
 uint32_t g_hunlockChecks=0,g_hunlockRejected=0,g_hunlockFreed=0;
 uint32_t g_quickProbeCalls=0,g_quickProbeRejected=0,g_quickProbeFailures=0;
 uint32_t g_quickDeadlineRejected=0,g_quickZoneRejected=0;
@@ -151,6 +151,29 @@ static void quickTrapFixture() {
     for(auto requested:invalidModes)for(unsigned cc=0;cc<32;++cc)
         compareWarm(2,handle,0,cc,requested,mode);
     g_coreReason=reason;addressMode=mode;low[0xcb2]=mode;
+    // Native pointers have no Macintosh handle flag byte. As in Alone in
+    // the Dark, StripAddress must preserve their full physical address even
+    // when the original's emulated address-mode byte is zero.
+    const uint32_t stripValues[]={0,0x123456,0x41c27330,0x40000000,0x7fff8000,0x81234567};
+    const uint32_t stripPC=g_coreSegments[20][0]+0x846;
+    if(!g_coreSegments[20][0] || w((uint8_t*)stripPC)!=0xa055)++g_quickProbeFailures;
+    else for(uint32_t value:stripValues)
+        for(unsigned modeValue=0;modeValue<2;++modeValue)for(unsigned cc=0;cc<32;++cc) {
+            uint32_t fast[15],full[15];uint8_t ff[8]={},sf[8]={},args[16]={};
+            for(unsigned i=0;i<15;++i)fast[i]=full[i]=i?0x12340000+i:value;
+            sw(ff,cc);sw(sf,cc);sl(ff+2,stripPC);sl(sf+2,stripPC);
+            addressMode=modeValue;low[0xcb2]=modeValue;quickServicesValid=false;
+            bool ok=pop2QuickStripAddressWarm(fast,ff)==1;
+            sl(ff+2,l(ff+2)+2);
+            ok=ok && pop2Dispatch(full,sf,args)==(uint32_t)args && !didStop;
+            for(unsigned i=0;i<15;++i)if(fast[i]!=full[i] || fast[i]!=(i?0x12340000+i:value))ok=false;
+            for(unsigned i=0;i<8;++i)if(ff[i]!=sf[i])ok=false;
+            const uint16_t expectedCCR=(cc&16)|((value&65535)==0?4:0)|(value&0x8000?8:0);
+            if(w(ff)!=expectedCCR || l(ff+2)!=stripPC+2)ok=false;
+            if(addressMode!=modeValue || low[0xcb2]!=modeValue)ok=false;
+            if(ok)++g_stripAddressChecks;else ++g_quickProbeFailures;
+        }
+    addressMode=mode;low[0xcb2]=mode;
     // Compare the native service body with the full service across every
     // flag combination and CCR. The trap trampoline advances the fast PC.
     displayBatchFrame=displayBatchParent=displayBatchReturn=0;

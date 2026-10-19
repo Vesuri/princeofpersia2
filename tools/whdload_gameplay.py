@@ -15,17 +15,19 @@ def prepare(base):
      for i in range(s[4],s[4]+s[5],s[9]):
       name,val,size,info,other,seg=struct.unpack_from('>IIIBBH',elf,i)
       syms[st[name:].split(b'\0')[0].decode()]=(val,seg)
+    options=json.loads((base/'gameplay-options.json').read_text())
+    fast_base=0x40000000 if options.get('z3_memory') else 0x200000
     fast=(base/'before-fast.bin').read_bytes();chip=(base/'before-chip.bin').read_bytes()
     def read(a,n):
      if 0<=a and a+n<=len(chip):return chip[a:a+n]
-     assert 0x200000<=a and a+n<=0xa00000,hex(a)
-     return fast[a-0x200000:a-0x200000+n]
+     assert fast_base<=a and a+n<=fast_base+len(fast),hex(a)
+     return fast[a-fast_base:a-fast_base+n]
     def long(a):return int.from_bytes(read(a,4),'big')
     magic=b'POP2WHDR'+bytes.fromhex('00020000');found=[];off=0
     while True:
      i=fast.find(magic,off)
      if i<0:break
-     if u32(fast,i+12):found.append(i+0x200000)
+     if u32(fast,i+12):found.append(i+fast_base)
      off=i+4
     assert len(found)==1,found
     val,seg=syms['pop2WHDLoadBinding'];bases={seg:found[0]-(val-sections[seg][3])}
@@ -34,7 +36,7 @@ def prepare(base):
      bases[nextseg]=long(bases[seg]-4)*4+4;seg=nextseg
     starts=[];at=fast.find(bytes.fromhex('598f2f0a45f9'))
     while at>=0:
-     if u32(fast,at+0x3a)==0x200000+at+syms['main'][0]:starts.append(at+0x200000)
+     if u32(fast,at+0x3a)==fast_base+at+syms['main'][0]:starts.append(at+fast_base)
      at=fast.find(bytes.fromhex('598f2f0a45f9'),at+1)
     assert len(starts)==1,starts
     bases[syms['main'][1]]=starts[0]
@@ -165,6 +167,14 @@ def check(base):
     import re
     log=(base/'gdb.log').read_text()
     options=json.loads((base/'gameplay-options.json').read_text()) if (base/'gameplay-options.json').exists() else {}
+    if options.get('z3_memory'):
+        config=(base/'logs/debug.uae').read_text().splitlines()
+        assert all(v in config for v in ('cpu_model=68040','fastmem_size=0','z3mem_size=32','cachesize=0')), 'Z3 / EFFECTIVE MACHINE'
+        runtime=(base/'logs/fs-uae.log.txt').read_text()
+        cpus=re.findall(r'^CPU=68040,.*$',runtime,re.M)
+        assert cpus and 'MMU=0, JIT=0.' in cpus[-1], 'Z3 / ACTIVE CPU'
+        launch=(base/'boot/s/startup-sequence').read_text()
+        assert ' NOMMU ' in launch, 'Z3 / WHDLOAD OPTION'
     quit_key=options.get('quit_key')
     action=options.get('save_action')
     mmu=options.get('mmu_functional',False)
@@ -191,7 +201,10 @@ def check(base):
     report=base/'game/.whdl_register'
     if report.exists():
         assert report.read_text(encoding='latin1').count('\nReturn OK.\n')==1, 'QUIT / WHDLOAD ERROR'
-    if mmu or options.get('cache_memory'):
+    if options.get('z3_memory'):
+        registers=report.read_text(encoding='latin1')
+        assert 'TC=0 ' in registers and 'CACR=0 ' in registers, 'Z3 / NOMMU RETURN STATE'
+    if mmu or (options.get('cache_memory') and not options.get('z3_memory')):
         assert options.get('setup')=='a1200-040' and options.get('mmu') and not quit_key, 'MMU / OBSERVER SCOPE'
         if mmu:assert action in ('save','load'), 'MMU / FUNCTIONAL SCOPE'
         config=(base/'logs/debug.uae').read_text().splitlines()
@@ -226,10 +239,12 @@ def run(base, seconds):
             if subprocess.run(['lsof','-nP','-iTCP:'+port,'-sTCP:LISTEN'],capture_output=True).returncode==0:break
         time.sleep(.2)
     else:raise AssertionError('QUIT / DEBUGGER LISTENER')
+    z3=json.loads((base/'gameplay-options.json').read_text()).get('z3_memory',False)
+    fast_base,fast_end=(0x40000000,0x42000000) if z3 else (0x200000,0xa00000)
     commands=('set pagination off\nset confirm off\nset remotetimeout 300\n'
               f'target remote 127.0.0.1:{port}\n'+('monitor memory cache\nset stack-cache off\nset code-cache off\n' if cache_memory else '')+
               'monitor fields 1200\n'
-              'dump binary memory before-fast.bin 0x200000 0xa00000\n'
+              f'dump binary memory before-fast.bin {fast_base:#x} {fast_end:#x}\n'
               'dump binary memory before-chip.bin 0 0x200000\n'
               'shell python3 '+shlex.quote(str(Path(__file__).resolve()))+' --prepare\n'
               'source game-next.gdb\ndetach\nquit\n')

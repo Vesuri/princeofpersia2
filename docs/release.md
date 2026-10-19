@@ -29,6 +29,52 @@ correction below and embeds its colour-transfer table. The Installer no longer
 copies that table as a separate file.
 Existing correctness evidence retains its stated scope.
 
+## Zorro III pointer regression
+
+The owner’s missing-artwork/red-rectangle report reproduced with WHDLoad
+PRELOAD and 32 MB Zorro III memory. JIT was disabled in that failed run.
+MEASURED: the release passed `$41C27330` to `StripAddress`; its native body
+applied `$00FFFFFF`, redirecting the pointer outside the allocation. The
+reported run later raised a privilege violation. The observed bad pointer
+explains the graphics failure; the final exception alone did not identify it.
+
+`StripAddress` now preserves native 32-bit pointers, following Alone in the
+Dark’s existing service. Vette’s runtime was also inspected; it has no matching
+service body to reuse. No new shared implementation is needed for this identity
+operation. Macintosh handle flags are stored separately by the native heap;
+the emulated address-mode byte does not limit Amiga physical addresses.
+
+The original System 7.5.5 fixture checks 192 pointer-tag/CCR combinations.
+Its 24-bit result is the Macintosh logical address; native callers must retain
+the relocated physical address. The native fixture exercises both full and
+warm dispatch, all 32 CCR inputs, both emulated address modes, zero, low and
+high pointers. It also requires unchanged other registers and mode, and the
+original-paired CCR and PC results.
+
+Reproduce the original contract with `POP2_INTEGRATION=1 POP2_NULL_DISPOSE=1
+POP2_STRIP_ADDRESS=1 python3 tools/run_reference.py`; validate its completed
+run with `tools/check_strip_address.py`. The existing quick-trap integration
+fixture includes the native cases. `tools/test_whdload.py --setup a1200-040
+--z3-memory --cache-memory --gameplay --ticks 0 --seconds 900` selects the
+pinned cache-observer emulator via `FSUAE_WHDLOAD` and verifies the effective
+NOMMU/32 MB Z3 configuration. Ordinary release builds retain no new probes.
+
+MEASURED: all 384 native pointer cases and the complete quick-trap integration
+route pass, including restoration and altered-evidence rejection. Host tests
+also pass. The fixed release’s full 512×384 opening viewport matches the pinned Macintosh
+frame under WHDLoad PRELOAD with high Zorro III allocations. The release also
+passes the fresh-boot high-memory gameplay/quit gate: level 1, room 4 advances
+eight updates, the original audio/window cleanup returns, all patches and host
+vectors restore, and WHDLoad reports Return OK after Amiga-Q. The effective
+68040/NOMMU, 32 MB Z3, zero Z2 and JIT-off configuration is checked, including
+TC/CACR on return. This is correctness evidence, not a performance claim.
+The earlier unrestricted-speed attempt reached the title but was interrupted
+by its diagnostic WHDLoad TIMEOUT during loading; it is not a gameplay pass.
+The accepted repeat retains the 040 preset timing and uses only a host deadline.
+The new evidence
+is pinned separately in `manifest/release-z3.sha256`. The initial short native
+regression attempt timed out before the fixture; it is not a pass.
+
 ## Installer
 
 Host checks pass all 100 installed output hashes, idempotency, repair,
@@ -180,8 +226,8 @@ supports `--window` for observation without changing its scripted answers.
 The sandbox launch failure and the run interrupted for the owner’s date change
 also remain non-passing attempts.
 
-`dist/PrinceOfPersia2-0.90.lha`: **166,564 bytes**, SHA-256
-`47bdfe0783faad1b54bd635af58053feec613b01ae0cb0d88966e506fb64f88e`.
+`dist/PrinceOfPersia2-0.90.lha`: **166,567 bytes**, SHA-256
+`ff0c5585ee35f92022a039ef786d2d75884ac8ca4dbf8be888ba49adac10de8b`.
 
 Release executable SHA-256:
-`860e4afb0c1e17c554653e7ae954fa084025317cb2bf1ee9c61d224a0e511b12`.
+`87adc94734ce868103f4ae1539c9c2500eee286b82b990213e0ec0760c12a44f`.

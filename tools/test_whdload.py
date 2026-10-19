@@ -13,6 +13,7 @@ def main():
     p.add_argument('--setup',choices=['a1200-030','a1200-040'],default='a1200-030')
     p.add_argument('--no-preload',action='store_true')
     p.add_argument('--mmu',action='store_true')
+    p.add_argument('--z3-memory',action='store_true',help='040 NOMMU with 32 MB Zorro III RAM; exercise native high pointers')
     p.add_argument('--cache-memory',action='store_true',help='opt-in pinned 68040 debugger physical data-cache overlay')
     p.add_argument('--mmu-functional',action='store_true',help='040/MMU save/load and normal-exit coverage; excludes per-trap return observations')
     p.add_argument('--seconds',type=int,default=180)
@@ -31,7 +32,8 @@ def main():
     debug=a.gameplay or bool(a.store_reference)
     assert not a.mmu_functional or (a.setup=='a1200-040' and a.mmu and a.gameplay and (a.save_game or a.load_game_from)), 'WHDLOAD / MMU FUNCTIONAL ROUTE'
     assert not (a.cache_memory and a.mmu_functional), 'WHDLOAD / ONE MEMORY OBSERVER SCOPE'
-    assert not a.cache_memory or (a.gameplay and not a.quit_key and a.setup=='a1200-040' and a.mmu), 'WHDLOAD / CACHE OBSERVER SCOPE'
+    assert not a.cache_memory or (a.gameplay and not a.quit_key and a.setup=='a1200-040' and (a.mmu or a.z3_memory)), 'WHDLOAD / CACHE OBSERVER SCOPE'
+    assert not a.z3_memory or (a.cache_memory and not a.mmu and a.gameplay), 'WHDLOAD / Z3 OBSERVER SCOPE'
     if debug:
         assert a.cache_memory or a.mmu_functional or (a.setup=='a1200-030' and not a.mmu), 'WHDLOAD / VALIDATED DEBUGGER SETUP'
         from whdload_store import emulator
@@ -61,8 +63,9 @@ def main():
     rom=Path(os.environ['KICKSTART_A1200']);rtb=Path(str(rom)+'.RTB')
     for src in [rom,rtb]:shutil.copyfile(src,boot/'devs/Kickstarts'/src.name)
     options=('' if a.no_preload else 'PRELOAD ')+('MMU ' if a.mmu else 'NOMMU ' if debug else '')
-    (base/'gameplay-options.json').write_text(json.dumps({'cache_memory':a.cache_memory,'setup':a.setup,'mmu':a.mmu,'mmu_functional':a.mmu_functional,'preload':not a.no_preload,'quit_key':a.quit_key,'save_action':'save' if a.save_game else 'load' if a.load_game_from else None})+'\n')
-    timeout='' if a.quit_key else f'TIMEOUT={a.ticks} '
+    (base/'gameplay-options.json').write_text(json.dumps({'z3_memory':a.z3_memory,'cache_memory':a.cache_memory,'setup':a.setup,'mmu':a.mmu,'mmu_functional':a.mmu_functional,'preload':not a.no_preload,'quit_key':a.quit_key,'save_action':'save' if a.save_game else 'load' if a.load_game_from else None})+'\n')
+    assert a.ticks>=0, 'WHDLOAD / NONNEGATIVE TIMEOUT'
+    timeout='' if a.quit_key or not a.ticks else f'TIMEOUT={a.ticks} '
     (boot/'s/WHDLoad.prefs').write_text(('' if a.quit_key else 'Expert\n')+'ReadDelay=0\n')
     diagnostics='' if a.quit_key else 'COREDUMP '
     (boot/'s/startup-sequence').write_text('DF0:C/Assign C: DF0:C\nDF0:C/Assign LIBS: DF0:Libs\nDF0:C/Assign DEVS: DH0:devs\nStack 16384\nFailAt 999\nCD DH1:\n'+f'WHDLoad PrinceOfPersia2.slave {options}SPLASHDELAY=0 NOREQ {diagnostics}{timeout}>DH0:result\n'+'If WARN\nEcho failed >DH0:failed\nElse\nEcho passed >DH0:passed\nEndIf\nEcho returned >DH0:returned\n')
@@ -78,13 +81,28 @@ trap 'fsuae_stop' EXIT
 FSUAE="${FSUAE_WHDLOAD:-$FSUAE_MMU}"
 AMIGA_SETUP="$3" DEBUG="$4" SOUND=0 WINDOW=none WARP=1 NTSC=0
 fsuae_options
+if [ "$5" = 1 ]; then
+  # Raw UAE options are applied again even when a duplicate is logged as
+  # ignored. Replace the preset, rather than appending conflicting overrides.
+  Z3_SETUP_ARGS=()
+  for option in "${FSUAE_SETUP_ARGS[@]}"; do
+    case "$option" in
+      --cpu=*) option=--cpu=68040-NOMMU ;;
+      --fast_memory=*) option=--fast_memory=0 ;;
+      --zorro_iii_memory=*) option=--zorro_iii_memory=32768 ;;
+      --uae_mmu_model=*) option=--uae_mmu_model=0 ;;
+    esac
+    Z3_SETUP_ARGS+=("$option")
+  done
+  fsuae_setup() { FSUAE_SETUP_ARGS=("${Z3_SETUP_ARGS[@]}"); }
+fi
 echo "$DEBUG_PORT" > debug-port
 fsuae_launch --hard_drive_0="$PWD/boot" --hard_drive_0_priority=10 --hard_drive_1="$PWD/game" --floppy_drive_0="$WORKBENCH_ADF" --floppy_drive_volume=0 --floppy_drive_volume_empty=0 --state_dir="$PWD/state" --logs_dir="$PWD/logs" --joystick_port_0=nothing --joystick_port_1=nothing
 wait "$FSUAE_PID"
 ''')
     try:
         with (base/'emulator.log').open('w') as log:
-            emu=subprocess.Popen(['/bin/bash',str(script),str(base),str(ROOT),a.setup,'1' if debug else '0'],stdout=log,stderr=log)
+            emu=subprocess.Popen(['/bin/bash',str(script),str(base),str(ROOT),a.setup,'1' if debug else '0','1' if a.z3_memory else '0'],stdout=log,stderr=log)
             if a.gameplay:
                 from whdload_gameplay import run
                 run(base,a.seconds)

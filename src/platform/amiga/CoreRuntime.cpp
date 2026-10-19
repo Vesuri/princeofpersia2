@@ -1349,7 +1349,9 @@ static inline bool trivialService(uint32_t* regs) {
         regs[0]=0;
     }
     if(trap==0xa9b4)regs[0]=(uint32_t)a5;
-    if(trap==0xa055)regs[0]&=0x00ffffff;
+    // StripAddress is identity for native 32-bit pointers, as in Alone in
+    // the Dark. Macintosh's 24-bit flag mask would truncate Zorro III RAM.
+    // Keep the emulated SwapMMUMode byte separate from physical addressing.
     if(trap==0xa05d) {
         if((regs[0]&255)>1)return fail("MMU / ADDRESS MODE");
         uint8_t requested=regs[0];regs[0]=addressMode;

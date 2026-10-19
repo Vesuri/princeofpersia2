@@ -11,6 +11,9 @@
     normal quit and F10, 030 and 040/MMU fresh-boot save/load, and the retained
     original-paired timing/cadence gates. Evidence and archive identity are in
     `docs/release.md` and `manifest/release14-current.sha256`.
+    The reported Zorro III graphics failure is addressed by preserving native
+    32-bit pointers in StripAddress; see the new regression evidence in
+    `docs/release.md`.
     Remaining acceptance: the owner tests installation, gameplay/audio,
     save/load, Amiga-Q/F10, PRELOAD on/off and MMU on the physical A1200
     68040/40 with 32 MB. Record the result and resolve any failure before
