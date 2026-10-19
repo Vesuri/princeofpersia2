@@ -25,3 +25,5 @@ f6e8116b60b193fd64b7f63d90f99adc248255055107c569d74ef86917031101  tmp/death-rest
 9d175e4f85307fc9f977eb08da7ddbab55cf3c505cc84dde76df37851515b352  tmp/death-restart/release-build.log
 9d175e4f85307fc9f977eb08da7ddbab55cf3c505cc84dde76df37851515b352  tmp/death-restart/release-clean-b.log
 9d175e4f85307fc9f977eb08da7ddbab55cf3c505cc84dde76df37851515b352  tmp/death-restart/release-rebuild.log
+7780b8f27757df81ea9943189e3dc9a52331e84377c9d49a6714bb77e1a0cf4e  tmp/death-restart/confirmed-restart.log
+b9c2131536d504119c1e4cdddb08f9999d49d9d8919054a2811527f851b917f1  tmp/death-restart/confirmed-restart-receipt.json

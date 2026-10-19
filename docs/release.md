@@ -1,9 +1,9 @@
 # Version 0.90 (19.10.2026)
 
 The reported death/restart service defect is fixed and passes original-paired
-regression checks. The owner's repeated guard-death/Enter route on the updated
-release and physical-hardware testing remain open in item 14. Building and
-auditing the archive is not publication.
+regression checks. The owner confirms that guard-death/Enter restarts into
+playable gameplay on the updated a1200-030 release. Physical-hardware testing
+remains open in item 14. Building and auditing the archive is not publication.
 The owner will test an A1200 68040/40 with 32 MB and MMU.
 
 ## Package
@@ -105,6 +105,15 @@ two clean rebuilds produce identical game executables and archives
 (`tmp/death-restart/rebuild.json`). Package comparison confirms that only the
 game executable changed; all installer, slave and ReadMe members are identical.
 `manifest/death-restart.sha256` pins the captured failure and regression evidence.
+
+The owner confirms the requested guard-death/Enter retry succeeds. Separately,
+the release observer in `amiga/.run-V5Wuli` records MoveHHi returning −117 and
+then a completed restart frame (`D0.w=$FFFE`) in level 2, room 2. This directly
+exercises continuation past the formerly fatal result; its recorded room is
+not the original level-1/room-15 failure site. The immutable log snapshot and
+release receipt are pinned in the same manifest. The release executable is
+`a479b7e4250565b54b66a90ad0c31425e65bb810995d36014d0ccc17891b5913`.
+
 
 ## Hardware checks still required
 
