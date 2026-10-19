@@ -40,7 +40,7 @@ def main():
     boot=base/'boot';out=base/'out';source=base/'source';dest=out/'Prince of Persia 2'
     for d in [boot/'s',base/'state',out,source]:d.mkdir(parents=True,exist_ok=True)
     subprocess.run(['lha','xq',str(ROOT/'dist/PrinceOfPersia2-0.90.lha')],cwd=base,check=True)
-    package=base/'Prince of Persia 2 Install'
+    package=base/'PoP2 Install'
     for f in package.iterdir():
         if f.is_dir():shutil.copytree(f,boot/f.name)
         else:shutil.copyfile(f,boot/f.name)
@@ -61,7 +61,7 @@ def main():
     subprocess.run(['m68k-amiga-elf-gcc','-O2','-m68020','-nostdlib','-Wno-volatile-register-var','-Wl,--emit-relocs,-Ttext=0,-e,_start',str(ROOT/'tools/install-data/start.s'),str(ROOT/'tools/install-data/test_icon.c'),'-o',str(build/'test-icon.elf')],check=True)
     subprocess.run([os.environ['ELF2HUNK'],str(build/'test-icon.elf'),str(build/'test-icon.exe'),'-s'],check=True)
     for src,n in [(Path(os.environ['INSTALLER43']),'Installer'),(Path(os.environ['WHDLOAD_BINARY']),'WHDLoad'),(build/'test-icon.exe','IconTest')]:shutil.copyfile(src,boot/n)
-    shutil.copyfile(boot/'PrinceOfPersia2.inf',boot/'GameTemplate.info');(boot/'Package').mkdir();shutil.copyfile(base/'Prince of Persia 2 Install.info',boot/'Package.info')
+    shutil.copyfile(boot/'PrinceOfPersia2.inf',boot/'GameTemplate.info');(boot/'Package').mkdir();shutil.copyfile(base/'PoP2 Install.info',boot/'Package.info')
     script=(boot/'Install').read_text()
     script=replace_form(script,'(welcome)','(if 0 (welcome))')
     script=replace_form(script,'(set #parent','(set #parent "DH2:out")')

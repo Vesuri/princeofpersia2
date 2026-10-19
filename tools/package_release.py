@@ -58,7 +58,7 @@ def release_package():
     original_hashes=set(pins(ROOT/'manifest/runtime-data.sha256').values())|set(pins(ROOT/'manifest/originals.sha256').values())
     release.refuse_originals(files,original_hashes)
     tempfile.tempdir=str(ROOT/'tmp')
-    prefix='Prince of Persia 2 Install'
+    prefix='PoP2 Install'
     data=release.archive(prefix,files,release.template_icon(icons,'drawer.info.b64'),release.dos_stamp(2026,10,19))
     out=ROOT/'dist'/('PrinceOfPersia2-'+version+'.lha')
     if out.exists() and out.read_bytes()!=data:

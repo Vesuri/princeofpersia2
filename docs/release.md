@@ -8,6 +8,8 @@ The owner will test an A1200 68040/40 with 32 MB and MMU.
 
 ## Package
 
+The archive uses the drawer `PoP2 Install` and icon `PoP2 Install.info` so the
+icon name fits a 30-character filesystem limit.
 The installer archive contains the release executable, KickEmu slave, Installer
 43 script, native extraction helper, icons and the helper’s LGPL licence.
 The ReadMe links to the helper source on GitHub; source files are not bundled.
@@ -178,8 +180,8 @@ supports `--window` for observation without changing its scripted answers.
 The sandbox launch failure and the run interrupted for the owner’s date change
 also remain non-passing attempts.
 
-`dist/PrinceOfPersia2-0.90.lha`: **166,704 bytes**, SHA-256
-`2688922edbbef01e698bd297c5bae075a113a08b19fd05e55749f0510c2c80ae`.
+`dist/PrinceOfPersia2-0.90.lha`: **166,564 bytes**, SHA-256
+`47bdfe0783faad1b54bd635af58053feec613b01ae0cb0d88966e506fb64f88e`.
 
 Release executable SHA-256:
 `860e4afb0c1e17c554653e7ae954fa084025317cb2bf1ee9c61d224a0e511b12`.

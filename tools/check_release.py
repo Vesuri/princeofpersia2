@@ -25,9 +25,9 @@ def check():
     with tempfile.TemporaryDirectory(prefix='release-audit-', dir=ROOT / 'tmp') as temp:
         base = Path(temp)
         subprocess.run(['lha', 'xq', str(archive)], cwd=base, check=True)
-        folder = base / 'Prince of Persia 2 Install'
-        expected = {'Prince of Persia 2 Install/' + n for n in MEMBERS}
-        expected.add('Prince of Persia 2 Install.info')
+        folder = base / 'PoP2 Install'
+        expected = {'PoP2 Install/' + n for n in MEMBERS}
+        expected.add('PoP2 Install.info')
         assert {str(p.relative_to(base)) for p in base.rglob('*') if p.is_file()} == expected
         for name, digest in report['members'].items():
             assert hashlib.sha256((folder / name).read_bytes()).hexdigest() == digest, name
@@ -46,7 +46,7 @@ def check():
         assert b'WHDLOADS' in slave
         for name in ['Install.info', 'ReadMe.info', 'PrinceOfPersia2.inf']:
             assert (folder / name).read_bytes()[:2] == b'\xe3\x10', name
-        assert (base / 'Prince of Persia 2 Install.info').read_bytes()[:2] == b'\xe3\x10'
+        assert (base / 'PoP2 Install.info').read_bytes()[:2] == b'\xe3\x10'
     print('RELEASE ARCHIVE PASS: independent extraction, exact members, hashes, version and formats')
 
 
