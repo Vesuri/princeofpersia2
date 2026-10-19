@@ -57,6 +57,7 @@
  ---------
  Space starts play. Use the cursor keys to move, Shift for careful movement
  and grabbing, and Ctrl for sword actions.
+ Joystick input is not supported yet.
  Amiga-N: new game       Amiga-E: end game       Amiga-Q: quit
  Amiga-O: load game      Amiga-S: save game      Amiga-P: pause
  Amiga-T: sound          Amiga-M: music          Amiga-R: restart
