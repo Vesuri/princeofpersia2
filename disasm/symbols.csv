@@ -1185,3 +1185,4 @@ segment,offset,name,evidence,notes
 2,0x685E,EnableAltarShadowAfterDeathSound,DERIVED,FrameAdv sets A5-4FD4 when death handler has set A5-4FCC to 600 in altar room
 4,0x3C60,DeathSoundCompletionGate,DERIVED,Queries both current sound cues via PrinceSndOn before setting the completed death state at +3C96
 10,0x2B14,SpawnAltarShadowAfterSoundCompletion,DERIVED,Calls local persistent shadow construction after A5-4FD4 becomes one
+3,0x13AC,LoadCustomRoomData_MoveHHi,MEASURED,Release death/restart stop on locked CUST handle at this trap; following HLock at +13B0

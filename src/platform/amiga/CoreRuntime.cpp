@@ -2540,7 +2540,13 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
     case 0xa029: trap_0xa029: case 0xa064: trap_0xa064: {
         auto h=(MacHeap::Handle)regs[8];if(!heap.isHandle(h)) { fail("HEAP / UNKNOWN HANDLE");goto failed; }
         if(trap==0xa029){if(!trivialService<0xa029>(regs))goto failed;}
-        else {error=heap.moveHigh(h);regs[0]=(int32_t)error;}break;
+        else {
+            error=heap.moveHigh(h);regs[0]=(int32_t)error;
+            // System 7.5.5 returns memLockedErr without changing the handle.
+            // LoadCustomRoomData calls this again on restart while it is locked.
+            // Keep D0/MemError/CCR visible to the caller; other errors stay loud.
+            if(error==MacHeap::memLockedErr)error=0;
+        }break;
     }
     case 0xa122: trap_0xa122:regs[8]=(uint32_t)heap.newHandle(regs[0],true);error=heap.error();regs[0]=(int32_t)error;break;
     case 0xa11e: trap_0xa11e: regs[8]=(uint32_t)heap.newPtr(regs[0],false);error=heap.error();regs[0]=(int32_t)error;break;

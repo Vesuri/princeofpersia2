@@ -72,6 +72,18 @@ local function run()
   end
   test(name,h,{b})
  end
+ -- Locked targets are legal calls with an error return, not fatal service stops.
+ for _,state in ipairs({0x80,0xc0,0xa0,0xe0})do
+  init();local h=handle(1024);local b=handle(512)
+  pattern(h,1024,17);pattern(b,512,31)
+  call(0xa06a,state,h)
+  local before=ptr(h);local neighbour=ptr(b);local free=mem:readv_u32(zone+12)
+  local d,a,e=call(0xa064,0,h);local ccr=cpu.state.SR.value&15
+  print(string.format('MOVEHHI_LOCKED state=%02X d0=%08X error=%04X ccr=%X unchanged=%d',state,d,e,ccr,(ptr(h)==before and ptr(b)==neighbour and free==mem:readv_u32(zone+12) and a==h) and 1 or 0))
+  assert(d==0xffffff8b and e==0xff8b and ccr==8,'locked target error contract')
+  assert(ptr(h)==before and ptr(b)==neighbour and free==mem:readv_u32(zone+12) and a==h,'locked target changed')
+  check(h,1024,17);check(b,512,31)
+ end
  init();local h=handle(1024);local b=handle(512);local barrier=handle(128)
  call(0xa029,0,barrier);pattern(h,1024,17);call(0xa023,0,b)
  local address=ptr(h)

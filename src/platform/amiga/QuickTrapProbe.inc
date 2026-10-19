@@ -6,6 +6,7 @@
 #endif
 extern "C" {
 uint32_t g_blockMoveChecks=0,g_quickWarmChecks=0;
+uint32_t g_moveHighLockedChecks=0;
 uint32_t g_hunlockChecks=0,g_hunlockRejected=0,g_hunlockFreed=0;
 uint32_t g_quickProbeCalls=0,g_quickProbeRejected=0,g_quickProbeFailures=0;
 uint32_t g_quickDeadlineRejected=0,g_quickZoneRejected=0;
@@ -203,6 +204,31 @@ static void quickTrapFixture() {
             ok=ok && l(frame+2)==pc+2 && l((uint8_t*)freed)==master;
             if(ok)++g_hunlockFreed;else ++g_quickProbeFailures;
         }
+    }
+    // Original System 7.5.5 returns memLockedErr for these locked targets.
+    // Exercise the restart caller through full dispatch, including its CCR/PC.
+    const uint32_t movePC=g_coreSegments[3][0]+0x13ac;
+    if(!g_coreSegments[3][0] || !validMemory(movePC,2) || w((uint8_t*)movePC)!=0xa064)
+        ++g_quickProbeFailures;
+    else for(unsigned state=0x80;state<=0xe0;state+=0x20)for(unsigned cc=0;cc<32;++cc) {
+        heap.setState(handle,state);
+        uint8_t* payload=*handle;
+        for(unsigned i=0;i<16;++i)payload[i]=i*7+3;
+        const uint32_t free=heap.freeBytes();
+        uint32_t regs[15];uint8_t frame[8]={},args[16]={};
+        for(unsigned i=0;i<15;++i)regs[i]=0x12340000+i;
+        regs[8]=(uint32_t)handle;sw(frame,cc);sl(frame+2,movePC);
+        quickServicesValid=false;
+        bool ok=pop2Dispatch(regs,frame,args)==(uint32_t)args && !didStop;
+        ok=ok && regs[0]==uint32_t(int32_t(MacHeap::memLockedErr));
+        for(unsigned i=1;i<15;++i)
+            if(regs[i]!=(i==8?(uint32_t)handle:0x12340000+i))ok=false;
+        ok=ok && w(low+0x220)==uint16_t(MacHeap::memLockedErr) && heap.error()==MacHeap::memLockedErr;
+        ok=ok && w(frame)==((cc&16)|8) && l(frame+2)==movePC+2;
+        ok=ok && *handle==payload && heap.state(handle)==state && heap.freeBytes()==free;
+        for(unsigned i=0;i<16;++i)if(payload[i]!=uint8_t(i*7+3))ok=false;
+        if(ok)++g_moveHighLockedChecks;else ++g_quickProbeFailures;
+        didStop=false;g_coreReason=reason;
     }
     // Exercise the actual callback shortcut with all CCR inputs. No timer or
     // audio queues are changed: these two services only query/check the zone.

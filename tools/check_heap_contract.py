@@ -10,6 +10,8 @@ NAMES = ('free-above','locked-barrier','no-room','purgeable','fragmented',
 def check(text):
     assert 'FAIL REFERENCE' not in text
     assert text.count('HEAP_FIXTURE_COMPLETE movehhi=9 resize=5\n')==1
+    locked=re.findall(r'^MOVEHHI_LOCKED state=([0-9A-F]+) d0=([0-9A-F]+) error=([0-9A-F]+) ccr=([0-9A-F]+) unchanged=(\d+)$',text,re.M)
+    assert locked==[(state,'FFFFFF8B','FF8B','8','1') for state in ('80','C0','A0','E0')]
     rows=re.findall(r'^MOVEHHI (\S+) error=(-?\d+) result=([0-9A-F]+) target=([0-9A-F]+)->([0-9A-F]+) free=(\d+)->(\d+) other1=([0-9A-F]+)->([0-9A-F]+)$',text,re.M)
     assert tuple(r[0] for r in rows)==NAMES
     for name,error,result,start,end,free,after,other,moved in rows:
@@ -25,12 +27,14 @@ def check(text):
 def controls(text):
     for old,new in [('HEAP_FIXTURE_COMPLETE','INCOMPLETE'),('MOVEHHI free-above','MOVEHHI invalid'),
                     ('error=0 result=0','error=1 result=0'),('failure=-108','failure=0'),
+                    ('d0=FFFFFF8B','d0=00000000'),('error=FF8B','error=0000'),
+                    ('ccr=8 unchanged=1','ccr=4 unchanged=1'),('unchanged=1','unchanged=0'),
                     ('size=256 preserved=256','size=255 preserved=256')]:
         changed=text.replace(old,new,1);assert changed!=text
         try:check(changed)
         except AssertionError:pass
         else:raise AssertionError('accepted altered heap evidence')
-    print('HEAP ORIGINAL CONTROLS PASS: five altered records rejected')
+    print('HEAP ORIGINAL CONTROLS PASS: nine altered records rejected')
 
 
 if __name__=='__main__':

@@ -1,5 +1,5 @@
-28f197e1da14c26fc1846c242f2bc2f1004da373f92f302e0c747eeb4731453b  dist/PrinceOfPersia2-0.90.json
-97cce957b7cfcb152ebdfbbadcb3513bf357768009d3e0d35a7c4e0b876bbefa  dist/PrinceOfPersia2-0.90.lha
+28f197e1da14c26fc1846c242f2bc2f1004da373f92f302e0c747eeb4731453b  tmp/death-restart/baseline/PrinceOfPersia2-0.90.json
+97cce957b7cfcb152ebdfbbadcb3513bf357768009d3e0d35a7c4e0b876bbefa  tmp/death-restart/baseline/PrinceOfPersia2-0.90.lha
 9b872a8a070b8ad329c4bd380fb1bf0000f564c75023ec8e1e6803f15364b9e9  tmp/installer43-7zc0om_n/Prince of Persia 2 Install/LICENSE.LGPL.txt
 c35c534e66eddfc6275557318552a99e61ea7a9eb718f336d37381f162c8e72a  tmp/installer43-7zc0om_n/Prince of Persia 2 Install/video-transfer.bin
 ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356  tmp/installer43-7zc0om_n/before.json
@@ -271,3 +271,5 @@ ab834590343099f2f9e3034073f5cab3e46a7713c385a50dc1cb72c19d65caac  tmp/whdload-re
 437ecca5d2ded48cd64c99603af2160ebdd7a3517b9d5b00eb5cc07c455fba8d  tmp/whdload-release-uknuj2iv/quit-port-after.bin
 1c3dde5e857fe23cacedd6049508d72097c0f9763355f81d10bceae5c8a8ef28  tmp/whdload-release-uknuj2iv/quit-window-before.bin
 89da40cab8e4df41e0dc9adee92d36e07799bad50b8044d30d66b513895d35cc  tmp/whdload-release-uknuj2iv/receipt.json
+b2cf1ddc441ba1e7008fb309567d5e20db30f3d0f039345c33c4d2afbffbb950  dist/PrinceOfPersia2-0.90.lha
+ebdeb6148d3be3bfad2b30a8a7c0579b94afc8b8f2efd53ed4e531295828fb65  dist/PrinceOfPersia2-0.90.json
