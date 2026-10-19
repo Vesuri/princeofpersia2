@@ -76,4 +76,11 @@
  Shared port and installer support: AmigaXDev, Vette! and Alone in the Dark.
  Amiga framework: dA JoRMaS. Chunky-to-planar conversion: Mikael Kalms.
  Installer decoder: MacPaw/XADMaster (LGPL-2.1-or-later).
- See LICENSE.LGPL.txt and InstallerSource for the installer source and licence.
+
+ Installer helper:
+ -----------------
+ LICENSE.LGPL.txt is the LGPL-2.1-or-later license for the Pop2InstallData
+ helper tool only. It does not license the game or its original data.
+ The helper's source code is available at:
+ https://github.com/Vesuri/princeofpersia2
+ Its archive format tables are copyright 2017-present MacPaw Way Ltd.

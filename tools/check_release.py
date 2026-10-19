@@ -4,7 +4,6 @@ import json
 import subprocess
 import tempfile
 from pathlib import Path
-from package_release import INSTALLER_SOURCE
 
 ROOT = Path(__file__).resolve().parents[1]
 MEMBERS = {
@@ -12,8 +11,6 @@ MEMBERS = {
     'PrinceOfPersia2.inf', 'Install', 'Install.info', 'ReadMe',
     'ReadMe.info', 'LICENSE.LGPL.txt',
 }
-MEMBERS.update('InstallerSource/' + name for name in INSTALLER_SOURCE)
-MEMBERS.add('InstallerSource/Build.txt')
 
 
 def check():

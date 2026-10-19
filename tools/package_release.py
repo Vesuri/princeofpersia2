@@ -4,9 +4,6 @@ import hashlib,os,sys,tempfile
 from scaffold_inputs import verify
 from build_receipt import verify as receipt
 ROOT=Path(__file__).resolve().parents[1]
-INSTALLER_SOURCE = ('arsenic.h decode.inc install.c install_config.h io.h io_amiga.c '
-                    'io_unix.c originals.h sha256.c sha256.h sit13_tables.h start.s '
-                    'support.h support.inc').split()
 def package():
     verify('release')
     sys.path.insert(0,os.environ['AMIGA_PYLIB'])
@@ -58,9 +55,6 @@ def release_package():
       'ReadMe.info':release.template_icon(icons,'readme.info.b64'),
       'LICENSE.LGPL.txt':(ROOT/'tools/install-data/COPYING.LIB').read_bytes(),
     }
-    for name in INSTALLER_SOURCE:
-        files['InstallerSource/'+name]=(ROOT/'tools/install-data'/name).read_bytes()
-    files['InstallerSource/Build.txt']=(ROOT/'release/InstallerSource.txt').read_bytes()
     original_hashes=set(pins(ROOT/'manifest/runtime-data.sha256').values())|set(pins(ROOT/'manifest/originals.sha256').values())
     release.refuse_originals(files,original_hashes)
     tempfile.tempdir=str(ROOT/'tmp')
