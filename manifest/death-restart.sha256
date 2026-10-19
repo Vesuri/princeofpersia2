@@ -11,8 +11,8 @@ ace6727c3368a127d2bc36e6cab57d5639fd738b9cd8f8c4820b9e7059f6f535  amiga/.run-ewM
 5c51849ac48452a915996ae5a41db02abbafbc5322034cfd0e69f58c8ccdfd53  amiga/.run-q91120/gdb-out.log
 91ef30d638625dfc5c440780e34da3bf196a2d631ba4cf898a1c5a902e607ef8  amiga/.run-q91120/stop-chip.bin
 08df777f33bdb3cd069253865f93d118a0d456c9e34fd6095d3130cd68efcf02  amiga/.run-q91120/stop-fast.bin
-ebdeb6148d3be3bfad2b30a8a7c0579b94afc8b8f2efd53ed4e531295828fb65  dist/PrinceOfPersia2-0.90.json
-b2cf1ddc441ba1e7008fb309567d5e20db30f3d0f039345c33c4d2afbffbb950  dist/PrinceOfPersia2-0.90.lha
+ebdeb6148d3be3bfad2b30a8a7c0579b94afc8b8f2efd53ed4e531295828fb65  tmp/readme-install-instructions/PrinceOfPersia2-0.90.json
+b2cf1ddc441ba1e7008fb309567d5e20db30f3d0f039345c33c4d2afbffbb950  tmp/readme-install-instructions/PrinceOfPersia2-0.90.lha
 a34f7fcabe51c9105607a381b61afee8a46606e60d2fa331eb791d48f4da30c0  ref/mame/runs/movehhi-locked-1/report.json
 9845622c3e2cdb70b94bdb0ad68ad9257055373898646b9b38965d8b2135eaf5  ref/mame/runs/movehhi-locked-1/session.log
 894e807afc447c57c3787f0e959d85ae60ecc649d053b57a82dfba81398104cd  tmp/death-restart/decoded.json

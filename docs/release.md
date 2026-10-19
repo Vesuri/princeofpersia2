@@ -102,8 +102,10 @@ also passes the existing quick-trap controls, completed integration route and
 hardware restoration. The original checker rejects nine altered records.
 Host tests, release link/audit checks and independent archive extraction pass;
 two clean rebuilds produce identical game executables and archives
-(`tmp/death-restart/rebuild.json`). Package comparison confirms that only the
-game executable changed; all installer, slave and ReadMe members are identical.
+(`tmp/death-restart/rebuild.json`). The restart-fix package comparison confirms that only the game executable
+changed in that correction. The current package additionally updates the
+ReadMe installation instructions with the supplied download link and the
+actual installation/reinstallation steps; all other members are identical.
 `manifest/death-restart.sha256` pins the captured failure and regression evidence.
 
 The owner confirms the requested guard-death/Enter retry succeeds. Separately,
@@ -158,8 +160,8 @@ supports `--window` for observation without changing its scripted answers.
 The sandbox launch failure and the run interrupted for the owner’s date change
 also remain non-passing attempts.
 
-`dist/PrinceOfPersia2-0.90.lha`: **191,358 bytes**, SHA-256
-`b2cf1ddc441ba1e7008fb309567d5e20db30f3d0f039345c33c4d2afbffbb950`.
+`dist/PrinceOfPersia2-0.90.lha`: **191,681 bytes**, SHA-256
+`3fed873f2140183193f3e8289d1aacf3c4be3ee1ccbce9ebd65b7a8f73aba88d`.
 
 Release executable SHA-256:
 `a479b7e4250565b54b66a90ad0c31425e65bb810995d36014d0ccc17891b5913`.

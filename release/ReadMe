@@ -26,12 +26,26 @@
 
  Installation:
  -------------
- Double-click Install and select the destination parent drawer and your
- original Macintosh "Prince_Of_Persia2.SIT" archive.
- Allow 40 MB free, plus space to preserve an existing installation.
- The installer verifies the archive, unpacks the data and preserves saves.
- Double-click PrinceOfPersia2 in the installed drawer to play.
- No original game data, Kickstart, Workbench or WHDLoad is included.
+ To install or reinstall the game data, download
+ "Prince_Of_Persia2.SIT" from:
+
+ https://www.macintoshrepository.org/download.php?id=4673
+
+ Leave the downloaded file compressed. Run the Install icon and select the
+ destination parent drawer on your hard disk. Allow at least 40 MB free,
+ plus space to preserve an existing installation. Do not install to RAM:.
+
+ If verified game data is already installed, choose Use existing or Reinstall.
+ Only data installation asks for the downloaded archive. Both choices preserve
+ saved games and preferences, and keep a backup of the previous installation.
+ The executable, slave, icon and ReadMe are always reinstalled.
+
+ Extraction can take several minutes. The installer verifies the data before
+ replacing the installed files and removes its temporary files afterwards.
+
+ Start the installed game using its PrinceOfPersia2 icon. PRELOAD is enabled
+ by default; disable that Tooltype if there is insufficient memory to cache
+ the files. No game data, Kickstart, Workbench or WHDLoad is included.
 
  Features:
  ---------
