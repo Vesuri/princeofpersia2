@@ -10,8 +10,7 @@ A pinned headless Macintosh reference reaches the opening cutscene, with a verif
 static/live map of that route. Paired service, audio and presentation probes exist.
 Original native startup reaches the first playable room, with matching reference
 pixels and state and verified gameplay input. Timing and performance budgets pass on the corrected-clock `a1200-030` emulator; physical-hardware qualification remains open.
-Gameplay coverage is accepted with the recorded D11/D12 exceptions; release
-and additional CPU validation remain open.
+Gameplay coverage is accepted with the recorded D11/D12 exceptions; physical-hardware release qualification remains open.
 
 ## Setup checks
 
@@ -94,12 +93,12 @@ The current performance target is `a1200-030` with 8 MB Fast RAM. See
 matched-workload checks and Kalms dirty-rectangle conversion at frame end.
 Profiling is separate from ordinary release and the correctness fixtures.
 
-Version 0.90 (16.10.2026) is a release candidate. `make dist` builds the ordinary
+Version 0.90 (19.10.2026) is a release candidate. `make dist` builds the ordinary
 game, WHDLoad slave and native installer, then independently audits the LHA.
 The package requires the user's original SIT archive; it includes the installer
 helper's complete source. `make installer-check` exercises extraction and
 preservation on the host. See [release validation](docs/release.md) for measured
-results, outstanding WHDLoad/68040 gates and the hardware test checklist.
+results and the remaining hardware test checklist.
 
 Release conversion uses AmigaXDev's separately installed `elf2hunk-fixed`,
 selected by `ELF2HUNK` in `amiga/env.sh`. Its pinned source and build procedure

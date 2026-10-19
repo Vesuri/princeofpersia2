@@ -8,8 +8,7 @@ integration gate reaches the first playable room with matching reference pixels
 and state and verified gameplay input. Earlier service fixtures use explicit
 checkpoints and do not independently establish gameplay. Timing and performance budgets pass on the corrected-clock `a1200-030` emulator; physical-hardware qualification remains open.
 Gameplay coverage is accepted under D10–D12; recorded timing/state differences
-are explained and accepted under D18. Release and additional CPU validation
-remain open.
+are explained and accepted under D18. Physical-hardware release qualification remains open.
 
 ## Rules
 

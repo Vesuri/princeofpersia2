@@ -65,13 +65,13 @@ def release_package():
     release.refuse_originals(files,original_hashes)
     tempfile.tempdir=str(ROOT/'tmp')
     prefix='Prince of Persia 2 Install'
-    data=release.archive(prefix,files,release.template_icon(icons,'drawer.info.b64'),release.dos_stamp(2026,10,16))
+    data=release.archive(prefix,files,release.template_icon(icons,'drawer.info.b64'),release.dos_stamp(2026,10,19))
     out=ROOT/'dist'/('PrinceOfPersia2-'+version+'.lha')
     if out.exists() and out.read_bytes()!=data:
         backup=ROOT/'.replaced'/('release-'+hashlib.sha256(out.read_bytes()).hexdigest())
         backup.mkdir(parents=True,exist_ok=True);out.rename(backup/out.name)
     if not out.exists():release.write(out,data)
-    report={'version':version,'date':'16.10.2026','sha256':hashlib.sha256(data).hexdigest(),'bytes':len(data),'members':{n:hashlib.sha256(b).hexdigest() for n,b in sorted(files.items())},'qualification':'candidate; item 14 gates remain open'}
+    report={'version':version,'date':'19.10.2026','sha256':hashlib.sha256(data).hexdigest(),'bytes':len(data),'members':{n:hashlib.sha256(b).hexdigest() for n,b in sorted(files.items())},'qualification':'candidate; item 14 gates remain open'}
     out.with_suffix('.json').write_text(json.dumps(report,indent=2)+'\n')
     print('RELEASE CANDIDATE',out.name,report['sha256'])
     return out,files

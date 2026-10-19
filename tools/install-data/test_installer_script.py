@@ -27,6 +27,7 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--case',choices=['fresh','reuse','replace','incomplete','bad-options','bad-archive'],default='reuse')
     p.add_argument('--seconds',type=int,default=900,help='positive wall-clock limit for Installer to return')
+    p.add_argument('--window',action='store_true',help='show the emulator for manual observation; requester answers remain scripted')
     p.add_argument('--interactive-error',action='store_true',
                    help='show the real bad-archive requester for manual dismissal')
     a=p.parse_args()
@@ -85,7 +86,7 @@ wait "$FSUAE_PID"
 ''')
     try:
         with (base/'emulator.log').open('w') as log:
-            env=dict(os.environ,INSTALLER_WINDOW='front' if a.interactive_error else 'none')
+            env=dict(os.environ,INSTALLER_WINDOW='front' if a.interactive_error or a.window else 'none')
             emu=subprocess.Popen(['/bin/bash',str(launch),str(base),str(ROOT)],stdout=log,stderr=log,env=env)
             deadline=time.monotonic()+a.seconds
             while time.monotonic()<deadline and not (base/'returned').exists():

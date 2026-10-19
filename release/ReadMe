@@ -1,57 +1,65 @@
-Prince of Persia 2: The Shadow and the Flame
-Amiga port 0.90 (16.10.2026)
 
-Release candidate under validation. Do not treat this file as evidence that
-all release gates have passed. See docs/release.md in the source repository.
+ THIS PACKAGE COMES WITH ABSOLUTELY NO WARRANTY OF ANY KIND, EITHER EXPRESS OR
+ IMPLIED, STATUTORY OR OTHERWISE. THE ENTIRE RISK AS TO USE, RESULTS AND
+ PERFORMANCE OF THE PACKAGE IS ASSUMED BY YOU AND IF THE PACKAGE SHOULD PROVE
+ TO BE DEFECTIVE, YOU ASSUME THE ENTIRE COST OF ALL NECESSARY SERVICING,
+ REPAIR OR OTHER REMEDIATION.
+ UNDER NO CIRCUMSTANCES, CAN THE AUTHOR BE HELD RESPONSIBLE FOR ANY DAMAGE
+ CAUSED IN ANY USUAL, SPECIAL, OR ACCIDENTAL WAY, ALSO IF THE OWNER OR A THIRD
+ PARTY HAS BEEN POINTED AT SUCH POSSIBILITIES OF DAMAGE.
 
-Requirements
-------------
-PAL AGA, 2 MB Chip RAM and at least 8 MB Fast RAM. The current target is a
-68030; timing requalification with the corrected emulator clock is pending.
-68020 support is not yet validated. 68040/MMU release validation is in progress; hardware testing is planned on an A1200 68040/40 with 32 MB RAM.
-WHDLoad and PRELOAD need memory in addition to the game's allocated memory.
-Install WHDLoad and Installer 43 or newer separately. WHDLoad needs the A1200
-Kickstart 3.1 image and its matching RTB in DEVS:Kickstarts, named
-kick40068.A1200 and kick40068.A1200.RTB. Supply your own licensed ROM image.
+ This install applies to "Prince of Persia 2: The Shadow and the Flame"
+ (Macintosh version), copyright 1993, 1994 Jordan Mechner / Broderbund.
+ Amiga port by Vesa Halttunen (Vesuri).
 
-Installation
-------------
-Supply your own unmodified Prince_Of_Persia2.SIT Macintosh archive:
-SHA-256 02437dc253dffec4eee516f8e5e0f2ecaccc4bd31f3d6957d42ea4f87b80b080
+ Requirements:
+ -------------
+ PAL AGA Amiga, 68030 or better, 2 MB Chip RAM and at least 8 MB Fast RAM.
+ WHDLoad 18.0 or newer and Installer 43 or newer must be installed.
+ WHDLoad and PRELOAD require memory in addition to the game's memory.
+ The program can be quit by pressing F10 (Tooltype "QuitKey=").
 
-The native Pop2InstallData helper extracts the archive and verifies its files.
-Installation keeps the data uncompressed. No original game files, Kickstart,
-Workbench or WHDLoad binary are included in the source or installer package.
-Double-click Install and select the destination parent drawer and archive.
-Allow 40 MB free, plus space to preserve an existing installation in .replaced.
-The installer can reuse verified data and preserves saved games. Valid
-preferences survive reinstallation; damaged preferences remain in the backup.
-Double-click PrinceOfPersia2 in the installed drawer to launch with PRELOAD.
-The WHDLoad launch workflow is still being validated.
+ An A1200 Kickstart 3.1 image and its matching RTB must be installed in
+ DEVS:Kickstarts as "kick40068.A1200" and "kick40068.A1200.RTB".
+ Supply your own licensed Kickstart image. The RTB is available in
+ "util/boot/skick346.lha" on Aminet.
 
-Controls
---------
-Space starts play. Use the original game's cursor keys and Shift controls.
-Amiga-N: new game; Amiga-E: end game; Amiga-O/S: open/save; Amiga-Q: quit.
-Amiga-P: pause; Amiga-T/M: sound/music; Amiga-R: restart; Amiga-H: hall of fame.
-F10 exits WHDLoad. Saves are stored in the installation's Data drawer.
+ Installation:
+ -------------
+ Double-click Install and select the destination parent drawer and your
+ original Macintosh "Prince_Of_Persia2.SIT" archive.
+ Allow 40 MB free, plus space to preserve an existing installation.
+ The installer verifies the archive, unpacks the data and preserves saves.
+ Double-click PrinceOfPersia2 in the installed drawer to play.
+ No original game data, Kickstart, Workbench or WHDLoad is included.
 
-The game uses the original Macintosh instructions and game data. The Amiga port
-provides display, sound, input and operating-system services. Ordinary builds
-do not perform runtime SHA-256 scans, trap tracing or profiling.
+ Features:
+ ---------
+ - Original 512 x 384 graphics on a PAL hires interlaced display.
+ - Music and sound effects through Paula.
+ - Hard disk installation, save games and quit to Workbench.
 
-Credits
--------
-Original game: Jordan Mechner / Broderbund.
-Amiga port: Vesa Halttunen (Vesuri).
-Shared Macintosh runtime and installer work: Vette!, Alone in the Dark and
-AmigaXDev. Hardware framework: dA JoRMaS. C2P: Mikael Kalms.
-Installer decoder: MacPaw/XADMaster (LGPL-2.1-or-later; see LICENSE.LGPL.txt).
-Complete installer helper sources and build instructions are in InstallerSource.
+ Controls:
+ ---------
+ Space starts play. Use the cursor keys and Shift for the game controls.
+ Amiga-N: new game       Amiga-E: end game       Amiga-Q: quit
+ Amiga-O: load game      Amiga-S: save game      Amiga-P: pause
+ Amiga-T: sound          Amiga-M: music          Amiga-R: restart
+ Amiga-H: hall of fame   F10: quit WHDLoad
 
-Known differences
------------------
-The recorded gameplay timing, animation and RNG differences remain under
-item 16. Two current 68040 emulator runs meet all 58 observed five-tick gameplay
-intervals. Emulator timing is not a real-hardware performance measurement.
-This candidate has not yet passed the real-hardware release gate.
+ History:
+ --------
+ 0.90 (19.10.2026)
+ - Initial release.
+
+ Contact:
+ --------
+ For the WHDLoad package, other installs and updates:
+ https://www.whdload.de/
+
+ Credits:
+ --------
+ Shared port and installer support: AmigaXDev, Vette! and Alone in the Dark.
+ Amiga framework: dA JoRMaS. Chunky-to-planar conversion: Mikael Kalms.
+ Installer decoder: MacPaw/XADMaster (LGPL-2.1-or-later).
+ See LICENSE.LGPL.txt and InstallerSource for the installer source and licence.

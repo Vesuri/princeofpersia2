@@ -35,10 +35,10 @@ slv_CurrentDir dc.b 0
 slv_name dc.b "Prince of Persia 2",0
 slv_copy dc.b "1993, 1994 Jordan Mechner / Broderbund",0
 slv_info dc.b "Amiga port by Vesuri",10
-        dc.b "Version 0.90 (16.10.2026)",10
+        dc.b "Version 0.90 (19.10.2026)",10
         dc.b "F10 quits",0
 slv_config dc.b 0
-        dc.b "$VER: PrinceOfPersia2.slave 0.90 (16.10.2026)",0
+        dc.b "$VER: PrinceOfPersia2.slave 0.90 (19.10.2026)",0
 _program dc.b "PrinceOfPersia2",0
 _args dc.b 10
         EVEN

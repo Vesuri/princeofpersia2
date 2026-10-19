@@ -23,7 +23,7 @@ def check():
     data = archive.read_bytes()
     assert report['sha256'] == hashlib.sha256(data).hexdigest()
     assert report['bytes'] == len(data)
-    assert report['version'] == version and report['date'] == '16.10.2026'
+    assert report['version'] == version and report['date'] == '19.10.2026'
     assert set(report['members']) == MEMBERS
     with tempfile.TemporaryDirectory(prefix='release-audit-', dir=ROOT / 'tmp') as temp:
         base = Path(temp)
@@ -36,7 +36,7 @@ def check():
             assert hashlib.sha256((folder / name).read_bytes()).hexdigest() == digest, name
         for name in ['PrinceOfPersia2', 'Pop2InstallData']:
             assert (folder / name).read_bytes()[:4] == b'\0\0\x03\xf3', name
-        tag = (version + ' (16.10.2026)').encode()
+        tag = (version + ' (19.10.2026)').encode()
         for name in ['PrinceOfPersia2', 'PrinceOfPersia2.slave', 'Pop2InstallData', 'Install', 'ReadMe']:
             assert tag in (folder / name).read_bytes(), name
         slave = (folder / 'PrinceOfPersia2.slave').read_bytes()

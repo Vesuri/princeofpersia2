@@ -52,7 +52,7 @@ The owner subsequently authorized doing audio-cost item 19.6 next, keeping
 ## Version 0.90 release scope
 
 D14 (owner-authorized release scope, amended by D17): item 15 is closed by
-owner acceptance for version 0.90 (16.10.2026). Item 19’s performance work is
+owner acceptance for version 0.90 (release date updated by the owner to 19.10.2026). Item 19’s performance work is
 complete. Item 14’s 68040 cadence, real-hardware and installer validation gates
 remain required.
 
