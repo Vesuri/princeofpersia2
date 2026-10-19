@@ -226,8 +226,8 @@ supports `--window` for observation without changing its scripted answers.
 The sandbox launch failure and the run interrupted for the owner’s date change
 also remain non-passing attempts.
 
-`dist/PrinceOfPersia2-0.90.lha`: **166,567 bytes**, SHA-256
-`ff0c5585ee35f92022a039ef786d2d75884ac8ca4dbf8be888ba49adac10de8b`.
+`dist/PrinceOfPersia2-0.90.lha`: **166,600 bytes**, SHA-256
+`5ba966eb9288cfe7e75c21f4ec23fd89d009eb944cc70c4521f3e41fb5e09866`.
 
 Release executable SHA-256:
 `87adc94734ce868103f4ae1539c9c2500eee286b82b990213e0ec0760c12a44f`.
