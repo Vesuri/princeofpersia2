@@ -7,6 +7,7 @@ from check_core_result import restored
 
 
 def evidence(log):
+    assert log.count('QUICK WARM checks=1088\n') == 1, 'QUICK / WARM DIFFERENTIAL'
     assert log.count('QUICK DISPLAY checks=1152 rejected=126 errors=4 faults=0\n') == 1, 'QUICK / DISPLAY'
     assert log.count('QUICK DISPLAY FIRST trap=0 variant=0 cc=0 result=0 mismatch=0\n') == 1, 'QUICK / DISPLAY FAILURE DETAIL'
     epochs=re.findall(r'^QUICK DISPLAY EPOCH retries=(\d+)$',log,re.M)
@@ -32,6 +33,7 @@ def check(run, setup):
     restored(run, log, setup)
     evidence(log)
     changes = [
+        ('QUICK WARM checks=1088', 'QUICK WARM checks=1087'),
         ('QUICK DISPLAY checks=1152', 'QUICK DISPLAY checks=1151'),
         ('rejected=126', 'rejected=125'),
         ('errors=4', 'errors=3'),
@@ -62,7 +64,7 @@ def check(run, setup):
             continue
         raise AssertionError('QUICK / ACCEPTED ALTERATION')
     evidence(log)
-    print('QUICK TRAPS PASS: 28,388 native copy cases, seven existing bodies plus 1,152 drawing fast/full cases, 126 drawing guard rejections and four terminal error controls; 91 existing rejected guard cases, seven due-deadline rejections, invalid zone rejection, 64 callback CCR cases and 128 inactive/pending-audio callback rejections, live native guard audit, restored route; twenty-two alterations rejected')
+    print('QUICK TRAPS PASS: 28,388 native copy cases, seven existing bodies plus 1,152 drawing fast/full cases, 126 drawing guard rejections and four terminal error controls; 91 existing rejected guard cases, seven due-deadline rejections, invalid zone rejection, 64 callback CCR cases and 128 inactive/pending-audio callback rejections, live native guard audit, restored route; 1,088 native/C warm-body cases; twenty-three alterations rejected')
 
 
 if __name__ == '__main__':

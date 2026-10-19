@@ -8,16 +8,20 @@ namespace FillRect8 {
 inline void fillSpan(uint8_t* out,uint32_t count,uint8_t color) {
     while(count && ((unsigned long)out&3)) {*out++=color;--count;}
     const uint32_t word=uint32_t(color)*0x01010101UL;
-    while(count>=16) {
 #ifdef __mc68000__
-        __asm__ volatile("move.l %1,(%0)+\n\tmove.l %1,(%0)+\n\t"
-                         "move.l %1,(%0)+\n\tmove.l %1,(%0)+"
-                         : "+a"(out) : "d"(word) : "cc", "memory");
+    if(count>=16) {
+        uint32_t blocks=count/16;count%=16;
+        __asm__ volatile("1: move.l %2,(%0)+\n\tmove.l %2,(%0)+\n\t"
+                         "move.l %2,(%0)+\n\tmove.l %2,(%0)+\n\t"
+                         "subq.l #1,%1\n\tbne.s 1b"
+                         : "+&a"(out),"+&d"(blocks) : "d"(word) : "cc", "memory");
+    }
 #else
+    while(count>=16) {
         for(unsigned i=0;i<16;++i)*out++=color;
-#endif
         count-=16;
     }
+#endif
     while(count>=4) {
 #ifdef __mc68000__
         __asm__ volatile("move.l %1,(%0)+" : "+a"(out) : "d"(word) : "cc", "memory");

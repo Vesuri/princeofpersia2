@@ -5,14 +5,7 @@
 // Adapted from Alone in the Dark SongVoice's integer period calculation and
 // phase-preserving DMA preparation. The pitch comes from a verified input.
 namespace HalestormDma {
-inline bool divide(unsigned long long n,unsigned long long d,uint32_t& result) {
-    if(!d)return false;unsigned long long remainder=0;result=0;
-    for(int bit=63;bit>=0;--bit) {
-        bool carry=(remainder>>63)!=0;remainder=(remainder<<1)|(n>>63);n<<=1;
-        if(carry || remainder>=d){remainder-=d;if(bit>=32)return false;result|=1UL<<bit;}
-    }
-    return true;
-}
+#include "UnsignedDivide.inc"
 struct Plan {PaulaSample::Layout layout={};uint16_t period=0,stride=1;};
 inline const char* describe(const HalestormInputs::Sample& sample,uint32_t step,bool looping,Plan& out) {
     if(!sample.pcm || !sample.size || !step || sample.rate!=0x2b7745d1UL)return "AUDIO / MUSIC RATE";

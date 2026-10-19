@@ -9,7 +9,7 @@ The release can be inspected and extracted reproducibly (see the source inventor
 A pinned headless Macintosh reference reaches the opening cutscene, with a verified
 static/live map of that route. Paired service, audio and presentation probes exist.
 Original native startup reaches the first playable room, with matching reference
-pixels and state and verified gameplay input. Timing passed on the retained `a1200-030` setup; item 22 requires corrected-clock requalification.
+pixels and state and verified gameplay input. Timing and performance budgets pass on the corrected-clock `a1200-030` emulator; physical-hardware qualification remains open.
 Gameplay coverage is accepted with the recorded D11/D12 exceptions; release
 and additional CPU validation remain open.
 
@@ -106,3 +106,11 @@ selected by `ELF2HUNK` in `amiga/env.sh`. Its pinned source and build procedure
 are in AmigaXDev's `docs/reference/port-toolchain.md` on
 `codex/release-installer-helpers` (`ba5cc6c`). The bundled converter can emit
 uninitialized padding and is not used for release artifacts.
+
+Ordinary play defaults to `a1200-030` and the pinned corrected-clock emulator.
+`make play AMIGA_SETUP=a1200-040` selects the 040 model. Diagnostic launches also
+use the corrected clock by default; `CALIBRATED_CPU=0` explicitly selects the
+legacy instrument for historical controls. Native-service timing is opt-in:
+`NATIVE_SERVICE_SCOPE=1 CALIBRATED_CPU=1 bash amiga/aprof.sh NAME a1200-030`.
+Its host-only observer adds no guest profiling instructions. It requires the
+pinned shared scoped emulator; ordinary release does not collect these scopes.

@@ -3,9 +3,104 @@
 The current owner-directed target is `a1200-030`: the shared 50 MHz 68030,
 AGA, PAL, 2 MB Chip RAM and 8 MB Fast RAM preset with data cache enabled.
 68020 item 15 is closed by owner acceptance (D17); its measured cadence remains below the former target.
-The retained accelerated measurements below use the legacy explicit-frequency
-calculation; item 22 requires requalification with the corrected clock.
+The accelerated measurements below are requalified with the corrected explicit-frequency
+calculation. Earlier item-19 captures retain their legacy clock and are historical.
 These are emulator measurements, not real-hardware performance claims. The Fast RAM requirement is 8 MB (D5).
+
+## Corrected accelerated clock (item 22)
+
+MEASURED: `item22-qualified-scope-a/b` use the pinned scoped emulator; live profiles
+report CPU 68030, cycle unit 36, `CYCLE_UNIT 512` and colour clock 3,546,895 Hz.
+Requested 50 MHz gives a 50.444729 MHz integer cycle budget, not calibration
+against a physical accelerator. Both runs complete all 81 original timer
+intervals and match all 81 Kid records. The original requests come from pinned
+`opening-noright-1`. Each phase has opening/report/work output. No speedup is
+inferred by comparing different emulator clocks.
+
+All unchanged budgets pass in both repeats. D19 applies the 25 µs limit to
+fresh native-service scopes; other cost boundaries remain unchanged.
+Active dispatch and clock sampling use the separate D13 captures
+`item22-qualified-active-a/b`, with the same original intervals and Kid records.
+
+| Cost | Repeat A | Repeat B | Limit |
+|---|---:|---:|---:|
+| pop2SectRect (us/call) | 13.800006 | 14.134872 | 15 |
+| pop2UnionRect (us/call) | 14.012945 | 14.208427 | 15 |
+| pop2EmptyRect (us/call) | 9.145494 | 8.862994 | 15 |
+| TRAP SystemTask native service (us/call) | 13.992759 | 13.851923 | 25 |
+| TRAP HGetState native service (us/call) | 22.489373 | 20.710849 | 25 |
+| TRAP HLock native service (us/call) | 20.915328 | 21.710766 | 25 |
+| TRAP StripAddress native service (us/call) | 20.552840 | 21.386236 | 25 |
+| TRAP SwapMMUMode native service (us/call) | 21.748183 | 22.028496 | 25 |
+| TRAP NewHandle (ms/call) | 0.397369 | 0.394832 | 0.5 |
+| NativeAudio::dispatch (ms/frame) | 1.871291 | 1.869596 | 2 |
+| AmigaHardware::blitterDrain (ms/frame) | 0.005180 | 0.005359 | 2 |
+| active dispatch (ms/frame) | 6.723571 | 6.749265 | 12 |
+| active clock sampling (ms/frame) | 0.593862 | 0.634112 | 2 |
+
+The host-only scope instrument opens on Line-A and closes at the verified
+native RTE, C-quick RTE or final user-service RTS, before original callbacks.
+It excludes nested OS interrupt handling, records foreign PCs and partitions
+all instruction units independently of the heuristic call tree. Verified Exec
+negative vectors and ROM Supervisor handling remain charged as service work;
+only hardware interrupt handling is excluded. The frozen ELF
+supplies the return addresses and opcodes. Both captures reject an invalid
+configuration, have positive interrupt activity, balanced service/IRQ counts,
+no foreign or partial measured services, and independently matching Line-A
+counts. Thirteen altered-evidence controls fail. Shared sanitizer and reader tests
+cover nesting, boundary carries, accounting and malformed records. Before the UnionRect adjustment, the scoped guest
+executable is byte-identical to `item22-warm-a/b`: only zero-byte symbols were
+added to configure the observer. The later shared UnionRect optimization
+removes compiler-generated packing and redundant null tests after the existing
+span checks. Its direct/ordinary original-paired fixtures pass; the final scoped
+and active pairs use one identical executable.
+
+Full-trap inclusive estimates are retained in each capture's
+`full-trap-costs.json`; they include original callbacks and interrupts and do
+not replace the native-service measurements. Legacy call-tree work estimates
+remain approximate. The final observer freezes instruction identity before
+execution for flat-PC records too. All three known service-return instruction
+counts agree with the independent scope endings in every profile part; four
+altered identity/count records are rejected. This repairs the observed RTS
+attribution defect without changing cycles or guest code. CPU Line-A entry is recorded
+separately and remains charged to the dispatch budget, without double-counting
+cached native veneers. Its counts match both the exception events and the first
+handler instruction; every entry charge matches its frozen-PC record. No old capture has been relabelled or failing repeat
+removed. Corrected baseline `item22-opening-b/c` fails rectangle, handle/MMU,
+NewHandle and audio limits; `item22-warm-a/b` still fails some full-trap limits.
+Those captures and failed controls are pinned in
+`manifest/accelerated-clock.sha256`, together with final evidence.
+
+The runtime preserves the game and callback policy. Owned spans are checked
+for wrap at allocation, then with unsigned span subtraction. Clear spans retain
+their 16-byte loop counter in assembly. PCM conversion uses AmigaXDev's existing
+eight-longword loop. Audio period division uses Alone in the Dark's unchanged
+significant-bit divider, now shared; the donor executable remains byte-identical.
+Pinned handle hints expand from 32 to 256 entries (1,792 additional Fast bytes),
+retaining full slot identity and live flag pointers. Native warm HGetState/HLock
+accept allocated cache hits and otherwise fall back to checked C. SwapMMUMode
+retains mode validation and heap-error publication. Trap entry saves only the
+registers touched by native guards initially, materializing the complete image
+for the C bridge. Pending callbacks retain the full path.
+
+The native/C fixture `.run-EdullY` passes 1,088 warm-body comparisons, including
+invalid inputs and condition codes, plus existing drawing/copy/guard controls
+and a restored gameplay route. Direct and ordinary rectangle fixtures each
+pass 1,220 original-paired calls. Cutscene and repeated route audio checks pass;
+route events and DMA bytes match. Natural gameplay, repeat and no-input control
+pass original pixels/state, input and restoration checks, with 19 corrupted
+integration records rejected. Corrected-clock VBL, Time Manager and repeated
+030/040 cadence checks pass as documented in `timing.md`. Ordinary release
+startup matches its original pixel checkpoint, and release link audits exclude
+hashing, verification counters and diagnostic fixtures.
+
+The shared reader accepts mixed-clock stop tails aligned to gcd(36, 512),
+retaining the one-colour-clock bound and exact accounting. Tests cover all 129
+allowed remainders and invalid values; eight retained captures across both
+ports parse identically. Eleven altered clock/configuration controls fail.
+The scoped checker additionally pins its shared accounting helper. Ordinary
+launchers now select the corrected emulator; native scope collection remains
+an explicit profiling option. Physical hardware qualification remains item 14.
 
 ## Measurement boundary
 

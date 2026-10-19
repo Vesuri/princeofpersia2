@@ -19,9 +19,12 @@ pop2_mac_exit:
 	rts
 	.globl pop2_line_a
 pop2_line_a:
-	| Table-selected nonblocking services, following Alone in the Dark's
-	| complete register-image ABI. Misses restore the original exception.
-	movem.l d0-d7/a0-a6,-(sp)
+	| Native guards touch D0-D3/A0-A4 only; C callees preserve the others.
+	| Retain the complete image's offsets, materializing its untouched slots
+	| only for the general C bridge. Native warm bodies read D0/A0 only.
+	lea -60(sp),sp
+	movem.l d0-d3,(sp)
+	movem.l a0-a4,32(sp)
 	.ifdef POP2_INTEGRATION_PROBE
 	| Startup observers install original-return hooks in the full dispatcher.
 	| Keep those diagnostic safe points regardless of quick-service cadence.
@@ -40,6 +43,8 @@ pop2_line_a:
 	move.l d0,a3
 	bne.w .native_quick
 .quick_c_bridge:
+	movem.l d4-d7,16(sp)
+	movem.l a5-a6,52(sp)
 	lea 60(sp),a1
 	move.l sp,a0
 	move.l usp,a2
@@ -58,11 +63,23 @@ pop2_line_a:
 .quick_done:
 	addq.l #2,62(sp)
 	movem.l (sp)+,d0-d7/a0-a6
+	.globl pop2QuickCReturn
+pop2QuickCReturn:
+	rte
+.native_done:
+	addq.l #2,62(sp)
+	movem.l (sp),d0-d3
+	movem.l 32(sp),a0-a4
+	lea 60(sp),sp
+	.globl pop2QuickNativeReturn
+pop2QuickNativeReturn:
 	rte
 .native_quick:
 	jmp (a3)
 .quick_miss:
-	movem.l (sp)+,d0-d7/a0-a6
+	movem.l (sp),d0-d3
+	movem.l 32(sp),a0-a4
+	lea 60(sp),sp
 	| Park the exception identity, then leave supervisor mode before services.
 	| DOS may wait and schedule; it must never run on the exception stack.
 	move.l a0,-(sp)
@@ -82,6 +99,8 @@ pop2_user_service:
 	move.l d0,sp
 	movem.l (sp)+,d0-d7/a0-a6
 	move.w (sp)+,ccr
+	.globl pop2UserServiceReturn
+pop2UserServiceReturn:
 	rts
 	.ifdef POP2_INPUT
 	.globl pop2QuickSystemTask
@@ -291,11 +310,11 @@ pop2QuickNativeGuard:
 	move.l usp,a0
 	move.l d0,(a0)
 	clr.l (sp)
-	bra.w .quick_done
+	bra.w .native_done
 2:
 	move.l g_quickA5,a0
 	move.l (a0),(sp)
-	bra.w .quick_done
+	bra.w .native_done
 5:
 	move.l sp,a0
 	lea 60(sp),a1
@@ -305,7 +324,7 @@ pop2QuickNativeGuard:
 	addq.l #8,sp
 	tst.l d0
 	beq.w .quick_miss
-	bra.w .quick_done
+	bra.w .native_done
 	.endif
 	.globl pop2_old_loadseg
 pop2_old_loadseg:
@@ -1491,3 +1510,8 @@ pop2_timing_tm_end:
 
 	.text
 	.include "../src/platform/amiga/RectProbe.inc"
+
+	.include "../src/mac/QuickOSWarm.inc"
+	mac_handle_warm pop2QuickHGetStateWarm,pop2QuickHGetStateSlow,g_quickFlagHints,g_quickHeapError,g_quickMemError,255,0
+	mac_handle_warm pop2QuickHLockWarm,pop2QuickHLockSlow,g_quickFlagHints,g_quickHeapError,g_quickMemError,255,1
+	mac_mmu_warm pop2QuickSwapMMUModeWarm,pop2QuickSwapMMUModeSlow,g_quickAddressMode,g_quickModeShadow,g_quickHeapError,g_quickMemError

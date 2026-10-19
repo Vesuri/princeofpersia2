@@ -5,6 +5,7 @@ commands
  printf "QUICK DISPLAY EPOCH retries=%lu\n",g_quickDisplayEpochRetries
  printf "QUICK DISPLAY FIRST trap=%lx variant=%lu cc=%lu result=%lu mismatch=%lu\n",g_quickDisplayFirstFailure[0],g_quickDisplayFirstFailure[1],g_quickDisplayFirstFailure[2],g_quickDisplayFirstFailure[3],g_quickDisplayFirstFailure[4]
  printf "BLOCK MOVE checks=%lu\n",g_blockMoveChecks
+ printf "QUICK WARM checks=%lu\n",g_quickWarmChecks
  printf "HUNLOCK checks=%lu rejected=%lu freed=%lu\n",g_hunlockChecks,g_hunlockRejected,g_hunlockFreed
  printf "QUICK CONTROLS calls=%lu rejected=%lu failures=%lu\n",g_quickProbeCalls,g_quickProbeRejected,g_quickProbeFailures
  printf "QUICK DEADLINES rejected=%lu\n",g_quickDeadlineRejected

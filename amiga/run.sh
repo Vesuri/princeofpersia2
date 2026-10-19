@@ -32,8 +32,15 @@ CHECK_PROFILE
   if [ -z "$SCRIPT" ]; then SCRIPT="$PWD/performance.gdb"; fi
 fi
 [[ "${CPU_PROFILE:-0}" = 0 || "${CPU_PROFILE:-0}" = 1 ]] || exit 2
-[[ "${CALIBRATED_CPU:-0}" = 0 || "${CALIBRATED_CPU:-0}" = 1 ]] || exit 2
-if [ "${CALIBRATED_CPU:-0}" = 1 ]; then
+[[ "${CALIBRATED_CPU:-1}" = 0 || "${CALIBRATED_CPU:-1}" = 1 ]] || exit 2
+if [ "${NATIVE_SERVICE_SCOPE:-0}" = 1 ]; then
+  [ "${CALIBRATED_CPU:-1}" = 1 ] && [ "${CPU_PROFILE:-0}" = 1 ] || { echo 'NATIVE SCOPE / CALIBRATED PROFILE REQUIRED'; exit 2; }
+  python3 ../tools/scaffold_inputs.py scoped
+  FSUAE="$FSUAE_SCOPED"
+elif [ "${CALIBRATED_CPU:-1}" = 1 ] && [ "${CPU_PROFILE:-0}" = 1 ]; then
+  python3 ../tools/scaffold_inputs.py scoped
+  FSUAE="$FSUAE_SCOPED"
+elif [ "${CALIBRATED_CPU:-1}" = 1 ]; then
   python3 ../tools/scaffold_inputs.py calibrated
   FSUAE="$FSUAE_CALIBRATED"
 elif [ "${CPU_PROFILE:-0}" = 1 ]; then
@@ -94,7 +101,11 @@ for ((i=0;i<60;i++)); do
 done
 lsof -nP -iTCP:"$DEBUG_PORT" -sTCP:LISTEN >/dev/null 2>&1 || { echo 'SCAFFOLD / STUB TIMEOUT'; exit 124; }
 printf 'set pagination off\nset confirm off\nset remotetimeout 20\ntarget remote 127.0.0.1:%s\n' "$DEBUG_PORT" > "$RUN/connect.gdb"
-env HOME="$PWD/$RUN/gdbhome" XDG_CACHE_HOME="$PWD/$RUN/gdbhome" m68k-amiga-elf-gdb --batch -q -l 10 -x "$RUN/connect.gdb" -x "${SCRIPT:-scaffold.gdb}" "$RUN/PrinceOfPersia2.elf" > "$RUN/gdb-out.log" 2>&1 &
+SCOPE_GDB=()
+if [ "${NATIVE_SERVICE_SCOPE:-0}" = 1 ]; then
+  SCOPE_GDB=(-ex 'echo NATIVE SCOPE INVALID CONFIG BEGIN\n' -ex 'monitor aprof native 0 0 0 0 0' -ex 'echo NATIVE SCOPE INVALID CONFIG END\n')
+fi
+env HOME="$PWD/$RUN/gdbhome" XDG_CACHE_HOME="$PWD/$RUN/gdbhome" m68k-amiga-elf-gdb --batch -q -l 10 -x "$RUN/connect.gdb" ${SCOPE_GDB[@]+"${SCOPE_GDB[@]}"} -x "${SCRIPT:-scaffold.gdb}" "$RUN/PrinceOfPersia2.elf" > "$RUN/gdb-out.log" 2>&1 &
 GDB_PID=$!
 for ((i=0;i<DEADLINE;i++)); do
  kill -0 "$GDB_PID" 2>/dev/null || break
@@ -155,9 +166,9 @@ if [ "${CORE:-0}" = 1 ]; then
   elif [ "${AUDIO_ORDER_PROBE:-0}" = 1 ]; then
     python3 ../tools/check_audio_callback_order.py "$RUN" "$AUDIO_ORDER_REFERENCE"
   elif [ "${AUDIO_PROBE:-0}" = 1 ]; then
-    python3 ../tools/check_audio_result.py "$RUN"
+    python3 ../tools/check_audio_result.py "$RUN" --setup "$AMIGA_SETUP"
   elif [ "${AUDIO_STARTUP:-0}" = 1 ]; then
-    python3 ../tools/check_audio_result.py "$RUN" --startup "$AUDIO_REFERENCE"
+    python3 ../tools/check_audio_result.py "$RUN" --setup "$AMIGA_SETUP" --startup "$AUDIO_REFERENCE"
   elif [ "${UI_PROBE:-0}" = 1 ]; then
     python3 ../tools/check_ui_result.py "$RUN" "$UI_REFERENCE"
   elif [ "${UI_STARTUP:-0}" = 1 ]; then

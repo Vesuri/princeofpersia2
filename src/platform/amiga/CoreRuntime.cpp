@@ -11,6 +11,7 @@ extern "C" volatile unsigned long pop2WHDLoadBinding[4];
 #include "mac/IdentityIndexCache.h"
 #include "mac/VideoTicks.h"
 #include "mac/BigEndianMemory.h"
+#include "mac/AddressSpan.h"
 #include "mac/BlockMoveBytes.h"
 #ifdef POP2_QUICK_TRAP_PROBE
 #include "mac/BlockMoveChecks.h"
@@ -22,6 +23,7 @@ extern "C" uint32_t g_blockMoveChecks;
 #undef Read
 #undef Write
 #include "mac/RectBounds.h"
+#include "mac/RectUnion68k.h"
 #pragma pop_macro("Write")
 #pragma pop_macro("Read")
 #include "mac/VBLPasses.h"
@@ -343,9 +345,9 @@ struct Resource { uint32_t type;int16_t id;OriginalApplication::Resource source;
 Resource resources[1024]={};unsigned resourceCount=0;int16_t resourceError=0;
 IdentityIndexCache<> resourceHints;
 bool validMemory(uint32_t at,uint32_t n) {
-    return (at>=(uint32_t)stack && at-(uint32_t)stack<=65536 && n<=65536-(at-(uint32_t)stack)) ||
-        (at>=(uint32_t)world && at-(uint32_t)world<=worldSize && n<=worldSize-(at-(uint32_t)world)) ||
-        (at>=(uint32_t)arena && at-(uint32_t)arena<=g_coreZoneBytes && n<=g_coreZoneBytes-(at-(uint32_t)arena));
+    return AddressSpan::contains((uint32_t)world,worldSize,at,n) ||
+        AddressSpan::contains((uint32_t)stack,65536,at,n) ||
+        AddressSpan::contains((uint32_t)arena,g_coreZoneBytes,at,n);
 }
 bool fail(const char* why);
 #if defined(POP2_SCENE_PROFILE) && defined(POP2_SCENE_DEADLINES)
@@ -704,9 +706,12 @@ bool prepare() {
     if(!initial)return fail("CORE / MEMORY");
 #endif
     if(!arena || !world || !stack)return fail("CORE / MEMORY");
+    if(!AddressSpan::valid((uint32_t)world,worldSize) ||
+       !AddressSpan::valid((uint32_t)stack,65536) ||
+       !AddressSpan::valid((uint32_t)arena,g_coreZoneBytes))return fail("CORE / MEMORY RANGE");
     if(!heap.init(arena,g_coreZoneBytes))return fail("CORE / APPLICATION ZONE");
-    prepareQuickTraps();
     a5=world+spec.below;low=a5+8192;g_coreA5=(uint32_t)a5;g_coreBelow=spec.below;g_coreInitial=(uint32_t)initial;
+    prepareQuickTraps();
     sl(low+0x130,(uint32_t)arena+g_coreZoneBytes);sl(low+0x118,(uint32_t)arena);sl(low+0x2aa,(uint32_t)arena);
     auto launchParameters=heap.newHandle(4,true);
     if(!launchParameters)return fail("CORE / LAUNCH PARAMETERS");
@@ -1317,11 +1322,11 @@ __attribute__((always_inline)) inline int32_t pureRect(uint8_t* args,uint32_t* s
         saved[0]=(saved[0]&0xffff0000UL)|14;
         return nonempty?0x11:4;
     }
-    RectBounds::unite<BigEndianMemory::read16,BigEndianMemory::write16>(out,a,b);saved[0]=l(out);saved[1]=l(out+4);
+    RectUnion68k::unite(out,a,b);saved[0]=l(out);saved[1]=l(out+4);
     return 0x10|(saved[1]==0?4:(saved[1]&0x80000000UL)?8:0);
 }
 // Compile each fixed service separately so no runtime selector/temporary loop
-// is paid by the Pascal entry; all geometry still uses shared RectBounds.
+// is paid by the Pascal entry; all geometry still uses shared rectangle helpers.
 extern "C" __attribute__((optimize("O3"))) int32_t pop2SectRectBody(uint8_t* args,uint32_t* saved){return pureRect<0xa8aa>(args,saved);}
 extern "C" __attribute__((optimize("O3"))) int32_t pop2UnionRectBody(uint8_t* args,uint32_t* saved){return pureRect<0xa8ab>(args,saved);}
 extern "C" __attribute__((optimize("O3"))) int32_t pop2EmptyRectBody(uint8_t* args,uint32_t* saved){return pureRect<0xa8ae>(args,saved);}
@@ -1369,6 +1374,11 @@ uint32_t g_quickCodeBase=0,g_quickCodeEnd=0,g_quickStackLow=0,g_quickStackHigh=0
 const uint32_t* g_quickCodeIndexes=nullptr;
 const uint32_t* g_quickOwnerRows[7]={};
 uint8_t** g_quickA5=&a5;
+const PinnedSlotRanges<256>::Slot* g_quickFlagHints=nullptr;
+int16_t* g_quickHeapError=nullptr;
+uint8_t* g_quickMemError=nullptr;
+uint8_t* g_quickAddressMode=&addressMode;
+uint8_t* g_quickModeShadow=nullptr;
 }
 static void invalidateQuickOwner() {g_quickCodeBase=0xffffffffUL;g_quickCodeEnd=0;}
 #define quickServicesValid g_quickServicesValid
@@ -1491,6 +1501,9 @@ static void prepareQuickTraps() {
     // Run the exhaustive copy oracle before starting game clocks/input.
     g_blockMoveChecks=BlockMoveChecks::run(BlockMoveBytes::move);
 #endif
+    static_assert(sizeof(PinnedSlotRanges<256>::Slot)==8,"native hint record size");
+    g_quickFlagHints=heap.flagHints();g_quickHeapError=heap.errorStorage();
+    g_quickMemError=low+0x220;g_quickModeShadow=low+0xcb2;
     static_assert(CodeRangeCache::slots==256,"native code-range index size");
     invalidateQuickOwner();
     g_quickCodeIndexes=codeRanges.indexes();
@@ -1539,22 +1552,28 @@ extern "C" __attribute__((optimize("O3"))) uint32_t pop2QuickReady(uint32_t kind
 extern "C" uint32_t pop2QuickDeadlineReady() {
     return !timerDueNow({g_quickServicesField,g_quickServicesMicro});
 }
+extern "C" {
+uint32_t pop2QuickSwapMMUModeWarm(uint32_t*,uint8_t*);
+uint32_t pop2QuickHLockWarm(uint32_t*,uint8_t*);
+uint32_t pop2QuickHGetStateWarm(uint32_t*,uint8_t*);
+}
 // The native guard has already validated the caller and no-due certificate.
 // Share the service bodies and OS result/CCR policy with the full dispatcher.
 template<uint16_t trap>
 __attribute__((always_inline)) static inline uint32_t quickTrivialBody(uint32_t* regs,uint8_t* frame) {
     uint32_t saved=regs[0];
     if(!trivialService<trap>(regs)){regs[0]=saved;return 0;}
+    uint16_t result=regs[0];
     sw(low+0x220,heap.error());
-    uint16_t sr=w(frame)&~15,result=regs[0];
+    uint16_t sr=w(frame)&~15;
     if(!result)sr|=4;if(result&0x8000)sr|=8;sw(frame,sr);
     return 1;
 }
 extern "C" __attribute__((optimize("O3"))) uint32_t pop2QuickStripAddressWarm(uint32_t* r,uint8_t* f){return quickTrivialBody<0xa055>(r,f);}
-extern "C" __attribute__((optimize("O3"))) uint32_t pop2QuickSwapMMUModeWarm(uint32_t* r,uint8_t* f){return quickTrivialBody<0xa05d>(r,f);}
+extern "C" __attribute__((optimize("O3"))) uint32_t pop2QuickSwapMMUModeSlow(uint32_t* r,uint8_t* f){return quickTrivialBody<0xa05d>(r,f);}
 extern "C" __attribute__((optimize("O3"))) uint32_t pop2QuickHUnlockWarm(uint32_t* r,uint8_t* f){return quickTrivialBody<0xa02a>(r,f);}
-extern "C" __attribute__((optimize("O3"))) uint32_t pop2QuickHLockWarm(uint32_t* r,uint8_t* f){return quickTrivialBody<0xa029>(r,f);}
-extern "C" __attribute__((optimize("O3"))) uint32_t pop2QuickHGetStateWarm(uint32_t* r,uint8_t* f){return quickTrivialBody<0xa069>(r,f);}
+extern "C" __attribute__((optimize("O3"))) uint32_t pop2QuickHLockSlow(uint32_t* r,uint8_t* f){return quickTrivialBody<0xa029>(r,f);}
+extern "C" __attribute__((optimize("O3"))) uint32_t pop2QuickHGetStateSlow(uint32_t* r,uint8_t* f){return quickTrivialBody<0xa069>(r,f);}
 extern "C" uint32_t pop2QuickTickCountBody(uint32_t* r,uint8_t* f,uint8_t* u){return quickTrap<0xa975>(r,f,u);}
 extern "C" uint32_t pop2QuickSystemTaskBody(uint32_t* r,uint8_t* f,uint8_t* u){return quickTrap<0xa9b4>(r,f,u);}
 #ifdef POP2_VERIFY

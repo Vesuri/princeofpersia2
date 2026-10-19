@@ -5,7 +5,7 @@
 #error Quick trap controls require verification
 #endif
 extern "C" {
-uint32_t g_blockMoveChecks=0;
+uint32_t g_blockMoveChecks=0,g_quickWarmChecks=0;
 uint32_t g_hunlockChecks=0,g_hunlockRejected=0,g_hunlockFreed=0;
 uint32_t g_quickProbeCalls=0,g_quickProbeRejected=0,g_quickProbeFailures=0;
 uint32_t g_quickDeadlineRejected=0,g_quickZoneRejected=0;
@@ -107,6 +107,49 @@ static void quickTrapFixture() {
         }
     }
     quickFixtureAudioPending=0;
+    // Differential oracle for shared native warm bodies. Compare complete
+    // saved registers/frame, live handle flags, both error locations and mode.
+    // Checked C bodies retain the original-paired service semantics.
+    auto dead=heap.newHandle(4,true);
+    if(!dead || heap.disposeHandle(dead))++g_quickProbeFailures;
+    auto compareWarm=[&](unsigned kind,MacHeap::Handle h,unsigned state,unsigned cc,
+                        uint32_t input,unsigned oldMode) {
+        uint32_t r[2][15];uint8_t f[2][8];
+        int16_t errors[2];uint16_t memerrors[2];uint8_t modes[2],shadows[2],states[2];
+        const char* reasons[2];uint32_t results[2];
+        for(unsigned which=0;which<2;++which) {
+            heap.setState(handle,state);*heap.errorStorage()=MacHeap::nilHandleErr;
+            sw(low+0x220,0x1234);addressMode=oldMode;low[0xcb2]=oldMode;
+            g_coreReason=reason;
+            for(unsigned i=0;i<15;++i)r[which][i]=0x12340000+i;
+            for(unsigned i=0;i<8;++i)f[which][i]=0x70+i;
+            r[which][0]=input;r[which][8]=(uint32_t)h;sw(f[which],0x700|cc);
+            auto body=kind==0 ? (which?pop2QuickHGetStateSlow:pop2QuickHGetStateWarm) :
+                kind==1 ? (which?pop2QuickHLockSlow:pop2QuickHLockWarm) :
+                          (which?pop2QuickSwapMMUModeSlow:pop2QuickSwapMMUModeWarm);
+            results[which]=body(r[which],f[which]);
+            errors[which]=heap.error();memerrors[which]=w(low+0x220);
+            modes[which]=addressMode;shadows[which]=low[0xcb2];reasons[which]=g_coreReason;
+            states[which]=heap.state(handle);
+        }
+        bool ok=results[0]==results[1] && errors[0]==errors[1] && memerrors[0]==memerrors[1] &&
+            modes[0]==modes[1] && shadows[0]==shadows[1] && states[0]==states[1] && reasons[0]==reasons[1];
+        for(unsigned i=0;i<15;++i)if(r[0][i]!=r[1][i])ok=false;
+        for(unsigned i=0;i<8;++i)if(f[0][i]!=f[1][i])ok=false;
+        if(ok)++g_quickWarmChecks;else ++g_quickProbeFailures;
+    };
+    for(unsigned kind=0;kind<2;++kind)for(unsigned state=0;state<256;state+=32)
+        for(unsigned cc=0;cc<32;++cc)compareWarm(kind,handle,state,cc,0xdeadbeef,mode);
+    for(unsigned old=0;old<2;++old)for(unsigned requested=0;requested<2;++requested)
+        for(unsigned upper=0;upper<2;++upper)for(unsigned cc=0;cc<32;++cc)
+            compareWarm(2,handle,0,cc,(upper?0xabcdef00:0)|requested,old);
+    MacHeap::Handle invalidWarmHandles[]={nullptr,dead,(MacHeap::Handle)((uint8_t*)handle+1)};
+    for(unsigned kind=0;kind<2;++kind)for(auto h:invalidWarmHandles)for(unsigned cc=0;cc<32;++cc)
+        compareWarm(kind,h,0,cc,0xdeadbeef,mode);
+    const uint32_t invalidModes[]={2,255,0xabcdef02,0xabcdefff};
+    for(auto requested:invalidModes)for(unsigned cc=0;cc<32;++cc)
+        compareWarm(2,handle,0,cc,requested,mode);
+    g_coreReason=reason;addressMode=mode;low[0xcb2]=mode;
     // Compare the native service body with the full service across every
     // flag combination and CCR. The trap trampoline advances the fast PC.
     displayBatchFrame=displayBatchParent=displayBatchReturn=0;

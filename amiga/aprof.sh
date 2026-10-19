@@ -15,11 +15,12 @@ cd "$(dirname "$0")"
 . ./env.sh
 usage() { echo 'usage: aprof.sh NAME [a1200-030|a1200-fast] [DEADLINE]' >&2; exit 2; }
 [[ $# -ge 1 && $# -le 3 ]] || usage
-name=$1 setup=${2:-a1200-030} deadline=${3:-3600} cycles=${APROF_CYCLES:-1} active=${APROF_ACTIVE:-0}
+name=$1 setup=${2:-a1200-030} deadline=${3:-3600} cycles=${APROF_CYCLES:-1} active=${APROF_ACTIVE:-0} native_scope=${NATIVE_SERVICE_SCOPE:-0}
 [[ "$name" =~ ^[a-z0-9][a-z0-9_-]*$ ]] || { echo 'APROF / INVALID NAME' >&2; exit 2; }
 [[ "$setup" == a1200-030 || "$setup" == a1200-fast ]] || usage
 [[ "$deadline" =~ ^[1-9][0-9]*$ && ( "$cycles" == 0 || "$cycles" == 1 ) ]] || usage
 [[ "$active" == 0 || ( "$active" == 1 && "$cycles" == 1 ) ]] || usage
+[[ "$native_scope" == 0 || ( "$native_scope" == 1 && "$cycles" == 1 && "${CALIBRATED_CPU:-0}" == 1 ) ]] || usage
 out=../tmp/aprof/$name
 # Do not silently replace a previous measurement.
 [[ ! -e "$out" ]] || { echo "APROF / NAME EXISTS: $name" >&2; exit 1; }
@@ -56,13 +57,20 @@ nommu=${APROF_NO_MMU:-$cycles}
 # FS-UAE deterministic mode (used by Alone in the Dark) fails GLib queue
 # assertions here and never serves the debugger stub with either emulator, so
 # reproducibility is established by repeat runs (aprof_report.py --compare).
+observer="$PWD/aprof_opening.gdb"
+if [[ "$native_scope" == 1 ]]; then
+  python3 ../tools/native_service_scope.py observer out/PrinceOfPersia2.elf "$observer" "$out/native-service.gdb"
+  observer="$PWD/$out/native-service.gdb"
+fi
+frozen_pc=0
+if [[ "$cycles" == 1 && "${CALIBRATED_CPU:-1}" == 1 ]]; then frozen_pc=1; fi
 status=0
 APROF_ACTIVE="$active" AMIGA_SETUP="$setup" CORE=1 OPENING_PROFILE=1 CPU_PROFILE="$cycles" \
-  PROFILE_NO_MMU="$nommu" GDBSCRIPT="$PWD/aprof_opening.gdb" DEADLINE="$deadline" \
+  PROFILE_NO_MMU="$nommu" GDBSCRIPT="$observer" DEADLINE="$deadline" \
   bash run.sh >"$out/run.log" 2>&1 || status=$?
 run=$(cat .run-last.txt)
 printf "%s\n" "$run" >"$out/run-dir.txt"
-printf 'setup=%s cycles=%s no_mmu=%s active=%s\n' "$setup" "$cycles" "$nommu" "$active" >"$out/config.txt"
+printf 'setup=%s cycles=%s no_mmu=%s active=%s native_scope=%s frozen_pc=%s\n' "$setup" "$cycles" "$nommu" "$active" "$native_scope" "$frozen_pc" >"$out/config.txt"
 for f in gdb-out.log PrinceOfPersia2.elf build-receipt.json build.sha256 jt.bin opening-frames.bin timing-frames.bin timing-set.bin \
          first-room-screen.bin first-room-colors.bin death-screen.bin; do
   [[ ! -e "$run/$f" ]] || cp "$run/$f" "$out/"

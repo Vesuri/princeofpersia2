@@ -9,12 +9,13 @@ from check_core_result import restored
 from run_reference import run as reference
 
 FLAGS='-DPOP2_CORE -DPOP2_DISPLAY -DPOP2_INPUT -DPOP2_UI -DPOP2_AUDIO'
-def evidence_controls(run,logs):
+def evidence_controls(run,logs,setup="a1200-fast"):
     target=logs/'evidence';target.mkdir()
     names=['gdb-out.log','audio-events.bin','audio-dma.bin','logs/debug.uae','dh1/Shell.done','dh1/audio-replay.json']
     for name in names:
         path=target/name;path.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(run/name,path)
-    changes=[('gdb-out.log',lambda b:b.replace(b'AUDIO / FIXTURE COMPLETE',b'AUDIO / INCOMPLETE')),
+    changes=[('logs/debug.uae',lambda b:re.sub(rb'cpu_model=\d+',b'cpu_model=invalid',b)),
+             ('gdb-out.log',lambda b:b.replace(b'AUDIO / FIXTURE COMPLETE',b'AUDIO / INCOMPLETE')),
              ('gdb-out.log',lambda b:b.replace(b'heap=1',b'heap=0')),
              ('gdb-out.log',lambda b:b.replace(b'AUDIO ADK saved=0 actual=0',b'AUDIO ADK saved=0 actual=1')),
              ('logs/debug.uae',lambda b:b.replace(b'sound_output=exact',b'sound_output=none')),
@@ -24,11 +25,11 @@ def evidence_controls(run,logs):
              ('audio-dma.bin',lambda b:b[:32]+bytes([b[32]^1])+b[33:]),
              ('audio-dma.bin',lambda b:b[:40]+bytes(4)+b[44:]),
              ('dh1/Shell.done',lambda b:b'SHELL PASS\n')]
-    check(target)
+    check(target,setup)
     for name,change in changes:
         p=target/name;good=p.read_bytes();bad=change(good);assert bad!=good
         p.write_bytes(bad)
-        try:check(target)
+        try:check(target,setup)
         except (AssertionError,ValueError,RuntimeError):pass
         else:raise AssertionError('AUDIO / ACCEPTED BAD EVIDENCE '+name)
         finally:p.write_bytes(good)

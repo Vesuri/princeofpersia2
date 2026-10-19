@@ -105,7 +105,7 @@ obj/DisplayC2P.o: ../src/platform/amiga/DisplayC2P.s ../src/platform/amiga/kalms
 	$(VASM) -I"$(NDK_ASM)" -m68020 -Felf -quiet -x -no-opt -nowarn=62 "$<" -o "$@"
 obj/SaveRect.o: ../src/platform/amiga/SaveRect.s ../src/mac/ForwardLongCopy.inc ../src/mac/CopyChangedRows.inc
 	cd .. && $(AS) -mcpu=68020 -g --register-prefix-optional src/platform/amiga/SaveRect.s -o amiga/$@
-obj/MacEntry.o: ../src/platform/amiga/MacEntry.s ../src/platform/amiga/RectProbe.inc Makefile
+obj/MacEntry.o: ../src/platform/amiga/MacEntry.s ../src/platform/amiga/RectProbe.inc ../src/mac/QuickOSWarm.inc Makefile
 	$(AS) $(if $(filter -DPOP2_SCENE_DEADLINES,$(EXTRA_DEFINES)),--defsym POP2_SCENE_DEADLINES=1) $(if $(filter -DPOP2_SCENE_PROFILE,$(EXTRA_DEFINES)),--defsym POP2_SCENE_PROFILE=1) $(if $(filter -DPOP2_INPUT,$(EXTRA_DEFINES)),--defsym POP2_INPUT=1) $(if $(filter 1,$(VERIFY)),--defsym POP2_VERIFY=1) $(if $(filter -DPOP2_TIMING_PROBE,$(EXTRA_DEFINES)),--defsym POP2_TIMING_PROBE=1) -mcpu=68020 -g --register-prefix-optional $(if $(filter -DPOP2_RECTANGLE_PROBE,$(EXTRA_DEFINES)),--defsym POP2_RECTANGLE_PROBE=1) $(if $(filter -DPOP2_AUDIO_ORDER_PROBE,$(EXTRA_DEFINES)),--defsym POP2_AUDIO_ORDER_PROBE=1) $(if $(filter -DPOP2_GAMEPLAY_ROUTE_PROBE,$(EXTRA_DEFINES)),--defsym POP2_GAMEPLAY_ROUTE_PROBE=1) $(if $(filter -DPOP2_GAMEPLAY_SAVE_PROBE,$(EXTRA_DEFINES)),--defsym POP2_GAMEPLAY_SAVE_PROBE=1) $(if $(filter -DPOP2_TIMING_TM_PROBE,$(EXTRA_DEFINES)),--defsym POP2_TIMING_TM_PROBE=1) $(if $(filter -DPOP2_TIMING_VBL_PROBE,$(EXTRA_DEFINES)),--defsym POP2_TIMING_VBL_PROBE=1) $(if $(filter -DPOP2_INTEGRATION_PROBE,$(EXTRA_DEFINES)),--defsym POP2_INTEGRATION_PROBE=1) "$<" -o "$@"
 ifneq (,$(filter -DPOP2_TIMING_PROBE,$(EXTRA_DEFINES)))
 PROBES += g_profileFreeFast g_profileLargestFast g_profileFreeChip g_c2pPasses g_c2pRects g_c2pPixels g_c2pUnbatched g_timingCount g_timingRows g_timingPhase g_timingSamples g_timingSetCount g_timingSetRows
@@ -121,6 +121,9 @@ PROBES += g_timingVblRecords g_timingVblResult g_timingVblElapsed g_timingVblUse
 endif
 ifneq (,$(filter -DPOP2_TIMING_TM_PROBE,$(EXTRA_DEFINES)))
 PROBES += g_timingTmRecords g_timingTmResult g_timingTmUserCalls
+endif
+ifneq ($(filter -DPOP2_RECTANGLE_PROBE,$(EXTRA_DEFINES)),)
+PROBES += g_rectTrapCalls
 endif
 ifeq ($(VERIFY),0)
 ifeq ($(PROFILE),1)

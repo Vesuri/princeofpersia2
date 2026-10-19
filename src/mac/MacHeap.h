@@ -13,6 +13,8 @@ public:
     uint8_t* base() const { return arena_; }
     uint32_t capacity() const { return bytes_; }
     int16_t error() const { return error_; }
+    int16_t* errorStorage() { return &error_; }
+    const PinnedSlotRanges<256>::Slot* flagHints() const { return masterRanges_.flagHints(); }
     bool owns(const void* address) const;
     uint8_t* newPtr(uint32_t bytes, bool clear=false);
     int16_t disposePtr(uint8_t* ptr);
@@ -58,7 +60,7 @@ private:
     // Master blocks never move or shrink. Cache the last slot range, not its
     // mutable allocation flags or pointees; disposal/reuse stays observable.
     mutable uint32_t cachedMasterStart_ = 0, cachedMasterLength_ = 0;
-    mutable PinnedSlotRanges masterRanges_;
+    mutable PinnedSlotRanges<256> masterRanges_;
     Block& block(uint32_t off) const { return *(Block*)(arena_+off); }
     static uint32_t physical(uint32_t logical);
     static void moveBytes(uint8_t* dst, const uint8_t* src, uint32_t bytes);

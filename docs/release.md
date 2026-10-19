@@ -9,11 +9,11 @@ confirmation remains required; emulator observations do not replace it.
 Under D17, item 15 is closed by owner acceptance of the measured 68020
 limitations. The supported minimum remains 68030 with 8 MB Fast RAM;
 68020 cadence and full gameplay are not qualified. Item 19 is complete.
-Corrected-clock accelerated timing remains in item 22.
+Corrected-clock accelerated timing requalification (22) passes; see `timing.md` and `performance.md`. Physical-hardware qualification remains open.
 Under D15, cinematic deadline item 19.10 and diagnostic return-wrapper item 21
 are complete. The wrapper ABI, live save/load CCR, integration, restart,
 save/load and ending/Hall gates pass; see `docs/native-integration.md`.
-Restoring release reproduces the candidate executable and LHA hashes below.
+The retained LHA predates the freed-handle guards and item-22 service optimizations.
 The refreshed 040 timing gates pass. Hardware and interactive installer
 validation remain required before this candidate can be qualified.
 
@@ -71,6 +71,14 @@ Native output is checked against independently generated host inputs.
 
 ## 68040 timing
 
+Item 22 review: the full-MMU `a1200-040` preset requests 25 MHz, but both the
+retained `.run-gbKwxa`/`.run-ro8FxX` configurations and the corrected-emulator
+VBL run `.run-DTETt6` report `cpu_multiplier=8`, no effective frequency field,
+non-cycle-exact execution and cycle unit 32. These are functional/cadence
+observations of that emulator model, not calibrated 25 MHz performance.
+The explicit-frequency correction that changes the 68030 profiles to unit 36
+does not give this 68040 MMU core a calibrated hardware timing model.
+
 MEASURED: the refreshed 040 VBL fixture `.run-RFnvRl` matches the original's
 countdown/removal, user-mode callback ABI and six-field deferred dispatch,
 including thirteen altered-evidence controls. Original runs
@@ -106,9 +114,9 @@ The retained candidate has two clean builds with identical stripped executables
 and byte-identical LHAs. Its executable is
 `c913cb3947c50d1cfe99297bec4636953ce9a7b93b7236101cdd62f8c6641247`,
 identical to the release covered by items 19.8 and 20. The current ordinary
-release includes the verified freed-handle caller guards described in
+release includes the item-22 service optimizations and verified freed-handle caller guards described in
 [the freed-handle boundary](freed-handles.md); its executable SHA-256 is
-`957389f5595be880ae57e7c5ab45755140705809672ac28a726651f58731b179`. Refresh the candidate
+`5fc1b66cfde3c0d053c8a1d76aac052c49a561aeebf63542ef5fb450451caf82`. Refresh the candidate
 and its applicable software evidence before hardware qualification. The retained
 19.8 integration and item-20 MMU evidence hashes have been rechecked; their
 scope is unchanged. `manifest/release14-evidence.sha256` pins the new timing,

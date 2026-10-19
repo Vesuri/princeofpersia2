@@ -1,14 +1,17 @@
 #pragma once
 // Fixed-width types come from the caller. Cache only immutable master-block
 // ranges, never allocation flags or pointees. Clear whenever the arena resets.
+template<unsigned FlagSlots=32>
 class PinnedSlotRanges {
+    static_assert(FlagSlots && !(FlagSlots&(FlagSlots-1)),"power-of-two slot hints");
 public:
     struct Range {uint32_t start=0,length=0;};
+    struct Slot {const void* address=nullptr;uint8_t* flags=nullptr;};
+    const Slot* flagHints() const { return slots_; }
 private:
     Range ranges_[16]={};
-    struct Slot {const void* address=nullptr;uint8_t* flags=nullptr;};
-    Slot slots_[32]={};
-    static unsigned slotIndex(const void* slot){return ((unsigned long)slot>>2)&31;}
+    Slot slots_[FlagSlots]={};
+    static unsigned slotIndex(const void* slot){return ((unsigned long)slot>>2)&(FlagSlots-1);}
 public:
     void clear(){for(auto& r:ranges_)r=Range();for(auto& s:slots_)s=Slot();}
     // The caller supplies this mapping only after validating a pinned slot.

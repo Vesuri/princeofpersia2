@@ -1,5 +1,5 @@
 """Pair CPU-executed Jnth calls and independently calculated Paula descriptors."""
-import json,re,struct,sys,math
+import argparse,json,re,struct,math
 from pathlib import Path
 from audio_replay import calls,ROOT
 from extract_original_data import DESTINATION
@@ -42,9 +42,9 @@ def descriptor(row,offset=0):
     if volume==0 or volume>=125:volume=127
     return (period,(volume*64+63)//127,attack,attack,reload,len(converted),fnv(converted))
 
-def check(run):
+def check(run,setup="a1200-fast"):
     metadata=json.loads((run/'dh1/audio-replay.json').read_text())
-    original=calls(ROOT/metadata['reference']);log=(run/'gdb-out.log').read_text();restored(run,log)
+    original=calls(ROOT/metadata['reference']);log=(run/'gdb-out.log').read_text();restored(run,log,setup)
     assert 'CORE REASON AUDIO / FIXTURE COMPLETE\n' in log,'AUDIO / POSITIVE NATIVE COMPLETION'
     assert 'CORE EXCEPTION vector=0 pc=00000000\n' in log,'AUDIO / CPU EXCEPTION'
     mark=re.search(r'AUDIO REPLAY calls=(\d+) done=(\d+) callbacks=(\d+) abi=(\d+) dma=(\d+)',log)
@@ -87,9 +87,9 @@ def check(run):
     if original[-1]['callbacksAfter']:assert observed[-1][4]==original[-1]['callbacksAfter'],'AUDIO / ORIGINAL CALLBACK COUNT'
     phases={p:sum(r['selector']==9 for r in original if r['phase']==p) for p in range(4)}
     print('AUDIO NATIVE PAIR PASS:',len(original),'calls;',len(all_dma),'Paula starts;',tails,'release tails;',observed[-1][4],'callbacks; notes by phase',phases)
-def startup(run,reference):
+def startup(run,reference,setup="a1200-fast"):
     calls(reference)  # Requires a completed, byte-guarded original route.
-    log=(run/'gdb-out.log').read_text();restored(run,log)
+    log=(run/'gdb-out.log').read_text();restored(run,log,setup)
     assert 'CORE STOP trap=aaa0 segment=17 offset=0820 count=144\n' in log,'AUDIO / STARTUP BOUNDARY'
     assert 'CORE REASON UI / STARTUP CHECKPOINT\n' in log and 'CORE EXCEPTION vector=0 pc=00000000\n' in log
     assert 'INPUT RESTORE vector=1\n' in log
@@ -99,5 +99,10 @@ def startup(run,reference):
     print('AUDIO STARTUP PASS: 144 original calls; Palette2CTab checkpoint; restored OS')
 
 if __name__=='__main__':
-    if len(sys.argv)==4 and sys.argv[2]=='--startup':startup(Path(sys.argv[1]),Path(sys.argv[3]))
-    else:check(Path(sys.argv[1]))
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('run',type=Path)
+    parser.add_argument('--startup',type=Path)
+    parser.add_argument('--setup',choices=('a1200-fast','a1200-030','a1200-040'),default='a1200-fast')
+    args=parser.parse_args()
+    if args.startup:startup(args.run,args.startup,args.setup)
+    else:check(args.run,args.setup)

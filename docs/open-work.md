@@ -21,7 +21,7 @@ Items remain open until their acceptance gates pass.
     LHA includes the conversion-bounds,
     buffer-synchronization and heap changes; two clean builds reproduce it.
     Hardware testing has not yet been performed. The retained LHA predates the
-    freed-handle caller guards; refresh the candidate and its applicable software
+    freed-handle caller guards and item-22 service optimizations; refresh the candidate and its applicable software
     evidence before hardware qualification.
     The original null-channel write that corrupted the WHDLoad privilege vector
     now has a paired relocation/store check. Release 030/NOMMU gameplay and
@@ -32,16 +32,3 @@ Items remain open until their acceptance gates pass.
     observes the strict audio return and save/load dialog IDs; original-paired cleanup passes (see `docs/release.md`).
     Installer-only archive rejection passes on the host; the real Installer 43
     rejection requester still needs an interactive dismissal check.
-
-22. **Revalidate accelerated timing with the corrected emulator clock.** The
-    retained item-19 68030 profiler uses cycle unit 32 at requested 50 MHz,
-    instead of the corrected integer unit 36. The legacy native emulator also
-    predates AmigaXDev’s explicit-frequency fix. Preserve earlier captures as
-    historical measurements; do not treat them as calibrated target timings.
-    Re-run the claimed 68030 cadence and performance budgets with the shared
-    clock-corrected build, and review affected 68040 release evidence while
-    retaining the documented limits of its timing model. Keep the original
-    workloads and acceptance budgets. Acceptance: verify live clock metadata,
-    obtain repeated matched-workload measurements and positive timing gates,
-    update the pins and claims, and retain failed controls. This is separate
-    from item 15’s fixed-68020 qualification and item 14’s physical-hardware gate.

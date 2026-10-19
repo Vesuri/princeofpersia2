@@ -20,8 +20,9 @@ expected={'-DPOP2_CORE','-DPOP2_DISPLAY','-DPOP2_INPUT','-DPOP2_UI','-DPOP2_AUDI
 if set(verify()['flags'].split())!=expected:
     raise SystemExit('Play requires a release build. Run make release first.')
 PYCODE
-FSUAE="$FSUAE_ARM"
-AMIGA_SETUP="${AMIGA_SETUP:-a1200-fast}"
+python3 ../tools/scaffold_inputs.py calibrated
+FSUAE="$FSUAE_CALIBRATED"
+AMIGA_SETUP="${AMIGA_SETUP:-a1200-030}"
 NTSC=0 DEBUG=0 SOUND="${SOUND:-1}" WINDOW="${WINDOW:-front}" WARP="${WARP:-0}"
 DH0="$RUN/dh0"; DH1="$RUN/dh1"
 mkdir -p "$DH0/s" "$DH0/c" "$DH1" "$RUN/state" "$RUN/logs"

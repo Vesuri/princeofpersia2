@@ -88,6 +88,13 @@ require identical frame-by-frame outcomes or authorize changing original game
 decisions to force a match. Retain strict comparison failures and their evidence;
 unexplained differences and unverified causes do not qualify under this decision.
 
+D19 (owner-authorized, 19.10.2026): item 22 applies the unchanged 25 µs
+trap budget to native service execution measured in fresh explicit scopes.
+Retain the complete trap costs, including original callbacks and OS interrupt
+handling, as separate results. Keep original-paired callback/service behavior
+and cadence gates. This changes the measurement boundary, not game decisions
+or the budget, and does not authorize relabelling old captures as scoped results.
+
 The original Macintosh execution under the D2 reference is the correctness reference.
 Preserve game logic, data interpretation and decisions. The owner authorizes byte-verified low-memory address relocations while preserving
 original instruction lengths and startup logic. Port-owned services handle

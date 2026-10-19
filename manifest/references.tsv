@@ -66,3 +66,11 @@ Alone in the Dark	29a3d9ebd22aa2b7edab0515803c962c58f0acd1	original BlockMoveByt
 AmigaXDev	d4226fd33682865373972dcab421598093186877	shared Kalms 030_2 rectangle adapter; 193 native byte/ABI cases and 82 full planar comparisons on calibrated 68020
 AmigaXDev	ef103975367f3a0adadcd8c3b24c0dfab0c509a8	optional changed-row CopyBits reporting and shared bounded 68020 comparison/copy body
 AmigaXDev	26c3049dc564fd151b3c9cfc6b6e74eb872426ca	validated identity-index hints with sanitizer mutation/resize oracle; item 15 resource lookup
+AmigaXDev	108dbc248290c688efe6019caf0b474fc02baf44	mixed CPU/Chip clock profile-tail accounting with synthetic controls
+Alone in the Dark	be18f005009363f12d389bca86e5c25ca84d8a9a	adopts the shared corrected-clock profile reader; three retained captures unchanged
+Alone in the Dark	09514ab13bb213365d827aeec3366645b8383d91	unchanged shared audio-period divider; clean ordinary executable identity checked
+AmigaXDev	a0d8f69003b045931fe3f2ca1fabbb188be88777	existing bounded eight-longword PCM conversion adopted for corrected-clock requalification
+AmigaXDev	cfac19fec9186b9b2ee5437316e8619a27e10b1f	shared bounded memory spans, clear loop, divider, pinned hints and native warm OS bodies
+AmigaXDev	57e7e188543d82e122dab3538918ff6b2dbf7148	alias-safe native rectangle union; 1220 original-paired cases through both native entry paths
+AmigaXDev	a9c439d171e8e2da2c2bbc94608efe51d2ec5a8b	host-only native service scopes with frozen instruction identity, verified Exec vectors and accounting controls
+AmigaXDev	cc0955537f388f70c828102e88de255f43a9566e	frozen flat-PC attribution and explicit Line-A entry charges; live entry/return controls

@@ -358,7 +358,9 @@ class Context:
         # GetTrapAddress veneers: each is $AFFE followed by the serviced trap word.
         self.cached = (named.get('pop2_cached_services'), named.get('pop2_cached_services_end'))
         # An end marker may alias the next function; it is not a call target.
-        symbols = [(a, n) for a, n in symbols if n != "pop2_cached_services_end"]
+        symbols = [(a, n) for a, n in symbols if n != "pop2_cached_services_end"
+                   and not (n == "pop2_audio_fixture_end"
+                            and a == named.get("pop2QuickHGetStateWarm"))]
         self.symbol_addrs = [a for a, _ in symbols]
         self.symbol_names = [s for _, s in symbols]
         self.cached_words = []
@@ -499,8 +501,16 @@ def scope(ctx, phases, phase):
     return sum(p['frames'] for p in sel), sum(p['fields'] for p in sel)
 
 
+def linea_report(phases):
+    if all(p.header.get('executed_pc_frozen') == 1 for p in phases):
+        from native_service_scope import linea
+        cost=sum(sum(linea(p.header,p.pcs,p.nodes).values())/p.units_per_ms for p in phases)
+        print(f'CPU Line-A entry: {cost:.6f} ms in all captured parts (already included in PC/tree totals)')
+
+
 def report(name, phase, top):
     ctx, phases = load(name, phase)
+    linea_report(phases)
     frames_n, fields = scope(ctx, phases, phase)
     if ctx.config.get('active', '0') == '1':
         require('ACTIVE SCOPE COMPLETE' in ctx.log, 'INCOMPLETE ACTIVE CAPTURE')
@@ -688,6 +698,7 @@ def work(name, phase, excludes, top):
     Node self-time is attributed to each call-tree node's entry label; tail jumps
     and interrupts make this approximate, unlike the exact flat PC report."""
     ctx, phases = load(name, phase)
+    linea_report(phases)
     frames_n, fields = scope(ctx, phases, phase)
     upm = phases[0].units_per_ms
     units = sum(p.units for p in phases)

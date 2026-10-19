@@ -3,10 +3,29 @@
 Item 11 is complete for the owner-selected `a1200-030` target. The original
 five-tick gameplay cadence passes, including the first step; Time Manager and
 VBL service fixtures pass too. The owner deferred 68040 validation to release
-item 14. The owner subsequently brought 68020 item 15 forward; its two current
-corrected-clock opening repeats fail cadence (see `performance.md`). Neither CPU
-is covered by item 11's completion. Item 22 requires requalifying the retained
-accelerated timing evidence with the corrected explicit-frequency calculation.
+item 14. The fixed-68020 opening repeats miss the original cadence; item 15
+is closed by owner acceptance under D17, with 68030 retained as the minimum.
+Corrected-clock requalification (22) passes on the final runtime.
+
+The pinned corrected emulator passes original-paired VBL and Time Manager
+contracts, user-mode ABI and restoration, with 13/12 rejection controls:
+030 `.run-eWmfqK` / `.run-EbgELW` and 040
+`.run-fQjRpt` / `.run-TJM2Ip`. The 030 MMU setup retains requested
+50 MHz and cycle unit 36. The full-MMU 040 model reports multiplier 8,
+non-cycle-exact execution and cycle unit 32. This establishes service behavior,
+not calibrated 25 MHz hardware speed.
+
+The final cadence repeats are 030 `.run-ntzzoV` /
+`.run-VHGph5` and 040 `.run-98k5Cg` /
+`.run-v5HQJl`. Every run meets all 58–59 recorded original five-tick intervals
+and six timing rejection controls. Paired screens, contexts and five-update-window dirty work
+match within each CPU pair; all sixteen performance evidence-corruption
+controls reject altered inputs. All conversion passes occur at frame end. The 030 route repeats contain
+58/59 updates and 38/39 conversion passes; full-route drawing totals differ,
+so no whole-route cost comparison is made. Their final pixels and contexts
+are identical. The five-update windows span 18 PAL fields, including pacing. Corrected-clock opening and active-work repeats also meet
+all 81 original intervals; current costs and measurement boundaries are in
+`performance.md`. Physical-hardware qualification remains item 14.
 
 ## Clock and callback services
 
