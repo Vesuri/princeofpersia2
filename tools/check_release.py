@@ -11,6 +11,7 @@ MEMBERS = {
     'PrinceOfPersia2.inf', 'Install', 'Install.info', 'ReadMe',
     'ReadMe.info', 'LICENSE.LGPL.txt',
 }
+DATE = '27.10.2026'
 
 
 def check():
@@ -20,7 +21,7 @@ def check():
     data = archive.read_bytes()
     assert report['sha256'] == hashlib.sha256(data).hexdigest()
     assert report['bytes'] == len(data)
-    assert report['version'] == version and report['date'] == '19.10.2026'
+    assert report['version'] == version and report['date'] == DATE
     assert set(report['members']) == MEMBERS
     with tempfile.TemporaryDirectory(prefix='release-audit-', dir=ROOT / 'tmp') as temp:
         base = Path(temp)
@@ -39,7 +40,7 @@ def check():
         executable=(folder/'PrinceOfPersia2').read_bytes()
         assert transfer in executable, 'RELEASE / EMBEDDED VIDEO TRANSFER'
         assert b'video-transfer.bin' not in executable, 'RELEASE / EXTERNAL VIDEO TRANSFER'
-        tag = (version + ' (19.10.2026)').encode()
+        tag = (version + ' (' + DATE + ')').encode()
         for name in ['PrinceOfPersia2', 'PrinceOfPersia2.slave', 'Pop2InstallData', 'Install', 'ReadMe']:
             assert tag in (folder / name).read_bytes(), name
         slave = (folder / 'PrinceOfPersia2.slave').read_bytes()

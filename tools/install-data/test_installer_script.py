@@ -39,7 +39,7 @@ def main():
     print(base,flush=True)
     boot=base/'boot';out=base/'out';source=base/'source';dest=out/'Prince of Persia 2'
     for d in [boot/'s',base/'state',out,source]:d.mkdir(parents=True,exist_ok=True)
-    subprocess.run(['lha','xq',str(ROOT/'dist/PrinceOfPersia2-0.90.lha')],cwd=base,check=True)
+    subprocess.run(['lha','xq',str(ROOT/'dist'/('PrinceOfPersia2-'+(ROOT/'VERSION').read_text().strip()+'.lha'))],cwd=base,check=True)
     package=base/'PoP2 Install'
     for f in package.iterdir():
         if f.is_dir():shutil.copytree(f,boot/f.name)

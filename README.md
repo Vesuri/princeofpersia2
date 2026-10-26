@@ -9,7 +9,7 @@ PAL hires interlaced display, with music and sound effects through Paula.
 Hard disk installation, saved games and quitting to Workbench are supported.
 Joystick input is not supported yet.
 
-**Version 0.90 (19.10.2026) is a release candidate.** The game is playable and
+**Version 0.91 (27.10.2026) is a release candidate.** The game is playable and
 tested in emulation; real-Amiga hardware qualification is still pending.
 
 ## Requirements
@@ -28,7 +28,7 @@ Supply your own licensed Kickstart image. The matching RTB is available in
 
 ## Installation
 
-1. Unpack `PrinceOfPersia2-0.90.lha` and open the **PoP2 Install** drawer.
+1. Unpack `PrinceOfPersia2-0.91.lha` and open the **PoP2 Install** drawer.
 2. Have your `Prince_Of_Persia2.SIT` archive ready. Leave it compressed.
 3. Run **Install**, select the destination parent drawer, and select the SIT
    archive when asked. Extraction and verification can take several minutes.

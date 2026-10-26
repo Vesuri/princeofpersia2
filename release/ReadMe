@@ -65,6 +65,11 @@
 
  History:
  --------
+ 0.91 (27.10.2026)
+ - Fixed a crash when returning to the title sequence after several deaths
+   (out of memory).
+ - The credits pages now appear when the title sequence is left running.
+
  0.90 (19.10.2026)
  - Initial release.
 
