@@ -75,3 +75,4 @@ AmigaXDev	57e7e188543d82e122dab3538918ff6b2dbf7148	alias-safe native rectangle u
 AmigaXDev	a9c439d171e8e2da2c2bbc94608efe51d2ec5a8b	host-only native service scopes with frozen instruction identity, verified Exec vectors and accounting controls
 AmigaXDev	cc0955537f388f70c828102e88de255f43a9566e	frozen flat-PC attribution and explicit Line-A entry charges; live entry/return controls
 Alone in the Dark	40e0fd1369da143a3dfe527ea1adf08ccf291e80	StripAddress identity for native 32-bit pointers inspected for Zorro III regression
+AmigaXDev	91376b5f7c4c1a56a31cf7348c980212dc979a8f	shared FS-UAE ARM/profiler builds and launcher (first value per option group; explicit MMU overrides the CPU-implied one) pinned in scaffold inputs

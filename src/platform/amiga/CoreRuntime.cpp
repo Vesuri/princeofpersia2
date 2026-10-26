@@ -329,7 +329,7 @@ void flushCode() {
     CacheClearU();
     if(suspended)CoreRuntime::resumeVectors();
 }
-uint8_t *file=0,*plan=0,*arena=0,*world=0,*stack=0,*initial=0,*a5=0,*low=0;
+uint8_t *file=0,*plan=0,*arena=0,*world=0,*stack=0,*initial=0,*a5=0,*low=0,*screen=0;
 uint32_t fileSize=0,planSize=0,worldSize=0;
 uint8_t* audioPitch=nullptr;uint32_t audioPitchSize=0;
 #ifdef POP2_AUDIO_PROBE
@@ -346,7 +346,8 @@ IdentityIndexCache<> resourceHints;
 bool validMemory(uint32_t at,uint32_t n) {
     return AddressSpan::contains((uint32_t)world,worldSize,at,n) ||
         AddressSpan::contains((uint32_t)stack,65536,at,n) ||
-        AddressSpan::contains((uint32_t)arena,g_coreZoneBytes,at,n);
+        AddressSpan::contains((uint32_t)arena,g_coreZoneBytes,at,n) ||
+        AddressSpan::contains((uint32_t)screen,NativeDisplay::screenBytes,at,n);
 }
 bool fail(const char* why);
 #if defined(POP2_SCENE_PROFILE) && defined(POP2_SCENE_DEADLINES)
@@ -706,14 +707,17 @@ bool prepare() {
     arena=(uint8_t*)AllocMem(g_coreZoneBytes,MEMF_PUBLIC|MEMF_CLEAR);
     world=(uint8_t*)AllocMem(worldSize,MEMF_PUBLIC|MEMF_CLEAR);
     stack=(uint8_t*)AllocMem(65536,MEMF_PUBLIC|MEMF_CLEAR);
+    // The Macintosh screen is not part of the application partition.
+    screen=(uint8_t*)AllocMem(NativeDisplay::screenBytes,MEMF_PUBLIC|MEMF_CLEAR);
 #ifdef POP2_VERIFY
     initial=(uint8_t*)AllocMem(spec.below,MEMF_PUBLIC|MEMF_CLEAR);
     if(!initial)return fail("CORE / MEMORY");
 #endif
-    if(!arena || !world || !stack)return fail("CORE / MEMORY");
+    if(!arena || !world || !stack || !screen)return fail("CORE / MEMORY");
     if(!AddressSpan::valid((uint32_t)world,worldSize) ||
        !AddressSpan::valid((uint32_t)stack,65536) ||
-       !AddressSpan::valid((uint32_t)arena,g_coreZoneBytes))return fail("CORE / MEMORY RANGE");
+       !AddressSpan::valid((uint32_t)arena,g_coreZoneBytes) ||
+       !AddressSpan::valid((uint32_t)screen,NativeDisplay::screenBytes))return fail("CORE / MEMORY RANGE");
     if(!heap.init(arena,g_coreZoneBytes))return fail("CORE / APPLICATION ZONE");
     a5=world+spec.below;low=a5+8192;g_coreA5=(uint32_t)a5;g_coreBelow=spec.below;g_coreInitial=(uint32_t)initial;
     prepareQuickTraps();
@@ -740,7 +744,7 @@ bool prepare() {
     OriginalApplication::Resource code0;app.resource(0x434f4445,0,code0);
     copy(a5+spec.jumpOffset,code0.bytes+16,spec.jumpBytes);
 #ifdef POP2_DISPLAY
-    if(!NativeDisplay::prepare(heap,low,validMemory,[](uint32_t type,int16_t id,const uint8_t*& bytes,uint32_t& size) {Resource* r=get(type,id);if(!r || !load(*r))return false;bytes=*r->handle;size=heap.handleSize(r->handle);return true;}))return fail(NativeDisplay::error());
+    if(!NativeDisplay::prepare(heap,low,screen,validMemory,[](uint32_t type,int16_t id,const uint8_t*& bytes,uint32_t& size) {Resource* r=get(type,id);if(!r || !load(*r))return false;bytes=*r->handle;size=heap.handleSize(r->handle);return true;}))return fail(NativeDisplay::error());
 #endif
 #ifdef POP2_UI
     if(!NativeUI::prepare(heap,low,validMemory,[](uint32_t type,int16_t id,const uint8_t*& bytes,uint32_t& size){Resource* r=get(type,id);if(!r || !load(*r))return false;bytes=*r->handle;size=heap.handleSize(r->handle);return true;}))return fail(NativeUI::error());
@@ -1022,7 +1026,8 @@ void release() {
     if(initial)FreeMem(initial,g_coreBelow);if(stack)FreeMem(stack,65536);if(world)FreeMem(world,worldSize);
     if(displayFrames)FreeMem(displayFrames,displayFramesSize);displayFrames=nullptr;
     if(arena)FreeMem(arena,g_coreZoneBytes);if(plan)FreeMem(plan,planSize);if(file)FreeMem(file,fileSize);
-    initial=stack=world=arena=plan=file=0;
+    if(screen)FreeMem(screen,NativeDisplay::screenBytes);
+    initial=stack=world=arena=plan=file=screen=0;
 }
 }
 #ifdef POP2_INTEGRATION_PROBE
@@ -2183,7 +2188,8 @@ extern "C" uint32_t pop2Dispatch(uint32_t* regs,uint8_t* frame,uint8_t* usp) {
         auto valid=[](uint32_t at,uint32_t n) {
             return (at>=(uint32_t)stack && at-(uint32_t)stack<=65536 && n<=65536-(at-(uint32_t)stack)) ||
                 (at>=(uint32_t)world && at-(uint32_t)world<=worldSize && n<=worldSize-(at-(uint32_t)world)) ||
-                (at>=(uint32_t)arena && at-(uint32_t)arena<=g_coreZoneBytes && n<=g_coreZoneBytes-(at-(uint32_t)arena));
+                (at>=(uint32_t)arena && at-(uint32_t)arena<=g_coreZoneBytes && n<=g_coreZoneBytes-(at-(uint32_t)arena)) ||
+                AddressSpan::contains((uint32_t)screen,NativeDisplay::screenBytes,at,n);
         };
         if(!valid(regs[8],128))return stop(frame,usp,"FILES / PARAMETER BLOCK EXTENT",trap,seg,off);
         uint8_t* pb=(uint8_t*)regs[8];uint8_t* buffer=0;uint8_t* nameOutput=0;char path[256];const char* name=0;

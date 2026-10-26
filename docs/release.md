@@ -168,6 +168,20 @@ release receipt are pinned in the same manifest. The release executable is
 `a479b7e4250565b54b66a90ad0c31425e65bb810995d36014d0ccc17891b5913`.
 
 
+## Display memory outside the application zone
+
+WHDLoad report 7036 (A1230 68030/40, 32 MB) stopped with
+`HEAP / HANDTOHAND ALLOCATION` at CODE 20+$085A during a return to attract
+mode after rooftop deaths. MEASURED from the reporter's dump of the 0.90
+executable: the 3 MiB zone had 428 KB free, but its largest block was 356 KB,
+too small for the 374 KB copy that `LoadSaveDisRes` makes. The port had placed
+its 640×480 screen buffer (307 KB) inside the application zone, whereas the
+Macintosh screen lives outside the application partition. That buffer now has
+its own allocation, as Vette! and Alone in the Dark do for their display
+memory. It is still within the game's valid memory ranges and is released on
+exit. MEASURED: in a release session on a1200-030 (`amiga/.run-EhBlxk`) the same
+path completes the copy, then stops at the next missing service, `GetPenState` in the credits page.
+
 ## Embedded colour-transfer table
 
 The pinned 256-byte video transfer is compiled from an ignored generated header

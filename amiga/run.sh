@@ -86,14 +86,14 @@ printf '%s\n' "$RUN" > .run-last.txt
 shasum -a 256 "$DH1/PrinceOfPersia2" "$RUN/PrinceOfPersia2.elf" > "$RUN/build.sha256"
 fsuae_claim_port
 fsuae_options
-# The cycle profiler refuses an MMU model. UAE options apply in order, so this
-# opt-in override must follow the preset's arguments.
-LATE_ARGS=()
+# The cycle profiler refuses an MMU model. The shared launcher keeps the first
+# value of each option group, so this opt-in override leads EXTRA_ARGS and beats
+# the MMU implied by the preset's 68030.
 if [ "${PROFILE_NO_MMU:-0}" = 1 ]; then
   { [ "${OPENING_PROFILE:-0}" = 1 ] || [ "${SCENE_PROFILE:-0}" = 1 ]; } && [ "$AMIGA_SETUP" = a1200-030 ] || { echo 'PROFILE_NO_MMU / REQUIRES EXPLICIT PROFILE ON a1200-030'; exit 2; }
-  LATE_ARGS=(--uae_mmu_model=0)
+  EXTRA_ARGS="--uae_mmu_model=0 ${EXTRA_ARGS:-}"
 fi
-fsuae_launch ${LATE_ARGS[@]+"${LATE_ARGS[@]}"} --floppy_drive_volume=0 --floppy_drive_volume_empty=0 --logs_dir="$PWD/$RUN/logs" --hard_drive_0="$DH0" --hard_drive_1="$DH1" --remote_debugger_trigger=PrinceOfPersia2 --state_dir="$RUN/state" --joystick_port_0=nothing --joystick_port_1=nothing
+fsuae_launch --floppy_drive_volume=0 --floppy_drive_volume_empty=0 --logs_dir="$PWD/$RUN/logs" --hard_drive_0="$DH0" --hard_drive_1="$DH1" --remote_debugger_trigger=PrinceOfPersia2 --state_dir="$RUN/state" --joystick_port_0=nothing --joystick_port_1=nothing
 for ((i=0;i<60;i++)); do
  kill -0 "$FSUAE_PID" 2>/dev/null || { echo 'SCAFFOLD / EMULATOR EXIT'; exit 1; }
  lsof -nP -iTCP:"$DEBUG_PORT" -sTCP:LISTEN >/dev/null 2>&1 && break

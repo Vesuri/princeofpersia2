@@ -5,7 +5,11 @@ class PrinceScreen;
 namespace NativeDisplay {
 using Valid=bool (*)(uint32_t,uint32_t);
 using Resource=bool (*)(uint32_t,int16_t,const uint8_t*&,uint32_t&);
-bool prepare(MacHeap& heap,uint8_t* low,Valid valid,Resource resource=nullptr);
+// The physical screen is display memory outside the application zone, as on
+// the Macintosh. Kalms prefetches one unused longword after its final source
+// span, so the caller supplies private readable padding after the PixMap extent.
+enum { screenBytes=640*480+4 };
+bool prepare(MacHeap& heap,uint8_t* low,uint8_t* screen,Valid valid,Resource resource=nullptr);
 void reset();
 bool initWindowManager();
 bool showOverlay(const uint8_t* image);
