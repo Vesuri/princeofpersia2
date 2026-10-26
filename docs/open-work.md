@@ -19,3 +19,22 @@
     68040/40 with 32 MB. Record the result and resolve any failure before
     closing this item. The requested a1200-030 emulator play session does not
     replace this gate. The archive is built and audited, not published.
+
+23. **Credits page in mid-session attract mode (WHDLoad report 7036).**
+    When a session returns to attract mode (level 0), the original main loop
+    runs CODE 2+$4718. Unless the startup flags at A5−$524C or A5−$4FFC skip it,
+    that calls `DoCreditsDialog`, then `InitDissolve`/`LoadSaveDisRes` (a
+    374 KB HandToHand copy) and `DrawCreditsPage`/`DrawCreditCategory`,
+    followed by cutscenes 7, 4 and 8 (DERIVED from the reporter's dump and the
+    original code). `KeepTime` (CODE 2+$5220) and `CheckCheatKeys` change the
+    remaining-minutes counter at A5−$4FCE, which decides the return to attract
+    mode. Startup never shows the credits, so the port has not executed this path.
+    MEASURED: an a1200-030 release session (`amiga/.run-EhBlxk`) completes the
+    HandToHand copy, then stops loudly at `GetPenState` ($A898) in
+    `DrawCreditCategory` at CODE 2+$2DA6. `Move` ($A894) is also absent; later
+    pen, text and dissolve calls are unknown.
+    Acceptance: inspect Vette! and Alone in the Dark first; capture an
+    original Macintosh reference that reaches this attract return, the credits
+    page, the dissolve and cutscenes 7, 4 and 8; implement the services it
+    calls; and pair native pixels, palette and state with that reference
+    through the next playable title, with no unknown-trap stops.
