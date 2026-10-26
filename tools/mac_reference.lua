@@ -37,6 +37,9 @@ local quitting=quitReference and dofile('tools/mac_quit.lua') or nil
 local inputStage=false
 local ui=os.getenv('POP2_UI') and dofile('tools/mac_ui.lua') or nil
 local display=os.getenv('POP2_DISPLAY') and dofile('tools/mac_display.lua') or nil
+-- Item 23: the idle second attract pass reaches the original credits page.
+local credits=os.getenv('POP2_CREDITS')=='1' and dofile('tools/mac_credits.lua') or nil
+assert(not credits or (os.getenv('POP2_DISPLAY_ROUTE') and os.getenv('POP2_NATURAL_OPENING') and os.getenv('POP2_NATURAL_TITLE')),'CREDITS / NATURAL ROUTE REQUIRED')
 local finished,armed,checkpoint=false,false,nil
 local checkpointProbe,trapTraceProbe
 local videoTransfer=os.getenv('POP2_VIDEO_TRANSFER') and dofile('tools/mac_video_transfer.lua') or nil
@@ -110,6 +113,7 @@ local function observe()
     if mapper then mapper.map(seg,base)end
     if gameplay then gameplay.map(seg,base,guard,cond)end
     if quitting then quitting.map(seg,base,guard)end
+    if credits then credits.map(seg,base,guard,cond)end
     if audio then audio.map(seg,base,guard,meta)end
     print(string.format('MAP seg=%d base=%08X size=%d',seg,base,#info.hex/2))
     -- Timing observations use guest ticks and original routine boundaries.
@@ -175,7 +179,13 @@ local function observe()
      end
     end
     if seg==17 then
-     at(seg,base,0x6e42,'logerror "SEED old=%04X fixed=1234\\n",w@(sp+4);w@(sp+4)=0x1234',42)
+     if credits then
+      -- Only the clock-seeded call (argument 0) is replaced; the attract
+      -- demo's original nonzero SetRndSeed arguments remain.
+      at(seg,base,0x6e42,'logerror "SEED old=%04X fixed=1234 clock-only\\n",w@(sp+4);w@(sp+4)=w@(sp+4)|(0x1234*(w@(sp+4)==0x0))',42)
+     else
+      at(seg,base,0x6e42,'logerror "SEED old=%04X fixed=1234\\n",w@(sp+4);w@(sp+4)=0x1234',42)
+     end
      at(seg,base,0x6e68,'logerror "SEED_RESULT value=%08X\\n",d@(a5-0x18fc)')
      at(seg,base,0x4560,'logerror "PACKING_ENTER\\n"')
     elseif seg==2 then
@@ -201,6 +211,11 @@ emu.register_frame_done(function()
 end)
 emu.register_periodic(function()
  if finished then return end
+ if credits then
+  local ok,handled=pcall(credits.poll)
+  if not ok then fail(handled);return end
+  if handled then return end
+ end
  if quitting then
   local ok,handled=pcall(quitting.poll)
   if not ok then fail(handled);return end
@@ -303,7 +318,7 @@ emu.register_periodic(function()
    end
    print('DISPLAY_ROUTE_CAPTURED '..label)
    cpu.debug:bpclear(routeProbes[pc]);routePoints[pc]=nil;routeStage=label
-   if label=='first-room' and not audio and not gameplay and not quitReference then
+   if label=='first-room' and not audio and not gameplay and not quitReference and not credits then
     if integration then integration.finish()end
     if display then display.finish()end
     finished=true;manager.machine:exit()
@@ -443,6 +458,10 @@ mac.run(function()
     mac.wait(60);quitting.audio();mac.press('q',{mac.CMD})
     assert(mac.wait_for('quit-finder',function()return mac.frontmost()=='Finder'end,3600),'QUIT FINDER NOT REACHED')
     mac.wait(60);quitting.finish();finished=true;manager.machine:exit();return
+   end
+   if credits then
+    assert(mac.wait_for('credits-cycle',credits.complete,216000),'CREDITS CYCLE NOT REACHED')
+    print('CREDITS_REFERENCE_COMPLETE');finished=true;manager.machine:exit();return
    end
    if gameplay then
     assert(mac.wait_for('gameplay-first-frame',function()return gameplay.rooms()>=1 end,18000),'GAMEPLAY FIRST FRAME')

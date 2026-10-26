@@ -86,13 +86,13 @@ def run(name=None, control=None, deadline=None):
           '-nvram_directory',str(destination/'nvram'),'-cfg_directory',str(destination/'cfg'),
           '-snapshot_directory',str(destination/'snap'),'-state_directory',str(destination/'states'),'-video','none','-sound','none','-window',
           '-nothrottle','-skip_gameinfo','-debug','-debugger','none','-oslog','-nosamples',
-          '-autoboot_delay','0','-autoboot_script',str(destination/'syntax.lua'),'-seconds_to_run','3600' if env.get('POP2_GAMEPLAY')=='route' else '600' if env.get('POP2_AUDIO')=='cutscene' or env.get('POP2_NATURAL_OPENING') or env.get('POP2_GAMEPLAY') else '240' if env.get('POP2_AUDIO') else '180']
+          '-autoboot_delay','0','-autoboot_script',str(destination/'syntax.lua'),'-seconds_to_run','3600' if env.get('POP2_GAMEPLAY')=='route' or env.get('POP2_CREDITS') else '600' if env.get('POP2_AUDIO')=='cutscene' or env.get('POP2_NATURAL_OPENING') or env.get('POP2_GAMEPLAY') else '240' if env.get('POP2_AUDIO') else '180']
     pidfile=destination/'mame.pid'
     with (destination/'session.log').open('wb') as output:
         process=subprocess.Popen(args,cwd=ROOT,env=env,stdout=output,stderr=subprocess.STDOUT)
         pidfile.write_text(str(process.pid)+'\n')
         try:
-            result=process.wait(timeout=deadline if deadline is not None else 3600 if env.get('POP2_GAMEPLAY')=='route' else 480 if env.get('POP2_AUDIO') or env.get('POP2_GAMEPLAY') else 240)
+            result=process.wait(timeout=deadline if deadline is not None else 3600 if env.get('POP2_GAMEPLAY')=='route' or env.get('POP2_CREDITS') else 480 if env.get('POP2_AUDIO') or env.get('POP2_GAMEPLAY') else 240)
         except BaseException:
             # Use the shared identity-checked helper; never kill by process name.
             subprocess.run(['/bin/bash','-c','. amiga/env.sh; . "$FSUAE_COMMON"; fsuae_kill_recorded "$1" mame','reference',str(pidfile)],cwd=ROOT,check=True)
@@ -209,6 +209,11 @@ def run(name=None, control=None, deadline=None):
                 raise ValueError('REFERENCE / DISPLAY ROUTE INCOMPLETE '+label)
             if (destination/(label+'.indices')).stat().st_size!=640*480 or (destination/(label+'.rgb')).stat().st_size!=768:
                 raise ValueError('REFERENCE / DISPLAY ROUTE EXTENT '+label)
+    if env.get('POP2_CREDITS'):
+        log=(destination/'session.log').read_text()
+        if log.count('CREDITS_REFERENCE_COMPLETE\n')!=1 or 'FAIL REFERENCE' in log:
+            raise ValueError('REFERENCE / CREDITS INCOMPLETE')
+        return destination
     if env.get('POP2_UI_ROUTINES'):
         log=(destination/'session.log').read_text()
         for marker in ('UI_ROUTINE_COMPLETE copy-accepted flags=', 'UI_ROUTINE_COMPLETE packing-declined result=0','UI_ROUTINE_COMPLETE packing-game-declined result=0','UI_ROUTINE_COMPLETE about','UI_ROUTINE_COMPLETE alert-401-yes result=1','UI_ROUTINE_COMPLETE alert-404-yes result=1','UI_ROUTINE_COMPLETE alert-405-yes result=1','UI_ROUTINE_COMPLETE alert-405-no result=2','UI_ROUTINE_COMPLETE alert-406-yes result=1','UI_ROUTINE_COMPLETE alert-406-no result=2'):

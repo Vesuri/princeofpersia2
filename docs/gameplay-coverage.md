@@ -567,6 +567,56 @@ instrumentation. The recorded run predates launcher selection of the dedicated
 checker and therefore ends with the generic core check rejecting its diagnostic
 completion reason; the dedicated checker passes on its frozen evidence.
 
+### Credits page in the second attract pass
+
+DERIVED: the main loop calls CODE 2+4718 whenever the attract level at
+A5−4FAA is zero. Startup sets A5−524C, so the first pass clears it and plays
+cutscenes 7, 4 and 8 without credits. If no key is pressed, the attract demo
+follows; its return reaches CODE 2+4718 again and calls `DoCreditsDialog`
+(CODE 2+2B70). That routine prepares the dissolve (`InitDissolve`,
+`LoadSaveDisRes`, including the 374 KB HandToHand copy of WHDLoad report
+7036), draws four pages through `DrawCreditsPage` (CODE 2+2D20) and
+`DrawCreditCategory` (CODE 2+2D80), then plays cutscenes 7, 4 and 8 and the
+next demo. Ordinary play presses a key at the title, so earlier sessions never
+reached the credits.
+
+`DrawCreditCategory` needed two QuickDraw services: `GetPenState` ($A898),
+whose result supplies the category's vertical pen position, and `Move`
+($A894). Neither Vette! nor Alone in the Dark implements them. MEASURED on the
+original colour port: `GetPenState` writes pnLoc, pnSize and pnMode and fills
+pnPat with the pen PixPat's eight-byte pat1Data, not its handle.
+
+MEASURED: original `credits-4` (`POP2_DISPLAY_ROUTE=1 POP2_NATURAL_OPENING=1
+POP2_NATURAL_TITLE=1 POP2_CREDITS=1`) and the native release build on
+a1200-030 (`amiga/credits.gdb`, no input) run the same complete cycle: four
+pages, fourteen identical `GetPenState` records, credits result 0, cutscenes
+7, 4 and 8 each returning 1, the attract return to level 4 and two completed
+frames of the next demo. All four pages and the following demo frame match
+pixels and palette. Attract level, minutes, skip flags, step, level, room and
+random seed match at each capture. In credits mode the reference replaces only
+the clock-seeded `SetRndSeed` argument (0); the demo's own argument 1 remains,
+as in the native release build.
+
+Two demo timing consequences differ, both with measured causes already
+accepted under D18 elsewhere in this document. `PlayAmbient` (CODE 5 return
++50BA) makes its one draw in steps 255–275 at original step 265 and native step
+267, returning the same value; the seeds agree from step 267. The
+death-sound gate (CODE 4+3C60) waits on the second cue from step 458 on both
+and completes at original step 513 and native step 512, so the A5−4FCA
+countdown starts one frame earlier and stays one lower. No other demo
+frame, seed, room or counter differs. `tools/check_credits.py` compares the
+credits and attract events strictly, accepts only these two differences with
+their observed causes, and rejects ten pixel/colour corruptions and three evidence
+corruptions. `manifest/credits-reference.sha256` and
+`manifest/credits-native.sha256` pin the evidence.
+
+Native reproduction uses the ordinary release build:
+`CORE=1 AMIGA_SETUP=a1200-030 WINDOW=none WARP=1 DEADLINE=2400
+GDBSCRIPT="$PWD/amiga/credits.gdb" bash amiga/run.sh`, then
+`python3 tools/check_credits.py amiga/<run> ref/mame/runs/credits-4`. The
+observer detaches after the cycle, so the launcher's generic core check
+reports no core reference; that is not the credits verdict.
+
 ### Transition survey cutscene observations
 
 MEASURED: `gameplay-survey-cutscenes-2` repeats every checkpoint of the pinned

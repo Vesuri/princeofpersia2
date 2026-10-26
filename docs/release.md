@@ -180,7 +180,9 @@ Macintosh screen lives outside the application partition. That buffer now has
 its own allocation, as Vette! and Alone in the Dark do for their display
 memory. It is still within the game's valid memory ranges and is released on
 exit. MEASURED: in a release session on a1200-030 (`amiga/.run-EhBlxk`) the same
-path completes the copy, then stops at the next missing service, `GetPenState` in the credits page.
+path completes the copy. The credits page it leads to then needed `GetPenState`
+and `Move`; see "Credits page in the second attract pass" in
+`docs/gameplay-coverage.md`.
 
 ## Embedded colour-transfer table
 

@@ -190,7 +190,7 @@ bool publish(bool prepareScene) {
 }
 bool handles(uint16_t trap) {
     if(trap==0xa8a6 || trap==0xa8d7 || trap==0xa8e0 || trap==0xa8d3)return true;
-    return trap==0xa914 || trap==0xa88b || trap==0xa88d || trap==0xa88c || trap==0xa893 || trap==0xa884 || trap==0xa8a8 || trap==0xa8a9 || trap==0xa8ab || trap==0xa8ae || trap==0xa8aa || trap==0xa861 || trap==0xa8d8 || trap==0xa8d9 || trap==0xa8df || trap==0xa8e5 || trap==0xa879 || trap==0xa87a || trap==0xa90d || trap==0xa90a || trap==0xa887 || trap==0xa888 || trap==0xa88a || trap==0xa8a2 || trap==0xa87b || trap==0xa8a7 || trap==0xa91c || trap==0xa889 || trap==0xa89e || trap==0xa863 || trap==0xa8a3 || trap==0xaaa0 || trap==0xa91f || trap==0xa924 || trap==0xaa46 || trap==0xaa91 || trap==0xaa9c || trap==0xaa9e || trap==0xaa95 || trap==0xaa94 || trap==0xaa9a || trap==0xaa14 || trap==0xaa15 || trap==0xa915 || trap==0xa916 || trap==0xa91b || trap==0xa877 || trap==0xa878 || trap==0xa8ec || trap==0xa86e || trap==0xaa2a || trap==0xab1d || trap==0xa873 || trap==0xa874;
+    return trap==0xa914 || trap==0xa894 || trap==0xa898 || trap==0xa88b || trap==0xa88d || trap==0xa88c || trap==0xa893 || trap==0xa884 || trap==0xa8a8 || trap==0xa8a9 || trap==0xa8ab || trap==0xa8ae || trap==0xa8aa || trap==0xa861 || trap==0xa8d8 || trap==0xa8d9 || trap==0xa8df || trap==0xa8e5 || trap==0xa879 || trap==0xa87a || trap==0xa90d || trap==0xa90a || trap==0xa887 || trap==0xa888 || trap==0xa88a || trap==0xa8a2 || trap==0xa87b || trap==0xa8a7 || trap==0xa91c || trap==0xa889 || trap==0xa89e || trap==0xa863 || trap==0xa8a3 || trap==0xaaa0 || trap==0xa91f || trap==0xa924 || trap==0xaa46 || trap==0xaa91 || trap==0xaa9c || trap==0xaa9e || trap==0xaa95 || trap==0xaa94 || trap==0xaa9a || trap==0xaa14 || trap==0xaa15 || trap==0xa915 || trap==0xa916 || trap==0xa91b || trap==0xa877 || trap==0xa878 || trap==0xa8ec || trap==0xa86e || trap==0xaa2a || trap==0xab1d || trap==0xa873 || trap==0xa874;
 }
 bool dispatch(uint16_t trap,uint32_t* regs,uint8_t* args,uint32_t& consumed) {
     if(!heap || !valid || !pointer((uint32_t)args,trap==0xab1d && uint16_t(regs[0])==0 ? 24 : (trap==0xab1d ? 8 : 4)))return fail("DISPLAY / ARGUMENT EXTENT");
@@ -198,6 +198,19 @@ bool dispatch(uint16_t trap,uint32_t* regs,uint8_t* args,uint32_t& consumed) {
         World* v=thePort?byPort(l(thePort)):nullptr;
         if(!v || !pointer((uint32_t)args,4))return fail("TEXT / MOVETO PORT");
         sw(v->port+48,w(args));sw(v->port+50,w(args+2));sw(v->port+14,0x8000);consumed=4;return true;
+    }
+    if(trap==0xa898){
+        World* v=thePort?byPort(l(thePort)):nullptr;uint8_t* out=pointer(l(args),18);
+        H pen=v?(H)l(v->port+58):nullptr;
+        if(!v || !out || !heap->isHandle(pen) || !*pen || heap->handleSize(pen)<28)return fail("DISPLAY / GETPENSTATE OWNER");
+        // pnLoc, pnSize and pnMode. MEASURED on the original colour port:
+        // pnPat receives the pen PixPat's eight-byte pat1Data, not its handle.
+        CopyBits8::copySpan(v->port+48,out,10);CopyBits8::copySpan(*pen+20,out+10,8);consumed=4;return true;
+    }
+    if(trap==0xa894){
+        World* v=thePort?byPort(l(thePort)):nullptr;
+        if(!v)return fail("TEXT / MOVE PORT");
+        sw(v->port+48,uint16_t(w(v->port+48)+w(args)));sw(v->port+50,uint16_t(w(v->port+50)+w(args+2)));consumed=4;return true;
     }
     if(trap==0xa88b || trap==0xa88d || trap==0xa88c || trap==0xa884){
         World* v=thePort?byPort(l(thePort)):nullptr;

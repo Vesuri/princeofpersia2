@@ -1186,3 +1186,7 @@ segment,offset,name,evidence,notes
 4,0x3C60,DeathSoundCompletionGate,DERIVED,Queries both current sound cues via PrinceSndOn before setting the completed death state at +3C96
 10,0x2B14,SpawnAltarShadowAfterSoundCompletion,DERIVED,Calls local persistent shadow construction after A5-4FD4 becomes one
 3,0x13AC,LoadCustomRoomData_MoveHHi,MEASURED,Release death/restart stop on locked CUST handle at this trap; following HLock at +13B0
+2,0x2B70,DoCreditsDialog,DERIVED,Original MacsBug name at 0x2D0C; four credits pages with dissolves; returns zero when uninterrupted
+2,0x2D20,DrawCreditsPage,DERIVED,Original MacsBug name at 0x2D6C; MoveTo and Move between DrawCreditCategory calls
+2,0x2D80,DrawCreditCategory,DERIVED,Original MacsBug name at 0x2ECC; GetPenState at +2DA6 supplies the category pen position
+2,0x4718,AttractCreditsAndCutscenes,DERIVED,Clears the startup skip flag A5-524C on the first pass; later passes call DoCreditsDialog before cutscenes 7 4 8
