@@ -66,9 +66,11 @@
  History:
  --------
  0.91 (27.10.2026)
- - Fixed a crash when returning to the title sequence after several deaths
-   (out of memory).
+ - Fixed out-of-memory crashes when returning to the title sequence or
+   showing the credits.
  - The credits pages now appear when the title sequence is left running.
+ - Fixed a WHDLoad crash when the game first saves its dissolve-effect data
+   (at the credits or the level eight transition).
 
  0.90 (19.10.2026)
  - Initial release.

@@ -1,10 +1,14 @@
-# Version 0.90 (19.10.2026)
+# Version 0.91 (27.10.2026)
 
-The reported death/restart service defect is fixed and passes original-paired
-regression checks. The owner confirms that guard-death/Enter restarts into
-playable gameplay on the updated a1200-030 release. Physical-hardware testing
-remains open in item 14. Building and auditing the archive is not publication.
-The owner will test an A1200 68040/40 with 32 MB and MMU.
+Version 0.91 fixes the out-of-memory stop of WHDLoad report 7036, which also
+needed the original's heap placement and relocation, adds the two
+services the credits page needs, and replaces the renaming resource-fork
+publication that reset Kickstart under WHDLoad; all are described below. The 0.90
+death/restart correction remains, with the owner's confirmation that
+guard-death/Enter restarts into playable gameplay on a1200-030.
+Physical-hardware testing remains open in item 14. The audited archive is attached to
+the GitHub release 0.91. The owner will test an A1200 68040/40 with 32 MB
+and MMU.
 
 ## Package
 
@@ -15,7 +19,7 @@ The installer archive contains the release executable, KickEmu slave, Installer
 The ReadMe links to the helper source on GitHub; source files are not bundled.
 No original game data, ROMs, Workbench or WHDLoad binaries are included.
 The packaged ReadMe follows the WHDLoad install template and contains only
-player-facing information, with one history entry: initial release.
+player-facing information, with history entries for 0.90 and 0.91.
 `manifest/release-template.json` pins the template used.
 
 A clean rebuild reproduces the current stripped executable and LHA byte for byte.
@@ -23,10 +27,12 @@ Independent Lhasa extraction verifies the member list, hashes, version tags,
 HUNK/icon headers and payload identities. Ordinary release audits exclude
 runtime hashing, trap traces, profiling and test input.
 
-The slave and helper retain the date-only changes qualified by
-`tmp/item14-final/date-only.json`. The game contains the locked-handle dispatch
-correction below and embeds its colour-transfer table. The Installer no longer
-copies that table as a separate file.
+MEASURED against the 0.90 archive (`tmp/release-091`): the slave, Installer
+script and helper differ only in their version strings, and the icons and
+licence are unchanged. The game adds the display-memory, credits-page,
+heap-placement and in-place publication changes below to 0.90's locked-handle dispatch correction and embedded
+colour-transfer table. The Installer no longer copies that table as a
+separate file.
 Existing correctness evidence retains its stated scope.
 
 ## Zorro III pointer regression
@@ -98,9 +104,9 @@ unreached and timed-out attempts remain failures.
 ## Runtime qualification
 
 Item 22's corrected-clock original-paired timing/service and matched-workload
-performance checks pass on a1200-030 for the preceding release. The correction
-below changes only MoveHHi error handling; those measurements are not new
-measurements of this binary. See `timing.md`, `performance.md` and
+performance checks pass on a1200-030 for an earlier release. Later corrections
+change MoveHHi error handling, display-buffer placement, the credits-page
+services, heap placement and its cache flush, and resource publication; those measurements are not new measurements of this binary. See `timing.md`, `performance.md` and
 `manifest/accelerated-clock.sha256`. Full 040/MMU emulator timing-service and
 cadence checks pass; they establish emulator behavior, not calibrated 25 MHz
 or physical-hardware performance.
@@ -182,7 +188,78 @@ memory. It is still within the game's valid memory ranges and is released on
 exit. MEASURED: in a release session on a1200-030 (`amiga/.run-EhBlxk`) the same
 path completes the copy. The credits page it leads to then needed `GetPenState`
 and `Move`; see "Credits page in the second attract pass" in
-`docs/gameplay-coverage.md`.
+`docs/gameplay-coverage.md`. With both changes, the startup integration and
+death/restart gates pass on the pinned FS-UAE.
+
+## Heap placement and relocation
+
+The owner's interactive WHDLoad session of the 0.91 candidate on a1200-030
+(`tmp/whdload-play-p7o_4dek`) reached the credits after play and stopped at the
+same CODE 20 `HandToHand`. MEASURED from its dump: the screen buffer was outside
+the zone, which had 732 KB free, but the largest block was 370,544 bytes. A
+master block and a 2,104-byte pointer sat between the two largest free blocks;
+report 7036's dump has the same arrangement.
+
+MEASURED on System 7.5.5 in a 64 KB private zone (`ref/mame/runs/masters-3`,
+`tools/check_masters.py`, ten altered-record controls):
+
+- `NewPtr`, `MoreMasters` and the implicit `MoreMasters` of `NewHandle` place
+  their block at the lowest position above pinned blocks; the movable handle in
+  the way moves, even across locked handles.
+- A relocatable request that fits only by moving a handle across a locked one
+  succeeds; a larger one returns `memFullErr`.
+
+The native heap used first fit for master blocks and could move handles only
+within the intervals between pinned blocks. It now does both of the above; the
+relocation is used only after compaction and purging fail, so allocations that
+already succeeded are unchanged. Relocation targets are first fit rather than
+the original's rover. Host tests replay all ten original cases and fail with
+either change removed.
+
+MEASURED at the original's same `HandToHand` (`ref/mame/runs/credits-5`): a
+3,033,356-byte zone with 284,988 bytes free and a largest block of 259,076, so
+the original also makes room during the call. On the idle credits route the
+native zone before the call has 373,824 bytes free in one block, 8 more than the
+copy needs; with low placement alone the call failed
+(`amiga/.run-wm5prO`), and with both changes it completes (`amiga/.run-fsZUUs`).
+The release credits pairing passes on the corrected build (`amiga/.run-VOidea`).
+The owner's exact session cannot be replayed: its input was not recorded.
+`manifest/heap-placement.sha256` pins both original references and the
+corrected build's credits pairing.
+
+Low placement also moves handles that the old placement left alone, including
+the unlocked 4-byte `Jnth` audio entry, which the original calls through its
+handle. MEASURED: on 040/MMU with copyback caches the moved entry ran stale
+bytes, and WHDLoad reported a Line 1111 exception just past it at startup
+(`tmp/whdload-release-0bxqi9kg`). INFERRED: the original Memory Manager moves
+blocks with `BlockMove`, which flushes the 68040 caches. Any heap move now
+flushes the caches once before original code resumes; the 040/MMU save and
+load cases pass with it.
+
+## In-place resource publication
+
+With the heap corrected, the owner's next WHDLoad session and idle WHDLoad runs
+with 6, 6.5 and 7 MB of slave Fast RAM stopped at the credits with a privilege
+violation at `$F80C38` in task 'DH0'. MEASURED from the dumps: exec still had
+480 KB, 1.0 MB and 1.5 MB of Fast RAM free, so memory was not the cause. Each
+run had just written the complete 550,792-byte `Prince2.opt.rsrc.aitd-new`.
+On first use the original's `InitDissolve` adds its generated 373,788-byte
+`DSLV 6401` dissolve cache to `Prince2.opt`; the port's publication then
+renamed the files. WHDLoad's kickfs has no `ACTION_RENAME_OBJECT`, and without
+DEBUG an unknown packet makes it jump past its action table into the Kickstart
+reset code.
+
+Under D20 the port never renames. Publication buffers the serialized fork and
+writes it over the target with `MODE_NEWFILE`, as the original Resource
+Manager rewrites a fork in place. MEASURED on the corrected build: the idle
+WHDLoad route with the shipped 6 MB slave writes the fork in place without a
+temporary file and runs 420 s without a report
+(`tmp/whdload-idle-5yiuiv8k`); the native credits route enters, draws four
+pages and completes the following attract cycle (`amiga/.run-NLyrfo`). The
+two forks are byte-identical, with the same `DSLV 6401` payload as the
+previous native publication. `manifest/in-place-publication.sha256` pins them.
+The owner's interactive WHDLoad session of this build on a1200-030
+(`tmp/whdload-play-8w1c2lif`) showed the credits pages without a crash.
 
 ## Embedded colour-transfer table
 
@@ -216,24 +293,26 @@ for this hardware gate.
 
 ## Current evidence and identity
 
-`manifest/release14-current.sha256` pins the current package, build checks,
-installer results, release gameplay captures and rejection-control reports.
-The earlier `manifest/release14-evidence.sha256` retains its historical scope.
+`manifest/release-091.sha256` pins the 0.91 package and the results of the
+runs below, plus the 040 crash report that the cache flush fixed. The integration and
+restart gates passed on the same build (`tmp/integration-gate-oep8qy_y`,
+`tmp/gameplay-restart-gate-w2_9nuy_`). `manifest/release14-current.sha256` and
+`manifest/release14-evidence.sha256` retain their 0.90 and earlier scope.
 
 | Check | Completed run |
 |---|---|
-| installer-fresh | `tmp/installer43-7zc0om_n` |
-| installer-reuse | `tmp/installer43-e2ytu814` |
-| installer-replace | `tmp/installer43-sxrqtl5h` |
-| installer-incomplete | `tmp/installer43-fpyawzj1` |
-| installer-bad-options | `tmp/installer43-rwf4q51z` |
-| 030-preload | `tmp/whdload-release-uknuj2iv` |
-| 030-no-preload | `tmp/whdload-release-l7qq5rs4` |
-| 030-f10 | `tmp/whdload-release-051iof4a` |
-| a1200-030-save | `tmp/whdload-release-06v_2vge` |
-| a1200-030-load | `tmp/whdload-release-gtfnq9eo` |
-| a1200-040-save | `tmp/whdload-release-or4j5prc` |
-| a1200-040-load | `tmp/whdload-release-u4fuh4kj` |
+| installer-fresh | `tmp/installer43-qd4jq_gg` |
+| installer-reuse | `tmp/installer43-fjebdv04` |
+| installer-replace | `tmp/installer43-q0hcwki7` |
+| installer-incomplete | `tmp/installer43-uwn_lfl6` |
+| installer-bad-options | `tmp/installer43-66qn50qp` |
+| 030-preload | `tmp/whdload-release-3g1gl1eo` |
+| 030-no-preload | `tmp/whdload-release-fu66qf9m` |
+| 030-f10 | `tmp/whdload-release-hun_rat1` |
+| a1200-030-save | `tmp/whdload-release-1lk7884m` |
+| a1200-030-load | `tmp/whdload-release-kgghqnaa` |
+| a1200-040-save | `tmp/whdload-release-i_qh30bo` |
+| a1200-040-load | `tmp/whdload-release-zpyv_qak` |
 
 The hidden damaged-preferences attempt `tmp/installer43-adu5zuos` was
 interrupted after copying stopped progressing; its cause is unestablished and
@@ -242,8 +321,8 @@ supports `--window` for observation without changing its scripted answers.
 The sandbox launch failure and the run interrupted for the owner’s date change
 also remain non-passing attempts.
 
-`dist/PrinceOfPersia2-0.90.lha`: **166,622 bytes**, SHA-256
-`1e6085506ae2deb4518be45043ad9092664aa7a9a98014f5d464a6bcfd7aec4b`.
+`dist/PrinceOfPersia2-0.91.lha`: **167,911 bytes**, SHA-256
+`a32b0e34810de853fae9d8f0dc05aee35b2e320405d0a41d62c887d756def3f0`.
 
 Release executable SHA-256:
-`87adc94734ce868103f4ae1539c9c2500eee286b82b990213e0ec0760c12a44f`.
+`108e2f7eaf7fb5e116ec61b011cee2b224985bcab3044f4c880d05f1cd81acd0`.
