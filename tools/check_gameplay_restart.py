@@ -8,7 +8,7 @@ import tempfile
 from pathlib import Path
 from check_core_result import restored
 from extract_original_data import ROOT, pins
-from check_integration_result import crop, require
+from check_integration_result import crop, pinned_reference, require
 from check_display_scenes import decode_planes, decode_copper
 
 
@@ -39,7 +39,7 @@ def paired_frame(run, reference, label, prefix):
 
 def check(run, reference, setup):
     for name,digest in pins(ROOT/'manifest/gameplay-restart-reference.sha256').items():
-        require(hashlib.sha256((reference/name).read_bytes()).hexdigest()==digest,'RESTART REFERENCE PIN '+name)
+        require(hashlib.sha256(pinned_reference(reference,name)).hexdigest()==digest,'RESTART REFERENCE PIN '+name)
     original=(reference/'session.log').read_text()
     require('FAIL REFERENCE' not in original, 'RESTART ORIGINAL ERROR')
     require(original.count('GAMEPLAY_REFERENCE_COMPLETE route=restart first_frames=2\n')==1,

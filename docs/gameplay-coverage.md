@@ -370,7 +370,10 @@ need to be called a second time.
 
 MEASURED: `gameplay-restart-1` and `gameplay-restart-2` have identical complete
 A5/context captures, screen indices and RGB palette at both checkpoints.
-`manifest/gameplay-restart-reference.sha256` pins names and hashes only. The
+`manifest/gameplay-restart-reference.sha256` pins names and hashes only. Its A5
+pins zero just the two-byte volume-date residue at A5−0x0b78 (see
+`native-integration.md`): fresh references after the reference volume changed
+differ from `gameplay-restart-3` only there, at both checkpoints. The
 second run additionally records the original menu-handler command. This is
 paired with completed native runs: screen indices, all eight bitplanes, palette,
 curated gameplay words and RNG match at both checkpoints. The final Copper list

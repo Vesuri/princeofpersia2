@@ -27,12 +27,26 @@ def normalized_reference_a5(raw):
     # Original cursor-idle TickCount and TMTask countdown.
     for distance in (0x53aa, 0x7aa):
         data[-distance:-distance+4] = bytes(4)
+    return volume_date_normalized(data)
+
+
+def volume_date_normalized(raw):
+    data = bytearray(raw)
+    require(len(data) == 22266, 'REFERENCE A5 EXTENT')
     # The shared file PB at A5-0xb9a retains the high word of ioVLsMod
     # (PB+34) after HGetVInfo. SetFPos clears its low word. This is host
     # volume metadata, not game state; check_reference_file_scratch.py
     # verifies the original call/return provenance and exact two-byte scope.
     data[-0xb78:-0xb76] = bytes(2)
     return bytes(data)
+
+
+def pinned_reference(reference, name):
+    # A '-a5.normalized.bin' pin hashes the raw A5 snapshot with only the
+    # volume-date residue zeroed; every other byte remains exact.
+    if name.endswith('-a5.normalized.bin'):
+        return volume_date_normalized((reference/name.replace('.normalized.bin', '.bin')).read_bytes())
+    return (reference/name).read_bytes()
 
 
 def reference_state(reference):

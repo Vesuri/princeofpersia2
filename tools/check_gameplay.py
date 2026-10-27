@@ -10,6 +10,7 @@ from check_gameplay_save import check as check_save, controls as save_controls
 from gameplay_saved_file import export as export_save
 from check_gameplay_import import check as check_import, check_reference as import_reference, controls as import_controls
 from check_integration import compress_completed_volume
+from check_integration_result import pinned_reference
 from extract_original_data import ROOT, pins
 from run_reference import run as reference_run
 import hashlib
@@ -61,7 +62,7 @@ def main():
         else:import_reference(reference)
         assert 'FAIL REFERENCE' not in log
         for name,digest in pins(ROOT/('manifest/gameplay-import-frames.sha256' if args.route=='load-import' else 'manifest/gameplay-'+label+'-reference.sha256')).items():
-            assert hashlib.sha256((reference/name).read_bytes()).hexdigest()==digest,name
+            assert hashlib.sha256(pinned_reference(reference,name)).hexdigest()==digest,name
     if args.route in ('save-load','load-import'):
         import re
         key_traces=[re.findall(r'^GAMEPLAY_KEYS .*$',(p/'session.log').read_text(),re.M) for p in references]
