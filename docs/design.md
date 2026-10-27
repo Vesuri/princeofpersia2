@@ -95,6 +95,11 @@ handling, as separate results. Keep original-paired callback/service behavior
 and cadence gates. This changes the measurement boundary, not game decisions
 or the budget, and does not authorize relabelling old captures as scoped results.
 
+D20 (owner-authorized, 27.10.2026): the port never renames files. As the
+original Resource Manager rewrites a fork in place, resource publication
+replaces the target file directly. WHDLoad's kickfs has no rename packet and
+resload has no rename call.
+
 The original Macintosh execution under the D2 reference is the correctness reference.
 Preserve game logic, data interpretation and decisions. The owner authorizes byte-verified low-memory address relocations while preserving
 original instruction lengths and startup logic. Port-owned services handle

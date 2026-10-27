@@ -128,7 +128,10 @@ application/Prince/Kid/NIS/options chain contains 1,123 resources.
 Open, current-file selection, lookup through older files, resource information,
 loading, detachment and closing are connected to the runtime. The reached
 AddResource/WriteResource path publishes the generated dissolve cache to the
-options resource fork through the shared staged writer. Close publishes pending
+options resource fork through the shared staged writer's whole-file mode (D20):
+the new fork is serialized from the open one into a heap buffer (373,788 bytes
+of DSLV 6401 grow the fork to 550,792), then written over the target with
+`MODE_NEWFILE`, without temporary files or renames. Close publishes pending
 changes; other asset forks remain immutable. Invalid ownership and unmeasured
 dirty-handle release/detachment remain loud stops. D9 still excludes in-place
 data packing. The generated cache matches the original's initialized bytes and
@@ -198,11 +201,11 @@ rejection, bounds and ownership checks. Ordinary file opens no longer enter an O
 window merely to revisit a completed hash check.
 
 The pinned shared `ResourceStage` transaction is imported from AmigaXDev's
-clean extraction of Alone in the Dark's DOS publisher. Its adapter builds here;
-the extraction has identical 68020 instructions and relocations, and importing
-the unused adapter leaves the verification executable byte-identical. It is
-not yet connected to Resource Manager writes. The level-eight AddResource /
-WriteResource gameplay gate and persistent dissolve-cache validation remain open.
+clean extraction of Alone in the Dark's DOS publisher. This port's adapter
+selects its whole-file mode in both environments and supplies DOS stat and
+replacement inside a system window; the shared rename path is never selected.
+Under WHDLoad an unknown packet makes kickfs jump past its action table, which
+reset Kickstart in task 'DH0' after the credits wrote the temporary fork.
 
 The shared `ResourceWriter.inc` uses a transaction-owned heap workspace for map
 layout. This port's 4,096-entry directory capacity made the inherited local
