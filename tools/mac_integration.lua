@@ -2,6 +2,7 @@ local stripAddress=os.getenv('POP2_STRIP_ADDRESS') and dofile('tools/mac_strip_a
 local bankSkip=os.getenv('POP2_BANK_SKIP_FIXTURE') and dofile('tools/mac_bank_skip.lua') or nil
 local freed=os.getenv('POP2_FREED_PROBE') and dofile('tools/mac_freed_handles.lua') or nil
 local heapFixture=dofile('tools/mac_heap.lua')
+local masters=os.getenv('POP2_MASTERS_PROBE') and dofile('tools/mac_masters.lua') or nil
 local rectangles=dofile('tools/mac_rectangles.lua')
 local saveRect=os.getenv('POP2_SAVE_RECT_FIXTURE') and dofile('tools/mac_save_rect.lua') or nil
 local wrappers=os.getenv('POP2_WRAPPER_FIXTURE') and dofile('tools/mac_wrapper_ccr.lua') or nil
@@ -111,6 +112,7 @@ function M.startNil()
  if saveRect then saveRect.start(code,M.finish);return end
  if wrappers then wrappers.start(code,M.finish);return end
  if os.getenv('POP2_HEAP_PROBE') then heapFixture.start(code,M.finish);return end
+ if masters then masters.start(code,M.finish);return end
  if os.getenv('POP2_RECTANGLE_PROBE') then rectangles.start(code,M.finish);return end
  if os.getenv('POP2_EQUAL_RECT_PROBE') then
   equalBase=code;equalIndex=1
@@ -169,6 +171,7 @@ function M.poll()
  if wrappers and wrappers.poll()then return true end
  if stripAddress and stripAddress.poll()then return true end
  if heapFixture.poll()then return true end
+ if masters and masters.poll()then return true end
  if rectangles.poll()then return true end
  if not meta or dbg.execution_state~='stop' then return false end
  local pc=cpu.state.PC.value

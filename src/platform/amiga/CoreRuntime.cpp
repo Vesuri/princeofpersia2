@@ -2769,6 +2769,10 @@ extern "C" uint32_t pop2UserDispatch(uint32_t* parked) {
     g_coreServiceActive=1;
     uint8_t* resumed=(uint8_t*)pop2Dispatch(regs,frame,usp);
     g_coreServiceActive=0;
+    // INFERRED: the original Memory Manager moves blocks with BlockMove, which
+    // flushes the 68040 caches. MEASURED: the unlocked Jnth entry otherwise runs
+    // stale bytes on a copyback 040 after NewPtr relocates it.
+    if(MacHeap::takeMoved())flushCode();
 #ifdef POP2_AUDIO
     if(!didStop && NativeAudio::servicePending()){
         if(!NativeAudio::sync())resumed=(uint8_t*)stop(frame,resumed,NativeAudio::error(),0,0,0);

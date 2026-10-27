@@ -14,6 +14,9 @@ public:
     uint32_t capacity() const { return bytes_; }
     int16_t error() const { return error_; }
     int16_t* errorStorage() { return &error_; }
+    // Relocated blocks may hold code (the unlocked Jnth resource). The platform
+    // publishes moved bytes to instruction fetch before original code resumes.
+    static bool takeMoved() { bool moved=moved_;moved_=false;return moved; }
     const PinnedSlotRanges<256>::Slot* flagHints() const { return masterRanges_.flagHints(); }
     bool owns(const void* address) const;
     uint8_t* newPtr(uint32_t bytes, bool clear=false);
@@ -61,6 +64,7 @@ private:
     // mutable allocation flags or pointees; disposal/reuse stays observable.
     mutable uint32_t cachedMasterStart_ = 0, cachedMasterLength_ = 0;
     mutable PinnedSlotRanges<256> masterRanges_;
+    static inline bool moved_ = false;
     Block& block(uint32_t off) const { return *(Block*)(arena_+off); }
     static uint32_t physical(uint32_t logical);
     static void moveBytes(uint8_t* dst, const uint8_t* src, uint32_t bytes);
@@ -85,6 +89,8 @@ private:
     uint32_t findPtr(const uint8_t* ptr, uint32_t kind) const;
     uint32_t findSpace(uint32_t bytes) const;
     uint32_t allocate(uint32_t bytes, uint32_t kind, uint32_t owner=0);
+    uint32_t allocateLow(uint32_t bytes, uint32_t kind);
+    uint32_t clearLow(uint32_t bytes);
     void split(uint32_t off, uint32_t span, uint32_t logical, uint32_t kind, uint32_t owner);
     void release(uint32_t off);
     void coalesce();

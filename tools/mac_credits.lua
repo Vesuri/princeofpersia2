@@ -33,6 +33,11 @@ function M.map(seg,base,guard,condition)
     string.format('logerror "DEMO SOUNDON step=%%d site=%04x result=%%04x\\n",w@(a5-0x349a),d0&0xffff;g',offset))
   end
  end
+ if seg==20 then
+  -- The HandToHand that copies the 373,788-byte LoadSaveDisRes data.
+  guard(seg,base,0x858,2);points[base+0x858]='h2h'
+  cpu.debug:bpset(base+0x858,condition,'logerror "CREDITS_STOP\\n"')
+ end
  if seg~=2 then return end
  for _,site in ipairs({{0x2b70,'enter',4},{0x2da8,'pen',2},{0x2c20,'page',2},{0x2d02,'return',2},
                        {0x475c,'nis-7',2},{0x476e,'nis-4',2},{0x4780,'nis-8',2},{0x4576,'attract',2},{0x68b2,'frame',2}})do
@@ -40,12 +45,42 @@ function M.map(seg,base,guard,condition)
   cpu.debug:bpset(base+site[1],condition,'logerror "CREDITS_STOP\\n"')
  end
 end
+-- Walk the application zone; accept the header layout that ends exactly at bkLim.
+local function zone()
+ local z=mem:readv_u32(0x2aa)&0xffffff;local limit=mem:readv_u32(z)&0xffffff
+ for _,wide in ipairs({true,false})do
+  local p=z+52;local s={free=0,largest=0,blocks=0,rel=0,nonrel=0,locked=0,purgeable=0,relbytes=0,nonrelbytes=0,lockedbytes=0,purgebytes=0}
+  local ok=true
+  while p<limit do
+   local tag,size,flags
+   if wide then tag=mem:readv_u8(p)>>6;size=mem:readv_u32(p+4);flags=mem:readv_u8(p+1)
+   else local h=mem:readv_u32(p);tag=h>>30;size=h&0xffffff;flags=0
+    if tag==2 then flags=mem:readv_u8(z+(mem:readv_u32(p+4)&0xffffff))end end
+   if size<8 or size&3~=0 or p+size>limit then ok=false;break end
+   s.blocks=s.blocks+1
+   if tag==0 then s.free=s.free+size;if size>s.largest then s.largest=size end
+   elseif tag==1 then s.nonrel=s.nonrel+1;s.nonrelbytes=s.nonrelbytes+size
+   elseif tag==2 then s.rel=s.rel+1;s.relbytes=s.relbytes+size
+    if flags&0x80~=0 then s.locked=s.locked+1;s.lockedbytes=s.lockedbytes+size
+    elseif flags&0x40~=0 then s.purgeable=s.purgeable+1;s.purgebytes=s.purgebytes+size end
+   else ok=false;break end
+   p=p+size
+  end
+  if ok and p==limit then return z,limit,wide,s end
+ end
+ return z,limit,nil,nil
+end
 function M.poll()
  if dbg.execution_state~='stop' then return false end
  local kind=points[cpu.state.PC.value]
  if not kind then return false end
  local a5=cpu.state.A5.value&0xffffff
- if kind=='enter' then
+ if kind=='h2h' then
+  local z,limit,wide,st=zone();local h=cpu.state.A0.value&0xffffff
+  assert(st,'CREDITS ZONE WALK')
+  print(string.format('CREDITS ZONE HANDTOHAND zone=%X bytes=%d header=%d source=%X blocks=%d free=%d largest=%d rel=%d/%d locked=%d/%d purgeable=%d/%d nonrel=%d/%d',
+   z,limit-z,wide and 12 or 8,mem:readv_u32(h)&0xffffff,st.blocks,st.free,st.largest,st.rel,st.relbytes,st.locked,st.lockedbytes,st.purgeable,st.purgebytes,st.nonrel,st.nonrelbytes))
+ elseif kind=='enter' then
   print(string.format('CREDITS ENTER level=%d minutes=%d',mem:readv_u16(a5-0x4faa),mem:readv_u16(a5-0x4fce)))
  elseif kind=='pen' then
   pens=pens+1;local p=(cpu.state.A6.value&0xffffff)-0x14

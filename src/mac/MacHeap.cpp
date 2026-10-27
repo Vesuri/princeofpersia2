@@ -22,6 +22,7 @@ uint32_t MacHeap::physical(uint32_t logical)
 }
 void MacHeap::moveBytes(uint8_t* dst, const uint8_t* src, uint32_t bytes)
 {
+    if (dst!=src && bytes) moved_=true;
     if (dst<src) for (uint32_t i=0;i<bytes;++i) dst[i]=src[i];
     else if (dst>src) while (bytes) { --bytes;dst[bytes]=src[bytes]; }
 }
@@ -33,6 +34,7 @@ void MacHeap::reverseWords(uint8_t* first, uint8_t* last)
     typedef uint32_t HeapWord __attribute__((__may_alias__));
     HeapWord* lo=(HeapWord*)first;
     HeapWord* hi=(HeapWord*)last;
+    if(lo<hi)moved_=true;
     while(lo<hi) { --hi;if(lo>=hi)break;HeapWord v=*lo;*lo++=*hi;*hi=v; }
 }
 void MacHeap::reset()
@@ -242,14 +244,72 @@ uint32_t MacHeap::allocate(uint32_t bytes,uint32_t kind,uint32_t owner)
     uint32_t off=findSpace(bytes);
     if(!off) { compact();off=findSpace(bytes); }
     if(!off) { purge(bytes);off=findSpace(bytes); }
+    // MEASURED (ref masters-3): the original also moves movable blocks across
+    // locked ones to make room. Do so only once compaction and purging fail.
+    if(!off) { off=clearLow(bytes);publish(); }
     if(!off) { result(memFullErr);return 0; }
     split(off,physical(bytes),bytes,kind,owner);result(0);return off;
+}
+// MEASURED (System 7.5.5, ref masters-3): NewPtr and explicit or implicit
+// MoreMasters place their block at the lowest run of free and movable blocks
+// that covers it, relocating the movable ones elsewhere, even across locked
+// blocks. The original picks relocation targets with its own rover; this
+// relocates first-fit outside the run.
+uint32_t MacHeap::clearLow(uint32_t bytes)
+{
+    const uint32_t needed=physical(bytes);
+    for(uint32_t p=headerBytes;p<end_;p+=block(p).span) {
+        if(block(p).kind!=freeBlock && !movable(p))continue;
+        uint32_t q=p;
+        while(q<end_ && q-p<needed && (block(q).kind==freeBlock || movable(q)))q+=block(q).span;
+        if(q-p<needed)continue;
+        const uint32_t e=p+needed;
+        // Released blocks coalesce, but their stale headers keep the walk valid.
+        for(uint32_t m=p;m<q;) {
+            const Block saved=block(m);const uint32_t next=m+saved.span;
+            if(saved.kind!=freeBlock) {
+                const uint32_t span=physical(saved.logical);uint32_t target=0;
+                for(uint32_t off=searchStart_;off<end_ && !target;off+=block(off).span) {
+                    const uint32_t free=block(off).span;
+                    if(block(off).kind!=freeBlock)continue;
+                    if(off+free<=p || off>=e) { if(free>=span)target=off; }
+                    else if(off+free>e) {
+                        // A free block crossing the run's end keeps its upper part usable.
+                        const uint32_t cut=e-off>=minimumBlock ? e : off+minimumBlock;
+                        if(off+free>=cut+span) {
+                            block(off).span=cut-off;block(cut)={off+free-cut,0,0,freeBlock,0,0};target=cut;
+                        }
+                    }
+                }
+                if(!target)return 0;
+                split(target,span,saved.logical,handleBlock,saved.owner);
+                moveBytes(arena_+target+blockBytes,arena_+m+blockBytes,saved.logical);
+                *(Handle)(arena_+saved.owner)=arena_+target+blockBytes;
+                release(m);
+            }
+            m=next;
+        }
+        for(uint32_t off=headerBytes;off<end_;off+=block(off).span)
+            if(off<=p && p<off+block(off).span)return block(off).kind==freeBlock ? off : 0;
+        return 0;
+    }
+    return 0;
+}
+uint32_t MacHeap::allocateLow(uint32_t bytes,uint32_t kind)
+{
+    if(!arena_ || !physical(bytes)) { result(memFullErr);return 0; }
+    uint32_t off=clearLow(bytes);
+    if(!off) { compact();off=clearLow(bytes); }
+    if(!off) { purge(bytes);off=clearLow(bytes); }
+    publish();
+    if(!off) { result(memFullErr);return 0; }
+    split(off,physical(bytes),bytes,kind,0);result(0);return off;
 }
 int16_t MacHeap::moreMasters(uint16_t count)
 {
     if(!count)count=masters_;
     uint32_t bytes=count*(sizeof(uint8_t*)+1);
-    uint32_t off=allocate(bytes,ptrBlock);if(!off)return error_;
+    uint32_t off=allocateLow(bytes,ptrBlock);if(!off)return error_;
     for(uint32_t i=0;i<bytes;++i)arena_[off+blockBytes+i]=0;
     block(off).kind=masterBlock;block(off).owner=count;
     if(masterBlockCount_<maxMasterBlocks)masterBlocks_[masterBlockCount_++]=off;
@@ -279,9 +339,7 @@ void MacHeap::releaseMaster(Handle handle)
 }
 uint8_t* MacHeap::newPtr(uint32_t bytes,bool clear)
 {
-    // Pointers go below movable blocks, as ReserveMem does for NewPtr.
-    compactUp();
-    uint32_t off=allocate(bytes,ptrBlock);if(!off)return 0;
+    uint32_t off=allocateLow(bytes,ptrBlock);if(!off)return 0;
     uint8_t* ptr=arena_+off+blockBytes;
     if(clear)FillRect8::fillSpan(ptr,bytes,0);
     return ptr;

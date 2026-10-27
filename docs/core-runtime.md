@@ -94,3 +94,10 @@ is invalidated on topology changes; it does not change allocation order. Clear
 requests reuse the shared longword fill and retain their exact logical extent.
 See the item-19.7 measurements and original-paired fixtures in
 [performance](performance.md#heap-allocation-and-local-resize-197).
+`NewPtr` and explicit or implicit `MoreMasters` place their block at the lowest
+run of free and movable blocks, moving those handles elsewhere, even across
+locked ones. When compaction and purging cannot satisfy a relocatable request,
+the same relocation is the last resort. MEASURED on System 7.5.5 by
+`ref/mame/runs/masters-3`; see "Heap placement and relocation" in
+[release validation](release.md). Moved blocks can hold code, so the dispatcher
+flushes the caches once after any service that moved heap bytes.
