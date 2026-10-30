@@ -30,7 +30,7 @@ $(BUILD)/install.o: install.c $(HEADERS) Makefile | $(BUILD)
 	$(AMIGA_CC) $(AMIGA_FLAGS) -c $< -o $@
 $(BUILD)/sha256.o: sha256.c sha256.h io.h Makefile | $(BUILD)
 	$(AMIGA_CC) $(AMIGA_FLAGS) -c $< -o $@
-$(BUILD)/io_amiga.o: io_amiga.c io.h Makefile | $(BUILD)
+$(BUILD)/io_amiga.o: io_amiga.c io.h install_config.h Makefile | $(BUILD)
 	$(AMIGA_CC) $(AMIGA_FLAGS) -c $< -o $@
 $(BUILD)/start.o: start.s | $(BUILD)
 	$(AMIGA_CC) -m68020 -mtune=68020 -c $< -o $@

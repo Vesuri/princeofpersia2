@@ -10,7 +10,7 @@ Hard disk installation, saved games and quitting to Workbench are supported.
 A joystick works alongside the keyboard: fire fights an enemy, grabs and steps
 carefully otherwise, and skips cutscenes; a second fire button jumps.
 
-**Version 0.91 (27.10.2026) is a release candidate.** The game is playable and
+**Version 0.92 (31.10.2026) is a release candidate.** The game is playable and
 tested in emulation; real-Amiga hardware qualification is still pending.
 
 ## Requirements
@@ -29,7 +29,7 @@ Supply your own licensed Kickstart image. The matching RTB is available in
 
 ## Installation
 
-1. Unpack `PrinceOfPersia2-0.91.lha` and open the **PoP2 Install** drawer.
+1. Unpack `PrinceOfPersia2-0.92.lha` and open the **PoP2 Install** drawer.
 2. Have your `Prince_Of_Persia2.SIT` archive ready. Leave it compressed.
 3. Run **Install**, select the destination parent drawer, and select the SIT
    archive when asked. Extraction and verification can take several minutes.

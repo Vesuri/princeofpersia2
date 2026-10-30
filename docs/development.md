@@ -86,7 +86,7 @@ The current performance target is `a1200-030` with 8 MB Fast RAM. See
 matched-workload checks and Kalms dirty-rectangle conversion at frame end.
 Profiling is separate from ordinary release and the correctness fixtures.
 
-Version 0.91 (27.10.2026) is a release candidate. `make dist` builds the ordinary
+Version 0.92 (31.10.2026) is a release candidate. `make dist` builds the ordinary
 game, WHDLoad slave and native installer, then independently audits the LHA.
 The package requires the user's downloaded SIT archive. The installer helper's
 source is available in this repository and is not bundled in the archive. `make installer-check` exercises extraction and

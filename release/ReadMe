@@ -67,6 +67,11 @@
 
  History:
  --------
+ 0.92 (31.10.2026)
+ - Added joystick support. Fire fights when an enemy is present and skips
+   cutscenes; a second fire button jumps.
+ - If the game stops with an error, the WHDLoad requester shows the reason.
+
  0.91 (27.10.2026)
  - Fixed out-of-memory crashes when returning to the title sequence or
    showing the credits.

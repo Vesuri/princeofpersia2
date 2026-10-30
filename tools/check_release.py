@@ -11,7 +11,7 @@ MEMBERS = {
     'PrinceOfPersia2.inf', 'Install', 'Install.info', 'ReadMe',
     'ReadMe.info', 'LICENSE.LGPL.txt',
 }
-DATE = '27.10.2026'
+DATE = '31.10.2026'
 
 
 def check():

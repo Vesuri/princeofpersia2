@@ -1,5 +1,5 @@
 ; Prince of Persia 2 Installer 43 script, adapted from Vette!/Alone in the Dark.
-; $VER: Install 0.91 (27.10.2026)
+; $VER: Install 0.92 (31.10.2026)
 (set @app-name "Prince of Persia 2")
 (set #source (pathonly @icon))
 (set @execute-dir #source)

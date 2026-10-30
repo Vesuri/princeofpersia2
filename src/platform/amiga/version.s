@@ -1,6 +1,6 @@
 .section .rodata.version,"aR",@progbits
 .global pop2Version
-pop2Version: .asciz "$VER: Prince of Persia 2 0.91 (27.10.2026)"
+pop2Version: .asciz "$VER: Prince of Persia 2 0.92 (31.10.2026)"
 
 .section .data.whdload,"awR",@progbits
 .balign 4
