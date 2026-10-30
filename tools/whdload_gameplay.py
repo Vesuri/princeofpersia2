@@ -3,6 +3,14 @@ from pathlib import Path
 import struct,json,hashlib
 from extract_original_data import ROOT
 
+# Held over 48 first-room updates; the first eight ignore input. A joystick input and its keyboard
+# equivalent must leave the same kid record (tools/check_joystick.py).
+ROUTE_INPUTS={'key-right':['key 4e'],'joy-right':['input JOY2_RIGHT'],
+              'key-up':['key 4c'],'joy-up':['input JOY2_UP'],'joy-second':['input JOY2_2ND_BUTTON'],
+              'key-shift-right':['key 60','key 4e'],
+              'key-shift-ctrl-right':['key 60','key 63','key 4e'],'key-ctrl-right':['key 63','key 4e'],'joy-fire-right':['input JOY2_FIRE_BUTTON','input JOY2_RIGHT'],
+              'none':[]}
+
 def prepare(base):
     elf=(base/'PrinceOfPersia2.elf').read_bytes()
     assert hashlib.sha256(elf).hexdigest()==json.loads((base/'receipt.json').read_text())['elf']
@@ -49,9 +57,14 @@ def prepare(base):
     assert read(audio,4)==bytes.fromhex('affc4e75'), 'QUIT / AUDIO ENTRY'
     options=json.loads((base/'gameplay-options.json').read_text())
     action=options.get('save_action')
-    updates=16 if action=='load' else 11 if action=='save' else 8
+    updates=16 if action=='load' else 11 if action=='save' else 48 if options.get('route_input') else 8
     from whdload_save import observer
     file_route=observer(options.get('save_action'),c2,address,mmu=options.get('mmu_functional',False))
+    held=ROUTE_INPUTS[options.get('route_input') or 'key-right']
+    if action=='save' or not held:press=release='    monitor key 4e 0\n'
+    else:
+        press=''.join(f'    monitor {h} 1\n' for h in held)
+        release=''.join(f'    monitor {h} 0\n' for h in reversed(held))
     s=f'''set $world={a5:#x}
     set $c2={c2:#x}
     set $c15={c15:#x}
@@ -81,8 +94,7 @@ def prepare(base):
     set $context=*(unsigned long*)($world-0x5014)
     dump binary memory first-context.bin $context $context+0x2200
     dump binary memory first-a5.bin $world-22266 $world
-    monitor key 4e {0 if action=='save' else 1}
-    break *{c2+0x68b2:#x}
+{press}    break *{c2+0x68b2:#x}
     ignore 3 {updates-1}
     continue
     if $pc != {c2+0x68b2:#x}
@@ -91,8 +103,7 @@ def prepare(base):
     printf "PLAY MOVED level=%u room=%u step=%u\\n",*(unsigned short*)($world-0x4fd2),*(unsigned short*)($world-0x4fc2),*(unsigned short*)($world-0x349a)
     dump binary memory moved-context.bin $context $context+0x2200
     dump binary memory moved-a5.bin $world-22266 $world
-    monitor key 4e 0
-    disable 3
+{release}    disable 3
     break *{address('pop2UIOverlayShown'):#x}
     break *{address('pop2ScaffoldRestored'):#x}
     break *{c2+0x3e36:#x}
@@ -178,7 +189,7 @@ def check(base):
     quit_key=options.get('quit_key')
     action=options.get('save_action')
     mmu=options.get('mmu_functional',False)
-    updates=16 if action=='load' else 11 if action=='save' else 8
+    updates=16 if action=='load' else 11 if action=='save' else 48 if options.get('route_input') else 8
     first=re.findall(r'^PLAY FIRST level=1 room=4 step=(\d+)$',log,re.M)
     moved=re.findall(r'^PLAY MOVED level=1 room=4 step=(\d+)$',log,re.M)
     assert len(first)==len(moved)==1 and all(int(v)<65536 for v in first+moved) and (int(moved[0])-int(first[0]))%65536==updates, 'QUIT / GAMEPLAY UPDATE SEQUENCE'
@@ -230,8 +241,9 @@ def check(base):
 def run(base, seconds):
     import os,shlex,shutil,subprocess,time
     from whdload_store import emulator
-    cache_memory=json.loads((base/'gameplay-options.json').read_text()).get('cache_memory',False)
-    emulator(cache_memory)
+    options=json.loads((base/'gameplay-options.json').read_text())
+    cache_memory=options.get('cache_memory',False)
+    emulator(cache_memory,bool(options.get('route_input')))
     shutil.copyfile(ROOT/'amiga/out/PrinceOfPersia2.elf',base/'PrinceOfPersia2.elf')
     for _ in range(100):
         if (base/'debug-port').exists():

@@ -7,7 +7,8 @@ The original 68k game code runs natively with Amiga implementations of the
 Macintosh services it uses. The port keeps the original 512×384 graphics on a
 PAL hires interlaced display, with music and sound effects through Paula.
 Hard disk installation, saved games and quitting to Workbench are supported.
-Joystick input is not supported yet.
+A joystick works alongside the keyboard: fire fights an enemy, grabs and steps
+carefully otherwise, and skips cutscenes; a second fire button jumps.
 
 **Version 0.91 (27.10.2026) is a release candidate.** The game is playable and
 tested in emulation; real-Amiga hardware qualification is still pending.

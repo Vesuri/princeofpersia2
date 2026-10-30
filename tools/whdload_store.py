@@ -34,9 +34,15 @@ def prepare(base):
         'dump binary memory after-chip.bin 0 0x200000\n')
 
 
-def emulator(cache_memory=False):
-    path = Path(os.environ.get('FSUAE_WHDLOAD') or os.environ['FSUAE_MMU'])
-    expected = pins(ROOT/'manifest/release-debug.sha256')['fs-uae-cache-observer' if cache_memory else 'fs-uae-pop2-release']
+def emulator(cache_memory=False, joystick=False):
+    # Joystick runs need the current shared build's `monitor input`.
+    if joystick:
+        path = Path(os.environ['FSUAE_ARM'])
+        name = 'fs-uae-arm'
+    else:
+        path = Path(os.environ.get('FSUAE_WHDLOAD') or os.environ['FSUAE_MMU'])
+        name = 'fs-uae-cache-observer' if cache_memory else 'fs-uae-pop2-release'
+    expected = pins(ROOT/'manifest/release-debug.sha256')[name]
     assert hashlib.sha256(path.read_bytes()).hexdigest() == expected, 'STORE / DEBUGGER EMULATOR PIN'
     return path
 

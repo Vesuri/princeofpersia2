@@ -23,6 +23,24 @@ press or manufacture another key-down. The Amiga physical-key mapping and CIA
 ownership/handshake adapt the pinned Alone in the Dark implementation, with this
 game's character/event behavior checked against D2.
 
+The port-1 joystick is sampled at the same VBI and holds Amiga raw keys
+(owner mapping): the stick holds the cursor keys and the second button
+(POTINP bit 14) holds Up. Fire holds one key chosen from original state at
+the press: Space while the mode word marks a cinematic, Ctrl
+when the kid's room has a living character as the original closest-opponent
+search counts them, otherwise Shift. DERIVED: the original ReadKeyboard
+prefers Shift, so holding both would never reach Ctrl. Keyboard and joystick holds
+share one Macintosh key position, so releasing either keeps a key the other
+still holds. `tools/test_amiga_joystick.cpp` covers the decoding.
+`tools/test_whdload.py --route-input` holds one input over 48 first-room updates
+of a release WHDLoad run; the game ignores input over the first eight. These
+runs use the pinned `fs-uae-arm` build, whose `monitor input` drives the
+joystick. `tools/check_joystick.py` requires each joystick input to leave the
+same kid record as its keyboard equivalent (fire is Ctrl in the first room,
+which has a living guard), with controls that distinguish Right from no input,
+Up and Shift-Right, and Ctrl-Right from Shift-Right. The Shift and cinematic selections are covered
+by the host test only.
+
 MEASURED: original ADB input for A, four arrows, Space, Return, Escape and Command-S
 produces nine key-down events. KeyMap uses the Macintosh physical positions;
 messages carry the ADB source bits, virtual key and character. The default event

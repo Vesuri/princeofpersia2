@@ -22,6 +22,8 @@ def main():
     p.add_argument('--store-reference',type=Path,help='verify the CODE 20 store against a completed original demo trace')
     p.add_argument('--gameplay',action='store_true',help='exercise release gameplay and normal quit with guest keyboard input')
     p.add_argument('--quit-key',action='store_true',help='use WHDLoad F10 after the gameplay checkpoint')
+    from whdload_gameplay import ROUTE_INPUTS
+    p.add_argument('--route-input',choices=sorted(ROUTE_INPUTS),help='joystick comparison: hold this during 48 first-room updates on the input-capable emulator with a port-1 joystick')
     saves=p.add_mutually_exclusive_group()
     saves.add_argument('--save-game',action='store_true',help='save Level 1 before normal quit')
     saves.add_argument('--load-game-from',type=Path,help='load Level 1 from a completed release save fixture in a fresh boot')
@@ -29,6 +31,7 @@ def main():
     assert not a.quit_key or a.gameplay, 'WHDLOAD / QUIT KEY REQUIRES GAMEPLAY'
     assert not (a.gameplay and a.store_reference), 'WHDLOAD / ONE OBSERVER'
     assert not (a.save_game or a.load_game_from) or (a.gameplay and not a.quit_key), 'WHDLOAD / SAVE REQUIRES NORMAL GAMEPLAY'
+    assert not a.route_input or (a.gameplay and a.setup=='a1200-030' and not (a.mmu or a.quit_key or a.save_game or a.load_game_from)), 'WHDLOAD / ROUTE INPUT SCOPE'
     debug=a.gameplay or bool(a.store_reference)
     assert not a.mmu_functional or (a.setup=='a1200-040' and a.mmu and a.gameplay and (a.save_game or a.load_game_from)), 'WHDLOAD / MMU FUNCTIONAL ROUTE'
     assert not (a.cache_memory and a.mmu_functional), 'WHDLOAD / ONE MEMORY OBSERVER SCOPE'
@@ -37,7 +40,7 @@ def main():
     if debug:
         assert a.cache_memory or a.mmu_functional or (a.setup=='a1200-030' and not a.mmu), 'WHDLOAD / VALIDATED DEBUGGER SETUP'
         from whdload_store import emulator
-        emulator(a.cache_memory)
+        emulator(a.cache_memory,bool(a.route_input))
     receipt=verify()
     assert set(receipt['flags'].split())=={'-DPOP2_CORE','-DPOP2_DISPLAY','-DPOP2_INPUT','-DPOP2_UI','-DPOP2_AUDIO'}
     base=Path(tempfile.mkdtemp(prefix='whdload-release-',dir=ROOT/'tmp'))
@@ -63,7 +66,7 @@ def main():
     rom=Path(os.environ['KICKSTART_A1200']);rtb=Path(str(rom)+'.RTB')
     for src in [rom,rtb]:shutil.copyfile(src,boot/'devs/Kickstarts'/src.name)
     options=('' if a.no_preload else 'PRELOAD ')+('MMU ' if a.mmu else 'NOMMU ' if debug else '')
-    (base/'gameplay-options.json').write_text(json.dumps({'z3_memory':a.z3_memory,'cache_memory':a.cache_memory,'setup':a.setup,'mmu':a.mmu,'mmu_functional':a.mmu_functional,'preload':not a.no_preload,'quit_key':a.quit_key,'save_action':'save' if a.save_game else 'load' if a.load_game_from else None})+'\n')
+    (base/'gameplay-options.json').write_text(json.dumps({'z3_memory':a.z3_memory,'cache_memory':a.cache_memory,'setup':a.setup,'mmu':a.mmu,'mmu_functional':a.mmu_functional,'preload':not a.no_preload,'quit_key':a.quit_key,'route_input':a.route_input,'save_action':'save' if a.save_game else 'load' if a.load_game_from else None})+'\n')
     assert a.ticks>=0, 'WHDLOAD / NONNEGATIVE TIMEOUT'
     timeout='' if a.quit_key or not a.ticks else f'TIMEOUT={a.ticks} '
     (boot/'s/WHDLoad.prefs').write_text(('' if a.quit_key else 'Expert\n')+'ReadDelay=0\n')
@@ -78,7 +81,7 @@ cd "$1"
 FSUAE_RUN=.
 . "$FSUAE_COMMON"
 trap 'fsuae_stop' EXIT
-FSUAE="${FSUAE_WHDLOAD:-$FSUAE_MMU}"
+FSUAE="${FSUAE_ROUTE_INPUT:-${FSUAE_WHDLOAD:-$FSUAE_MMU}}"
 AMIGA_SETUP="$3" DEBUG="$4" SOUND=0 WINDOW=none WARP=1 NTSC=0
 fsuae_options
 if [ "$5" = 1 ]; then
@@ -97,12 +100,13 @@ if [ "$5" = 1 ]; then
   fsuae_setup() { FSUAE_SETUP_ARGS=("${Z3_SETUP_ARGS[@]}"); }
 fi
 echo "$DEBUG_PORT" > debug-port
-fsuae_launch --hard_drive_0="$PWD/boot" --hard_drive_0_priority=10 --hard_drive_1="$PWD/game" --floppy_drive_0="$WORKBENCH_ADF" --floppy_drive_volume=0 --floppy_drive_volume_empty=0 --state_dir="$PWD/state" --logs_dir="$PWD/logs" --joystick_port_0=nothing --joystick_port_1=nothing
+fsuae_launch --hard_drive_0="$PWD/boot" --hard_drive_0_priority=10 --hard_drive_1="$PWD/game" --floppy_drive_0="$WORKBENCH_ADF" --floppy_drive_volume=0 --floppy_drive_volume_empty=0 --state_dir="$PWD/state" --logs_dir="$PWD/logs" --joystick_port_0=nothing --joystick_port_1=JOYSTICK_PORT_1
 wait "$FSUAE_PID"
-''')
+'''.replace('JOYSTICK_PORT_1','keyboard' if a.route_input else 'nothing'))
     try:
         with (base/'emulator.log').open('w') as log:
-            emu=subprocess.Popen(['/bin/bash',str(script),str(base),str(ROOT),a.setup,'1' if debug else '0','1' if a.z3_memory else '0'],stdout=log,stderr=log)
+            emu=subprocess.Popen(['/bin/bash',str(script),str(base),str(ROOT),a.setup,'1' if debug else '0','1' if a.z3_memory else '0'],stdout=log,stderr=log,
+                                 env=dict(os.environ,FSUAE_ROUTE_INPUT=os.environ['FSUAE_ARM']) if a.route_input else None)
             if a.gameplay:
                 from whdload_gameplay import run
                 run(base,a.seconds)

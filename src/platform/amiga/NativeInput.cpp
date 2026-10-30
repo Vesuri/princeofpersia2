@@ -6,8 +6,9 @@
 #include <hardware/cia.h>
 #include "NativeInput.h"
 #include "mac/AmigaKeyMap.h"
+#include "mac/AmigaJoystick.h"
 #include "framework/AmigaHardware.h"
-extern "C" {extern volatile uint32_t g_inputVectorRestored;}
+extern "C" {extern volatile uint32_t g_inputVectorRestored;extern uint32_t g_coreA5;}
 // CIA ownership/handshake adapted from the pinned Alone in the Dark driver.
 // Only the VBI translates queued edges into Macintosh levels and events.
 #ifdef POP2_UI_PROBE
@@ -29,7 +30,14 @@ namespace NativeInput {
 namespace {
 Library* cia;Interrupt handler;Interrupt* previous;
 volatile uint8_t rawQueue[128],head,tail;volatile bool rawOverflow;
-bool physical[128];InputState state;const char* reason;volatile uint32_t now;
+bool physical[128],controller[128];InputState state;const char* reason;volatile uint32_t now;
+uint8_t controllerHeld,fireRaw;
+struct GameMemory {
+ const uint8_t* base;
+ uint16_t a5(int32_t offset)const{return *(const volatile uint16_t*)(base+offset);}
+ uint32_t context()const{return *(const volatile uint32_t*)(base-0x5014);}
+ uint16_t at(uint32_t address)const{return *(const volatile uint16_t*)address;}
+};
 void enqueue(uint8_t raw,bool down) {
  const uint8_t next=(head+1)&127;
  if(next==tail){rawOverflow=true;return;}
@@ -42,11 +50,28 @@ uint32_t keyboard() {
  *ciaacraPointer&=uint8_t(~CIACRAF_SPMODE);
  code=(code>>1)|(code<<7);enqueue(code&127,!(code&128));return 0;
 }
+// Keyboard and controller holds share one Macintosh key position.
+bool publish(uint8_t raw,uint32_t ticks) {
+ KeyTranslation key;
+ if(!translateAmigaKey(raw,key)){reason="INPUT / UNMAPPED RAW KEY";return false;}
+ // Both physical Shifts/Alts/Amigas can share one Macintosh key position.
+ bool held=false;
+ for(unsigned i=0;i<128;++i)if(physical[i]||controller[i]) {
+  KeyTranslation alias;if(translateAmigaKey(i,alias)&&alias.virtualKey==key.virtualKey){held=true;break;}
+ }
+ bool shift=(state.modifiers()&0x200)!=0;
+ bool caps=(state.modifiers()&0x400)!=0 && key.character>='a' && key.character<='z';
+ uint8_t character=(shift||caps)?key.shiftedCharacter:key.character;
+ if(!state.edge(key.virtualKey,held,character,ticks)){reason="INPUT / EVENT QUEUE OVERFLOW";return false;}
+ return true;
+}
 }
 bool initialize() {
  if(cia){reason="INPUT / DUPLICATE INITIALIZE";return false;}
  g_inputVectorRestored=0;state.reset();now=0;head=tail=0;rawOverflow=false;reason=nullptr;
  for(auto& v:physical)v=false;
+ for(auto& v:controller)v=false;
+ controllerHeld=0;fireRaw=fireShift;
  cia=(Library*)OpenResource((CONST_STRPTR)CIAANAME);
  if(!cia){reason="INPUT / CIA RESOURCE";return false;}
  handler.is_Node.ln_Type=NT_INTERRUPT;handler.is_Node.ln_Pri=0;
@@ -123,17 +148,20 @@ void field(uint32_t ticks) {
   uint8_t edge=rawQueue[tail];tail=(tail+1)&127;
   uint8_t raw=edge&127;bool down=!(edge&128);
   if(physical[raw]==down)continue;
-  physical[raw]=down;KeyTranslation key;
-  if(!translateAmigaKey(raw,key)){reason="INPUT / UNMAPPED RAW KEY";return;}
-  // Both physical Shifts/Alts/Amigas can share one Macintosh key position.
-  bool held=false;
-  for(unsigned i=0;i<128;++i)if(physical[i]) {
-   KeyTranslation alias;if(translateAmigaKey(i,alias)&&alias.virtualKey==key.virtualKey){held=true;break;}
-  }
-  bool shift=(state.modifiers()&0x200)!=0;
-  bool caps=(state.modifiers()&0x400)!=0 && key.character>='a' && key.character<='z';
-  uint8_t character=(shift||caps)?key.shiftedCharacter:key.character;
-  if(!state.edge(key.virtualKey,held,character,ticks)){reason="INPUT / EVENT QUEUE OVERFLOW";return;}
+  physical[raw]=down;
+  if(!publish(raw,ticks))return;
+ }
+ const uint8_t held=joystickHeld(*joy1datPointer,*ciaapraPointer,*potinpPointer);
+ const uint8_t changed=held^controllerHeld;controllerHeld=held;
+ for(unsigned i=0;i<sizeof joystickRaw;++i)if(changed&(1u<<i)) {
+  controller[joystickRaw[i]]=(held>>i)&1;
+  if(!publish(joystickRaw[i],ticks))return;
+ }
+ if(changed&joystickFire) {
+  // The release reaches the key the press chose.
+  if(held&joystickFire)fireRaw=g_coreA5 ? joystickFireKey(GameMemory{(const uint8_t*)g_coreA5}) : fireShift;
+  controller[fireRaw]=(held&joystickFire)!=0;
+  if(!publish(fireRaw,ticks))return;
  }
 }
 void keyMap(uint8_t* output){
