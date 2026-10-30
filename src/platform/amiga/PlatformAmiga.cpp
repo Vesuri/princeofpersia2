@@ -52,7 +52,27 @@ volatile uint32_t g_inputVectorRestored=0;
 volatile uint32_t g_scaffoldStage=0, g_scaffoldFields=0, g_scaffoldError=0;
 volatile uint16_t g_savedDMA=0,g_actualDMA=0,g_savedIRQ=0,g_actualIRQ=0,g_viewRestored=0,g_vectorRestored=0;
 __attribute__((noinline)) void pop2ScaffoldRestored() { __asm__ volatile("nop" ::: "memory"); }
+#ifdef POP2_CORE
+extern uint32_t g_coreStopTrap,g_coreStopSegment,g_coreStopOffset;
+#endif
 }
+static const char* failure=0;
+static char failureText[160];
+#ifdef POP2_CORE
+// The core reason, with the original location of a named stop.
+static const char* coreFailure() {
+    const char* why=CoreRuntime::error();
+    if(!g_coreStopSegment)return why;
+    char* out=failureText;char* end=failureText+sizeof failureText-1;
+    auto text=[&](const char* p){while(*p && out<end)*out++=*p++;};
+    auto hex=[&](uint32_t v){char digits[9];int n=0;do{digits[n++]="0123456789ABCDEF"[v&15];v>>=4;}while(v);while(n && out<end)*out++=digits[--n];};
+    text(why);text(" (trap $");hex(g_coreStopTrap);text(" at CODE ");
+    {char digits[11];int n=0;uint32_t v=g_coreStopSegment;do{digits[n++]=char('0'+v%10);v/=10;}while(v);while(n && out<end)*out++=digits[--n];}
+    text("+$");hex(g_coreStopOffset);text(")");*out=0;
+    return failureText;
+}
+#endif
+const char* PlatformAmiga::reason() const { return failure; }
 #ifdef POP2_INPUT
 // Called at user-mode service points. Pair the field clock with a stable beam
 // and pending-VBI state: a request not yet serviced belongs to the next field.
@@ -217,16 +237,21 @@ static_assert(__builtin_offsetof(ExecBase,IntVects)==84,"Exec vector layout chan
 bool PlatformAmiga::run() {
     g_scaffoldStage=1;
     GfxBase=(struct GfxBase*)OpenLibrary((CONST_STRPTR)"graphics.library",39);
+    failure="SCAFFOLD / GRAPHICS LIBRARY";
     if(!GfxBase) { g_scaffoldError=1;return false; }
+    failure="SCAFFOLD / DOS LIBRARY";
     DOSBase=(DosLibrary*)OpenLibrary((CONST_STRPTR)"dos.library",39);
     if(!DOSBase) { CloseLibrary((Library*)GfxBase);GfxBase=0;g_scaffoldError=2;return false; }
+    failure=0;
     bool compatible=(SysBase->AttnFlags&AFF_68020) && (GfxBase->ChipRevBits0&GFXF_AA_LISA) && (GfxBase->DisplayFlags&PAL);
     if(!compatible) {
+        failure="SCAFFOLD / REQUIRES PAL AGA 68020";
         PutStr((CONST_STRPTR)"SCAFFOLD / REQUIRES PAL AGA 68020\n");
         CloseLibrary((Library*)DOSBase);DOSBase=0;CloseLibrary((Library*)GfxBase);GfxBase=0;g_scaffoldError=3;return false;
     }
 #ifdef POP2_CORE
     if(!CoreRuntime::prepare()) {
+        failure=coreFailure();
         PutStr((CONST_STRPTR)CoreRuntime::error());PutStr((CONST_STRPTR)"\n");
         pop2CoreStopped();CoreRuntime::release();
         CloseLibrary((Library*)DOSBase);DOSBase=0;CloseLibrary((Library*)GfxBase);GfxBase=0;
@@ -235,7 +260,7 @@ bool PlatformAmiga::run() {
 #endif
 #if defined(POP2_DISPLAY_PROBE) || defined(POP2_DISPLAY)
     if(!display.allocate()) {
-        g_scaffoldError=5;
+        g_scaffoldError=5;failure="DISPLAY / ALLOCATE";
 #ifdef POP2_CORE
         CoreRuntime::release();
 #endif
@@ -251,6 +276,7 @@ bool PlatformAmiga::run() {
 #ifdef POP2_INPUT
     inputTicks=0;inputPhase=0;
     if(!NativeInput::initialize()) {
+        failure=NativeInput::error();
         PutStr((CONST_STRPTR)NativeInput::error());PutStr((CONST_STRPTR)"\n");
 #if defined(POP2_DISPLAY_PROBE) || defined(POP2_DISPLAY)
         display.release();
@@ -368,10 +394,12 @@ bool PlatformAmiga::run() {
 #ifdef POP2_INPUT
     ok=ok && g_inputVectorRestored==1;
 #endif
-    if(!ok)g_scaffoldError=4;
+    failure=0;
+    if(!ok){g_scaffoldError=4;failure="SCAFFOLD / RESTORE FAILED";}
     PutStr((CONST_STRPTR)(ok ? "SCAFFOLD RESTORED\n" : "SCAFFOLD / RESTORE FAILED\n"));
 #ifdef POP2_CORE
     PutStr((CONST_STRPTR)CoreRuntime::error());PutStr((CONST_STRPTR)"\n");
+    if(!CoreRuntime::exitedNormally())failure=coreFailure();
     ok=ok && CoreRuntime::exitedNormally();
     g_scaffoldStage=3;pop2CoreStopped();CoreRuntime::release();
 #endif

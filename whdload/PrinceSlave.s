@@ -7,6 +7,8 @@
 CHIPMEMSIZE = $200000
 FASTMEMSIZE = $600000 ; validation pending; host OS/PRELOAD need additional RAM
 NUMDRIVES = 0
+REASONSIZE = 160                ; game stop reason, including its NUL
+GVF_LOCAL_ONLY = $200
 WPDRIVES = 0
 BLACKSCREEN
 BOOTDOS
@@ -128,6 +130,17 @@ _bootdos
         jsr (_LVOSetProgramDir,a6)
         move.l d0,d1
         jsr (_LVOUnLock,a6)
+        ; A failing game leaves its stop reason in a local variable.
+        tst.l d6
+        beq .noreason
+        lea (_reasonvar,pc),a0
+        move.l a0,d1
+        lea (_reason,pc),a0
+        move.l a0,d2
+        move.l #REASONSIZE,d3
+        move.l #GVF_LOCAL_ONLY,d4
+        jsr (_LVOGetVar,a6)
+.noreason
         IFD TEST
         tst.l d6
         bne .gameerror
@@ -157,12 +170,22 @@ _bootdos
         pea TDREASON_OSEMUFAIL
         bra .abort
 .gameerror
-        pea (_failed,pc)
+        lea (_failed,pc),a0
+        tst.b (_reason,pc)
+        beq .message
+        lea (_stopped,pc),a0
+.message
+        move.l a0,-(sp)
         pea TDREASON_FAILMSG
 .abort
         move.l (_resload,pc),a2
         jmp (resload_Abort,a2)
 _failed dc.b "Prince of Persia 2 could not start. See the game diagnostics.",0
+_reasonvar dc.b "Pop2Reason",0
+; The reason buffer completes the stopped message.
+_stopped dc.b "Prince of Persia 2 stopped: "
+_reason ds.b REASONSIZE
+        dc.b 0
 _current dc.b 0
         EVEN
 _stackmem dc.l 0

@@ -22,6 +22,7 @@ def main():
     p.add_argument('--store-reference',type=Path,help='verify the CODE 20 store against a completed original demo trace')
     p.add_argument('--gameplay',action='store_true',help='exercise release gameplay and normal quit with guest keyboard input')
     p.add_argument('--quit-key',action='store_true',help='use WHDLoad F10 after the gameplay checkpoint')
+    p.add_argument('--stop-reason',action='store_true',help='press an unmapped key in play and require the named stop reason in the WHDLoad message')
     from whdload_gameplay import ROUTE_INPUTS
     p.add_argument('--route-input',choices=sorted(ROUTE_INPUTS),help='joystick comparison: hold this during 48 first-room updates on the input-capable emulator with a port-1 joystick')
     saves=p.add_mutually_exclusive_group()
@@ -31,6 +32,7 @@ def main():
     assert not a.quit_key or a.gameplay, 'WHDLOAD / QUIT KEY REQUIRES GAMEPLAY'
     assert not (a.gameplay and a.store_reference), 'WHDLOAD / ONE OBSERVER'
     assert not (a.save_game or a.load_game_from) or (a.gameplay and not a.quit_key), 'WHDLOAD / SAVE REQUIRES NORMAL GAMEPLAY'
+    assert not a.stop_reason or (a.gameplay and a.setup=='a1200-030' and not (a.mmu or a.quit_key or a.save_game or a.load_game_from or a.route_input)), 'WHDLOAD / STOP REASON SCOPE'
     assert not a.route_input or (a.gameplay and a.setup=='a1200-030' and not (a.mmu or a.quit_key or a.save_game or a.load_game_from)), 'WHDLOAD / ROUTE INPUT SCOPE'
     debug=a.gameplay or bool(a.store_reference)
     assert not a.mmu_functional or (a.setup=='a1200-040' and a.mmu and a.gameplay and (a.save_game or a.load_game_from)), 'WHDLOAD / MMU FUNCTIONAL ROUTE'
@@ -66,7 +68,7 @@ def main():
     rom=Path(os.environ['KICKSTART_A1200']);rtb=Path(str(rom)+'.RTB')
     for src in [rom,rtb]:shutil.copyfile(src,boot/'devs/Kickstarts'/src.name)
     options=('' if a.no_preload else 'PRELOAD ')+('MMU ' if a.mmu else 'NOMMU ' if debug else '')
-    (base/'gameplay-options.json').write_text(json.dumps({'z3_memory':a.z3_memory,'cache_memory':a.cache_memory,'setup':a.setup,'mmu':a.mmu,'mmu_functional':a.mmu_functional,'preload':not a.no_preload,'quit_key':a.quit_key,'route_input':a.route_input,'save_action':'save' if a.save_game else 'load' if a.load_game_from else None})+'\n')
+    (base/'gameplay-options.json').write_text(json.dumps({'z3_memory':a.z3_memory,'cache_memory':a.cache_memory,'setup':a.setup,'mmu':a.mmu,'mmu_functional':a.mmu_functional,'preload':not a.no_preload,'quit_key':a.quit_key,'route_input':a.route_input,'stop_reason':a.stop_reason,'save_action':'save' if a.save_game else 'load' if a.load_game_from else None})+'\n')
     assert a.ticks>=0, 'WHDLOAD / NONNEGATIVE TIMEOUT'
     timeout='' if a.quit_key or not a.ticks else f'TIMEOUT={a.ticks} '
     (boot/'s/WHDLoad.prefs').write_text(('' if a.quit_key else 'Expert\n')+'ReadDelay=0\n')

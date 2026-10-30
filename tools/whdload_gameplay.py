@@ -170,6 +170,22 @@ def prepare(base):
     if options.get('quit_key'):
         s=s.split(f'    break *{address("pop2UIOverlayShown"):#x}')[0]+('    monitor key 59 1\n    monitor fields 40\n'
             '    monitor key 59 0\n    monitor fields 80\n    printf \"QUIT F10 INJECTED\\n\"\n')
+    if options.get('stop_reason'):
+        # An unmapped raw key (keypad *) is a named input stop in play; the
+        # WHDLoad message must carry its reason.
+        s=s.split(f'    break *{address("pop2UIOverlayShown"):#x}')[0]+f'''    monitor key 5d 1
+    monitor fields 4
+    monitor key 5d 0
+    break *{address('pop2ScaffoldRestored'):#x}
+    continue
+    if $pc != {address('pop2ScaffoldRestored'):#x}
+     quit 1
+    end
+    printf "CORE REASON: "
+    x/s *(unsigned long*){address('g_coreReason'):#x}
+    printf "CORE STOP trap=%lx seg=%lu offset=%lx\\n",*(unsigned long*){address('g_coreStopTrap'):#x},*(unsigned long*){address('g_coreStopSegment'):#x},*(unsigned long*){address('g_coreStopOffset'):#x}
+    printf "STOP RESTORED error=%lu view=%u vbi=%u input=%lu\\n",*(unsigned long*){address('g_scaffoldError'):#x},*(unsigned short*){address('g_viewRestored'):#x},*(unsigned short*){address('g_vectorRestored'):#x},*(unsigned long*){address('g_inputVectorRestored'):#x}
+    '''
     (base/'game-next.gdb').write_text(s)
     
 
@@ -193,6 +209,22 @@ def check(base):
     first=re.findall(r'^PLAY FIRST level=1 room=4 step=(\d+)$',log,re.M)
     moved=re.findall(r'^PLAY MOVED level=1 room=4 step=(\d+)$',log,re.M)
     assert len(first)==len(moved)==1 and all(int(v)<65536 for v in first+moved) and (int(moved[0])-int(first[0]))%65536==updates, 'QUIT / GAMEPLAY UPDATE SEQUENCE'
+    if options.get('stop_reason'):
+        assert log.count('"INPUT / UNMAPPED RAW KEY"')==1, 'STOP / CORE REASON'
+        assert log.count('STOP RESTORED error=0 view=1 vbi=1 input=1')==1, 'STOP / RESTORATION'
+        stop=re.search(r'^CORE STOP trap=(\w+) seg=(\d+) offset=(\w+)$',log,re.M)
+        assert stop, 'STOP / LOCATION'
+        where=f' (trap ${int(stop[1],16):X} at CODE {stop[2]}+${int(stop[3],16):X})' if int(stop[2]) else ''
+        shell=(base/'boot/result').read_text(errors='replace')
+        assert ('Prince of Persia 2 stopped: INPUT / UNMAPPED RAW KEY'+where) in shell, 'STOP / REQUESTER TEXT'
+        assert 'could not start' not in shell, 'STOP / GENERIC TEXT'
+        assert (base/'boot/failed').exists() and (base/'boot/returned').exists() and not (base/'boot/passed').exists(), 'STOP / SHELL FAILURE'
+        receipt=json.loads((base/'receipt.json').read_text())
+        assert hashlib.sha256((base/'game/PrinceOfPersia2').read_bytes()).hexdigest()==receipt['exe'], 'STOP / EXECUTABLE IDENTITY'
+        result={'result':'WHDLOAD STOP REASON PASS','exe':receipt['exe'],'message':'Prince of Persia 2 stopped: INPUT / UNMAPPED RAW KEY'+where}
+        (base/'stop-reason.json').write_text(json.dumps(result,indent=2)+'\n')
+        print(json.dumps(result))
+        return
     markers=[]
     if quit_key:
         launch=(base/'boot/s/startup-sequence').read_text()
