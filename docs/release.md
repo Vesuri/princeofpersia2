@@ -1,3 +1,27 @@
+# Version 0.92 (31.10.2026)
+
+Version 0.92 adds port-1 joystick input (`docs/input-ui.md`) and shows the
+game's stop reason in the WHDLoad requester. It changes no other service.
+By owner decision, 0.92 runs only the checks for what changed since 0.91; the
+0.91 evidence below keeps its stated scope for the unchanged code.
+Physical-hardware testing remains open in item 14. The audited archive is
+attached to the GitHub release 0.92.
+
+## Version 0.92 checks
+
+All passed on commit `a250d7a` and on one executable:
+
+- Host scaffold tests, including `tools/test_amiga_joystick.cpp`
+  (directions, buttons, key positions and the Space/Ctrl/Shift fire choice).
+- `make dist`: reproducible archive and independent audit.
+- `tools/test_whdload.py --gameplay --stop-reason` on a1200-030. The run
+  presses an unmapped raw key in play. It requires the named stop, restored
+  system state and the requester text "Prince of Persia 2 stopped: INPUT /
+  UNMAPPED RAW KEY (trap $A975 at CODE 17+$303C)" in the WHDLoad result, with
+  no "could not start" text.
+- Nine `--route-input` runs and `tools/check_joystick.py`: 4
+  joystick/keyboard pairs and 5 distinguishing controls.
+
 # Version 0.91 (27.10.2026)
 
 Version 0.91 fixes the out-of-memory stop of WHDLoad report 7036, which also
@@ -292,6 +316,29 @@ The requested a1200-030 emulator play session is a user check, not a replacement
 for this hardware gate.
 
 ## Current evidence and identity
+
+`manifest/release-092.sha256` pins the 0.92 package and the results of these runs:
+
+| Check | Completed run |
+|---|---|
+| stop-reason | `tmp/whdload-release-qm_ngegs` |
+| key-right | `tmp/whdload-release-zxvxc9a6` |
+| none | `tmp/whdload-release-j4ngvjbd` |
+| joy-right | `tmp/whdload-release-vjkowc1c` |
+| key-up | `tmp/whdload-release-iw5_j2n7` |
+| joy-up | `tmp/whdload-release-kfinhkm0` |
+| joy-second | `tmp/whdload-release-ccuyhhzq` |
+| key-shift-right | `tmp/whdload-release-eslbkpp_` |
+| key-ctrl-right | `tmp/whdload-release-dtffcnn7` |
+| joy-fire-right | `tmp/whdload-release-scchdfkc` |
+
+`dist/PrinceOfPersia2-0.92.lha`: **169,154 bytes**, SHA-256
+`2250893429fbd21dac528a6f98b88201b65391a1fde40654c9a82a346e63113e`.
+
+Release executable SHA-256:
+`5b9963048ea682012e7d8953dc0930f5a5aa80c49e420a33c5113fecd389fd0a`.
+
+### 0.91
 
 `manifest/release-091.sha256` pins the 0.91 package and the results of the
 runs below, plus the 040 crash report that the cache flush fixed. The integration and
